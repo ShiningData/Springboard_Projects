@@ -1,6 +1,6 @@
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
+import plotly.express as px
 
 # create sample data
 wire_segment = pd.DataFrame({
@@ -21,12 +21,13 @@ fig = go.Figure(data=[go.Table(
 ])
 
 # add dropdown filter for tran_direction
+tran_directions = wire_segment['tran_direction'].unique()
 buttons = []
-for direction in wire_segment.tran_direction.unique():
+for direction in tran_directions:
     button = dict(label=direction,
                   method='update',
-                  args=[{'visible': [direction == val for val in wire_segment.tran_direction],
-                         'cells.values': [[wire_segment.iloc[i][col] if wire_segment.iloc[i]['tran_direction'] == direction else '' for col in wire_segment.columns] for i in range(len(wire_segment))]},
+                  args=[{'visible': [True if x == direction else False for x in wire_segment['tran_direction']],
+                         'cells.values': [wire_segment.loc[wire_segment['tran_direction'] == direction, col] for col in wire_segment.columns]},
                         {'title': direction}])
     buttons.append(button)
 
