@@ -32,9 +32,6 @@ for direction in wire_segment.tran_direction.unique():
 
 fig.update_layout(updatemenus=[dict(showactive=True, buttons=buttons)])
 
-# sort by total_tran_amt in descending order
-wire_segment = wire_segment.sort_values(by='total_tran_amt', ascending=False)
-
 # display table in notebook
 from IPython.core.display import HTML
 HTML(fig.to_html())
