@@ -58,9 +58,8 @@ def update_table(direction):
     fig = make_table(wire_segment, direction)
     return fig
 
-# Run app
-if __name__ == '__main__':
-    app.run_server(debug=True, port=8050)
+# Get initial figure
+fig = make_table(wire_segment, directions[0])
 
 # Display table in notebook
 HTML(fig.to_html())
