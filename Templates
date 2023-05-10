@@ -19,38 +19,41 @@ app = dash.Dash(__name__)
 app.layout = html.Div([
     dcc.Dropdown(
         id='tran_direction_filter',
-        options=[{'label': x, 'value': x} for x in ['All'] + list(wire_segment['tran_direction'].unique())],
-        value='All',
+        options=[{'label': x, 'value': x} for x in wire_segment['tran_direction'].unique()],
+        value=None,
         placeholder='Filter by transaction direction'
     ),
-    html.Br(),
-    html.Div(id='table-container')
+    dcc.Graph(id='wire_segment_table')
 ])
 
-
-@app.callback(Output('table-container', 'children'),
+@app.callback(Output('wire_segment_table', 'figure'),
               Input('tran_direction_filter', 'value'))
 def update_table(tran_direction_filter):
-    if tran_direction_filter == 'All':
-        filtered_data = wire_segment.copy()
-    else:
-        filtered_data = wire_segment[wire_segment['tran_direction'] == tran_direction_filter]
-
+    filtered_data = wire_segment.copy()
+    if tran_direction_filter is not None:
+        filtered_data = filtered_data[filtered_data['tran_direction'] == tran_direction_filter]
     filtered_data = filtered_data.sort_values(by='total_tran_amt', ascending=False)
 
-    table = go.Figure(data=[go.Table(
-        header=dict(values=list(filtered_data.columns),
-                    fill_color='paleturquoise',
-                    align='left'),
-        cells=dict(values=[filtered_data[column] for column in filtered_data.columns],
-                   align='left'))
-    ])
+    fig = go.Figure(
+        data=[go.Table(
+            header=dict(
+                values=list(filtered_data.columns),
+                fill_color='paleturquoise',
+                align='left'
+            ),
+            cells=dict(
+                values=[filtered_data[column] for column in filtered_data.columns],
+                align='left'
+            )
+        )]
+    )
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=20, b=20),
+        height=300
+    )
+    return fig
 
-    table.update_layout(margin=dict(l=20, r=20, t=20, b=20),
-                         height=300)
 
-    return dcc.Graph(figure=table)
-
-
-if __name__ == '__main__':
-    app.run_server(mode='inline')
+# Display table in Jupyter notebook
+fig = update_table(None)
+display(fig)
