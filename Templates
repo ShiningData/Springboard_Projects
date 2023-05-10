@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 import pandas as pd
-
+ 
 # create sample data
 wire_segment = pd.DataFrame({
     'segment': ['A', 'B', 'C', 'D'],
