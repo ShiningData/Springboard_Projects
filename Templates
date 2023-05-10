@@ -49,6 +49,27 @@ def make_table(df, direction):
                    align='left'))
     ])
     
+    # add filtering option on tran_direction
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                buttons=[
+                    dict(label="All",
+                         method="update",
+                         args=[{"visible": [True] * len(sorted_df)}]),
+                    dict(label="Inbound",
+                         method="update",
+                         args=[{"visible": [True if val == "inbound" else False for val in sorted_df.tran_direction]}]),
+                    dict(label="Outbound",
+                         method="update",
+                         args=[{"visible": [True if val == "outbound" else False for val in sorted_df.tran_direction]}]),
+                ],
+                direction="down",
+                showactive=True,
+            )
+        ]
+    )
+    
     return fig
 
 # Define update_table callback function
