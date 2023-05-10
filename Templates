@@ -20,8 +20,8 @@ app = dash.Dash(__name__)
 app.layout = html.Div([
     dcc.Dropdown(
         id='tran_direction_filter',
-        options=[{'label': x, 'value': x} for x in ['All'] + wire_segment['tran_direction'].unique()],
-        value='All',
+        options=[{'label': x, 'value': x} for x in wire_segment['tran_direction'].unique()],
+        value=None,
         placeholder='Filter by transaction direction'
     ),
     dcc.Graph(id='wire_segment_table')
@@ -31,7 +31,7 @@ app.layout = html.Div([
               Input('tran_direction_filter', 'value'))
 def update_table(tran_direction_filter):
     filtered_data = wire_segment.copy()
-    if tran_direction_filter != 'All':
+    if tran_direction_filter is not None:
         filtered_data = filtered_data[filtered_data['tran_direction'] == tran_direction_filter]
     filtered_data = filtered_data.sort_values(by='total_tran_amt', ascending=False)
 
@@ -55,6 +55,5 @@ def update_table(tran_direction_filter):
     return fig
 
 
-# Display table in Jupyter notebook
-fig = update_table('All')
-display(html.Div([dcc.Graph(id='wire_segment_table', figure=fig)]))
+if __name__ == '__main__':
+    app.run_server(mode='inline', port=8080)
