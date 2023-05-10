@@ -1,12 +1,13 @@
-import plotly.graph_objects as go
 import pandas as pd
- 
+import plotly.express as px
+import plotly.graph_objects as go
+
 # create sample data
 wire_segment = pd.DataFrame({
-    'segment': ['A', 'B', 'C', 'D'],
+    'segment': ['Segment A', 'Segment B', 'Segment C', 'Segment D'],
     'tran_direction': ['inbound', 'outbound', 'inbound', 'outbound'],
-    'total_tran_count': [10, 20, 30, 40],
-    'total_tran_amt': [100, 200, 300, 400]
+    'total_tran_count': [100, 200, 300, 400],
+    'total_tran_amt': [1000, 2000, 3000, 4000]
 })
 
 # create table
@@ -19,53 +20,20 @@ fig = go.Figure(data=[go.Table(
                align='left'))
 ])
 
-# update table layout
-tran_direction_options = sorted(wire_segment['tran_direction'].unique().tolist())
+# add dropdown filter for tran_direction
+buttons = []
+for direction in wire_segment.tran_direction.unique():
+    button = dict(label=direction,
+                  method='update',
+                  args=[{'visible': [direction == wire_segment.tran_direction.iloc[i] for i in range(len(wire_segment))]},
+                        {'title': direction}])
+    buttons.append(button)
 
-fig.update_layout(
-    title='Wire Segments',
-    height=400,
-    width=800,
-    updatemenus=[dict(
-        buttons=list([
-            dict(label="All",
-                 method="update",
-                 args=[{"visible": [True, True, True, True]},
-                       {"title": "Wire Segments"}]),
-            dict(label="Inbound",
-                 method="update",
-                 args=[{"visible": [True, False, True, False]},
-                       {"title": "Inbound Wire Segments"}]),
-            dict(label="Outbound",
-                 method="update",
-                 args=[{"visible": [False, True, False, True]},
-                       {"title": "Outbound Wire Segments"}])
-        ]),
-        direction="down",
-        showactive=True,
-        x=0.1,
-        y=1.1
-    )],
-    # add dropdown filter on tran_direction
-    filter_dropdown=dict(
-        args=[
-            {"cell": {"dropdown": {"options": [
-                {"label": i, "value": i}
-                for i in tran_direction_options
-            ]}}},
-            {"filter_query": "{tran_direction} = {}".format(
-                tran_direction_options[0]
-            )},
-            {"title": "Wire Segments"}
-        ],
-        label="Filter by Transaction Direction",
-        options=[{"label": i, "value": i}
-                 for i in tran_direction_options],
-        # set filter_action to native
-        filter_action="native",
-    )
-)
+fig.update_layout(updatemenus=[dict(showactive=True, buttons=buttons)])
 
-# display table in Jupyter notebook
-from IPython.display import HTML
+# sort by total_tran_amt in descending order
+wire_segment = wire_segment.sort_values(by='total_tran_amt', ascending=False)
+
+# display table in notebook
+from IPython.core.display import HTML
 HTML(fig.to_html())
