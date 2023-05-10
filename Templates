@@ -1,82 +1,69 @@
+import plotly.graph_objects as go
 import pandas as pd
-import plotly.graph_objs as go
-import dash
-import dash_html_components as html
-import dash_core_components as dcc
-from dash.dependencies import Input, Output
 
-# Create example dataframe
+# create sample data
 wire_segment = pd.DataFrame({
-    'segment': ['segment1', 'segment2', 'segment3', 'segment4', 'segment5'],
-    'tran_direction': ['inbound', 'outbound', 'inbound', 'outbound', 'inbound'],
-    'total_tran_count': [500, 600, 700, 800, 900],
-    'total_tran_amt': [5000, 6000, 7000, 8000, 9000]
+    'segment': ['A', 'B', 'C', 'D'],
+    'tran_direction': ['inbound', 'outbound', 'inbound', 'outbound'],
+    'total_tran_count': [10, 20, 30, 40],
+    'total_tran_amt': [100, 200, 300, 400]
 })
 
-# Create dropdown options for transaction direction
-dropdown_options = [{'label': x, 'value': x} for x in wire_segment['tran_direction'].unique()]
-
-# Initialize Dash app
-app = dash.Dash(__name__)
-
-# Define app layout
-app.layout = html.Div([
-    dcc.Dropdown(
-        id='tran_direction_dropdown',
-        options=dropdown_options,
-        value=wire_segment['tran_direction'].iloc[0]
-    ),
-    html.Br(),
-    dcc.Graph(
-        id='wire_table',
-        figure={
-            'data': [go.Table(
-                header=dict(values=list(wire_segment.columns)),
-                cells=dict(values=[wire_segment.segment, wire_segment.tran_direction, wire_segment.total_tran_count, wire_segment.total_tran_amt]),
-                filter_action='native',
-                sort_action='native',
-                page_size=10,
-                style_data_conditional=[{
-                    'if': {'row_index': 'odd'},
-                    'backgroundColor': 'rgb(248, 248, 248)'
-                }],
-                style_header={
-                    'backgroundColor': 'rgb(230, 230, 230)',
-                    'fontWeight': 'bold'
-                }
-            )]
-        }
-    )
+# create table
+fig = go.Figure(data=[go.Table(
+    header=dict(values=list(wire_segment.columns),
+                fill_color='paleturquoise',
+                align='left'),
+    cells=dict(values=[wire_segment.segment, wire_segment.tran_direction, wire_segment.total_tran_count, wire_segment.total_tran_amt],
+               fill_color='lavender',
+               align='left'))
 ])
 
-# Define app callbacks
-@app.callback(Output('wire_table', 'figure'),
-              [Input('tran_direction_dropdown', 'value')])
-def update(tran_direction):
-    # Filter dataframe based on selected transaction direction and sort by total transaction amount in descending order
-    filtered_df = wire_segment[wire_segment['tran_direction'] == tran_direction].sort_values('total_tran_amt', ascending=False)
-    # Create updated table figure with filtered dataframe
-    updated_figure = {
-        'data': [go.Table(
-            header=dict(values=list(filtered_df.columns)),
-            cells=dict(values=[filtered_df.segment, filtered_df.tran_direction, filtered_df.total_tran_count, filtered_df.total_tran_amt]),
-            filter_action='native',
-            sort_action='native',
-            page_size=10,
-            style_data_conditional=[{
-                'if': {'row_index': 'odd'},
-                'backgroundColor': 'rgb(248, 248, 248)'
-            }],
-            style_header={
-                'backgroundColor': 'rgb(230, 230, 230)',
-                'fontWeight': 'bold'
-            }
-        )]
-    }
-    return updated_figure
+# update table layout
+fig.update_layout(
+    title='Wire Segments',
+    height=400,
+    width=800,
+    updatemenus=[dict(
+        buttons=list([
+            dict(label="All",
+                 method="update",
+                 args=[{"visible": [True, True, True, True]},
+                       {"title": "Wire Segments"}]),
+            dict(label="Inbound",
+                 method="update",
+                 args=[{"visible": [True, False, True, False]},
+                       {"title": "Inbound Wire Segments"}]),
+            dict(label="Outbound",
+                 method="update",
+                 args=[{"visible": [False, True, False, True]},
+                       {"title": "Outbound Wire Segments"}])
+        ]),
+        direction="down",
+        showactive=True,
+        x=0.1,
+        y=1.1
+    )],
+    # add dropdown filter on tran_direction
+    filter_dropdown=dict(
+        args=[
+            {"cell": {"dropdown": {"options": [
+                {"label": i, "value": i}
+                for i in sorted(wire_segment.tran_direction.unique())
+            ]}}},
+            {"filter_query": "{tran_direction} = {}".format(
+                wire_segment.tran_direction.values[0]
+            )},
+            {"title": "Wire Segments"}
+        ],
+        label="Filter by Transaction Direction",
+        options=[{"label": i, "value": i}
+                 for i in sorted(wire_segment.tran_direction.unique())],
+        # set filter_action to native
+        filter_action="native",
+    )
+)
 
-# Run the app
-# app.run_server(mode='external')
-fig = app.layout['wire_table']['figure']
-html_fig = html.Div(html.Iframe(id='plot', srcDoc=fig.to_html(), width='100%', height='500'))
-display(html_fig)
+# display table in Jupyter notebook
+from IPython.display import HTML
+HTML(fig.to_html())
