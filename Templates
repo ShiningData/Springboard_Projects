@@ -1,38 +1,60 @@
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
+import plotly.graph_objs as go
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
 
-# create sample data
+
+# Sample data
 wire_segment = pd.DataFrame({
-    'segment': ['Segment A', 'Segment B', 'Segment C', 'Segment D'],
+    'segment': ['A', 'B', 'C', 'D'],
     'tran_direction': ['inbound', 'outbound', 'inbound', 'outbound'],
-    'total_tran_count': [100, 200, 300, 400],
-    'total_tran_amt': [1000, 2000, 3000, 4000]
+    'total_tran_count': [20, 15, 10, 5],
+    'total_tran_amt': [2000, 1500, 1000, 500]
 })
 
-# create table
-fig = go.Figure(data=[go.Table(
-    header=dict(values=list(wire_segment.columns),
-                fill_color='paleturquoise',
-                align='left'),
-    cells=dict(values=[wire_segment.segment, wire_segment.tran_direction, wire_segment.total_tran_count, wire_segment.total_tran_amt],
-               fill_color='lavender',
-               align='left'))
+# Dash app
+app = dash.Dash(__name__)
+
+app.layout = html.Div([
+    dcc.Dropdown(
+        id='tran_direction_filter',
+        options=[{'label': x, 'value': x} for x in wire_segment['tran_direction'].unique()],
+        value=None,
+        placeholder='Filter by transaction direction'
+    ),
+    dcc.Graph(id='wire_segment_table')
 ])
 
-# add dropdown filter for tran_direction
-tran_directions = wire_segment['tran_direction'].unique()
-buttons = []
-for direction in tran_directions:
-    button = dict(label=direction,
-                  method='update',
-                  args=[{'visible': [True if x == direction else False for x in wire_segment['tran_direction']],
-                         'cells.values': [wire_segment.loc[wire_segment['tran_direction'] == direction, col] for col in wire_segment.columns]},
-                        {'title': direction}])
-    buttons.append(button)
+@app.callback(Output('wire_segment_table', 'figure'),
+              Input('tran_direction_filter', 'value'))
+def update_table(tran_direction_filter):
+    filtered_data = wire_segment.copy()
+    if tran_direction_filter is not None:
+        filtered_data = filtered_data[filtered_data['tran_direction'] == tran_direction_filter]
+    filtered_data = filtered_data.sort_values(by='total_tran_amt', ascending=False)
 
-fig.update_layout(updatemenus=[dict(showactive=True, buttons=buttons)])
+    fig = go.Figure(
+        data=[go.Table(
+            header=dict(
+                values=list(filtered_data.columns),
+                fill_color='paleturquoise',
+                align='left'
+            ),
+            cells=dict(
+                values=[filtered_data[column] for column in filtered_data.columns],
+                align='left'
+            )
+        )]
+    )
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=20, b=20),
+        height=300
+    )
+    return fig
 
-# display table in notebook
-from IPython.core.display import HTML
-HTML(fig.to_html())
+
+# Display table in Jupyter notebook
+fig = update_table(None)
+display(HTML(fig.to_html()))
