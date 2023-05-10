@@ -20,6 +20,8 @@ fig = go.Figure(data=[go.Table(
 ])
 
 # update table layout
+tran_direction_options = sorted(wire_segment['tran_direction'].unique().tolist())
+
 fig.update_layout(
     title='Wire Segments',
     height=400,
@@ -49,16 +51,16 @@ fig.update_layout(
         args=[
             {"cell": {"dropdown": {"options": [
                 {"label": i, "value": i}
-                for i in sorted(wire_segment.tran_direction.unique())
+                for i in tran_direction_options
             ]}}},
             {"filter_query": "{tran_direction} = {}".format(
-                wire_segment.tran_direction.values[0]
+                tran_direction_options[0]
             )},
             {"title": "Wire Segments"}
         ],
         label="Filter by Transaction Direction",
         options=[{"label": i, "value": i}
-                 for i in sorted(wire_segment.tran_direction.unique())],
+                 for i in tran_direction_options],
         # set filter_action to native
         filter_action="native",
     )
