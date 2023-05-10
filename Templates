@@ -25,7 +25,8 @@ buttons = []
 for direction in wire_segment.tran_direction.unique():
     button = dict(label=direction,
                   method='update',
-                  args=[{'visible': [direction == wire_segment.tran_direction.iloc[i] for i in range(len(wire_segment))]},
+                  args=[{'visible': [direction == val for val in wire_segment.tran_direction],
+                         'cells.values': [[wire_segment.iloc[i][col] if wire_segment.iloc[i]['tran_direction'] == direction else '' for col in wire_segment.columns] for i in range(len(wire_segment))]},
                         {'title': direction}])
     buttons.append(button)
 
