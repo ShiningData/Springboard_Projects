@@ -4,7 +4,6 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-from IPython.display import display, HTML
 
 # Sample data
 wire_segment = pd.DataFrame({
@@ -24,6 +23,7 @@ app.layout = html.Div([
         value=None,
         placeholder='Filter by transaction direction'
     ),
+    html.Br(),
     dcc.Graph(id='wire_segment_table')
 ])
 
@@ -54,8 +54,6 @@ def update_table(tran_direction_filter):
     )
     return fig
 
-# Display table in Jupyter notebook
-output = html.Div([
-    dcc.Graph(id='wire_segment_table', figure=update_table(None))
-])
-display(output)
+# Run the app
+if __name__ == '__main__':
+    app.run_server(mode='inline')
