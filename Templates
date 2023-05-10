@@ -4,8 +4,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-import ipywidgets as widgets
-from IPython.display import display
+from IPython.display import display, HTML
 
 # Sample data
 wire_segment = pd.DataFrame({
@@ -15,18 +14,25 @@ wire_segment = pd.DataFrame({
     'total_tran_amt': [2000, 1500, 1000, 500]
 })
 
-# Dropdown widget for transaction direction filtering
-tran_direction_filter = widgets.Dropdown(
-    options=['All'] + wire_segment['tran_direction'].unique().tolist(),
-    value='All',
-    description='Filter by transaction direction:'
-)
+# Dash app
+app = dash.Dash(__name__)
 
-# Display function for table
-def display_table(tran_direction):
+app.layout = html.Div([
+    dcc.Dropdown(
+        id='tran_direction_filter',
+        options=[{'label': x, 'value': x} for x in wire_segment['tran_direction'].unique()],
+        value=None,
+        placeholder='Filter by transaction direction'
+    ),
+    dcc.Graph(id='wire_segment_table')
+])
+
+@app.callback(Output('wire_segment_table', 'figure'),
+              Input('tran_direction_filter', 'value'))
+def update_table(tran_direction_filter):
     filtered_data = wire_segment.copy()
-    if tran_direction != 'All':
-        filtered_data = filtered_data[filtered_data['tran_direction'] == tran_direction]
+    if tran_direction_filter is not None:
+        filtered_data = filtered_data[filtered_data['tran_direction'] == tran_direction_filter]
     filtered_data = filtered_data.sort_values(by='total_tran_amt', ascending=False)
 
     fig = go.Figure(
@@ -46,8 +52,10 @@ def display_table(tran_direction):
         margin=dict(l=20, r=20, t=20, b=20),
         height=300
     )
-    display(fig)
+    return fig
 
-# Display widgets and table
-display(tran_direction_filter)
-widgets.interactive(display_table, tran_direction=tran_direction_filter)
+# Display table in Jupyter notebook
+output = html.Div([
+    dcc.Graph(id='wire_segment_table', figure=update_table(None))
+])
+display(output)
