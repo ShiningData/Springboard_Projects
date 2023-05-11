@@ -1,20 +1,24 @@
 import plotly.graph_objects as go
 from IPython.display import display
-from plotly.subplots import make_subplots
 
 # Unique values for dropdown
 orgntd_values = ach_segment['orgntd_trans_ind'].unique()
 tran_values = ach_segment['tran_direction'].unique()
 
-# Create figure
-fig = make_subplots(rows=1, cols=1)
+# Initialize an empty figure
+fig = go.Figure()
 
-# Add traces, one for each slider step
+# Placeholder for storing the visibility status of each trace
+visibility_status = []
+
+# Add traces, one for each filter
 for orgntd_trans_ind in orgntd_values:
     for tran_direction in tran_values:
         df_filtered = ach_segment[(ach_segment['orgntd_trans_ind'] == orgntd_trans_ind) & (ach_segment['tran_direction'] == tran_direction)]
         df_filtered = df_filtered.sort_values('total_tran_count', ascending=False)
-        
+
+        visible = (orgntd_trans_ind == orgntd_values[0] and tran_direction == tran_values[0])
+
         fig.add_trace(
             go.Table(
                 header=dict(values=list(df_filtered.columns),
@@ -22,32 +26,41 @@ for orgntd_trans_ind in orgntd_values:
                             align='left'),
                 cells=dict(values=[df_filtered[column] for column in df_filtered.columns],
                            fill_color='lavender',
-                           align='left')),
-            row=1, col=1)
+                           align='left'),
+                visible=visible
+            )
+        )
+        visibility_status.append(visible)
 
-# Make dataframes visible by default and create dropdowns
-fig.data[0].visible = True
-
-steps = []
-for i in range(len(fig.data)):
-    step = dict(
-        method="update",
-        args=[{"visible": [False] * len(fig.data)},
-              {"title": "Slider switched to step: " + str(i)}],  # layout attribute
+# Create buttons for dropdown menu
+buttons = []
+for i, (orgntd_trans_ind, tran_direction) in enumerate(product(orgntd_values, tran_values)):
+    visibility = [False] * len(visibility_status)
+    visibility[i] = True
+    button = dict(
+        label = f"{orgntd_trans_ind} & {tran_direction}",
+        method = 'update',
+        args = [{'visible': visibility},
+                {'title': f"orgntd_trans_ind: {orgntd_trans_ind}, tran_direction: {tran_direction}"}]
     )
-    step["args"][0]["visible"][i] = True  # Toggle i'th trace to "visible"
-    steps.append(step)
+    buttons.append(button)
 
-sliders = [dict(
-    active=0,
-    currentvalue={"prefix": "Currently Displaying: "},
-    pad={"t": 50},
-    steps=steps
-)]
-
+# Add dropdown menu to layout
 fig.update_layout(
-    sliders=sliders
+    updatemenus=[
+        dict(
+            buttons=buttons,
+            direction="down",
+            pad={"r": 10, "t": 10},
+            showactive=True,
+            x=0.1,
+            xanchor="left",
+            y=1.1,
+            yanchor="top"
+        ),
+    ],
+    title=f"orgntd_trans_ind: {orgntd_values[0]}, tran_direction: {tran_values[0]}",
+    autosize=True,
 )
 
 fig.show()
-
