@@ -60,7 +60,7 @@ fig.update_layout(
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
-            x=0.1,
+            x=0.4,  # Adjust this value to move the dropdown closer to 'orgntd_trans_ind' column
             xanchor="left",
             y=1.1,
             yanchor="top"
@@ -70,7 +70,7 @@ fig.update_layout(
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
-            x=0.3,
+            x=0.6,  # Adjust this value to move the dropdown closer to 'tran_direction' column
             xanchor="left",
             y=1.1,
             yanchor="top"
@@ -80,6 +80,4 @@ fig.update_layout(
 )
 
 # Make the first trace visible
-fig.data[0].visible = True
-
-fig.show()
+fig
