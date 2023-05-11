@@ -1,5 +1,5 @@
 import plotly.graph_objects as go
-from IPython.display import display
+from itertools import product
 
 # Unique values for dropdown
 orgntd_values = ach_segment['orgntd_trans_ind'].unique()
@@ -8,16 +8,11 @@ tran_values = ach_segment['tran_direction'].unique()
 # Initialize an empty figure
 fig = go.Figure()
 
-# Placeholder for storing the visibility status of each trace
-visibility_status = []
-
 # Add traces, one for each filter
 for orgntd_trans_ind in orgntd_values:
     for tran_direction in tran_values:
         df_filtered = ach_segment[(ach_segment['orgntd_trans_ind'] == orgntd_trans_ind) & (ach_segment['tran_direction'] == tran_direction)]
         df_filtered = df_filtered.sort_values('total_tran_count', ascending=False)
-
-        visible = (orgntd_trans_ind == orgntd_values[0] and tran_direction == tran_values[0])
 
         fig.add_trace(
             go.Table(
@@ -27,29 +22,41 @@ for orgntd_trans_ind in orgntd_values:
                 cells=dict(values=[df_filtered[column] for column in df_filtered.columns],
                            fill_color='lavender',
                            align='left'),
-                visible=visible
+                visible=False  # All traces are initially invisible
             )
         )
-        visibility_status.append(visible)
 
 # Create buttons for dropdown menu
-buttons = []
-for i, (orgntd_trans_ind, tran_direction) in enumerate(product(orgntd_values, tran_values)):
-    visibility = [False] * len(visibility_status)
-    visibility[i] = True
+orgntd_buttons = []
+tran_buttons = []
+for i, orgntd_trans_ind in enumerate(orgntd_values):
+    visibility = [False] * len(fig.data)
+    for j in range(i * len(tran_values), (i+1) * len(tran_values)):
+        visibility[j] = True
     button = dict(
-        label = f"{orgntd_trans_ind} & {tran_direction}",
+        label = orgntd_trans_ind,
         method = 'update',
         args = [{'visible': visibility},
-                {'title': f"orgntd_trans_ind: {orgntd_trans_ind}, tran_direction: {tran_direction}"}]
+                {'title': f"orgntd_trans_ind: {orgntd_trans_ind}"}]
     )
-    buttons.append(button)
+    orgntd_buttons.append(button)
 
-# Add dropdown menu to layout
+for i, tran_direction in enumerate(tran_values):
+    visibility = [False] * len(fig.data)
+    visibility[i::len(tran_values)] = [True] * len(orgntd_values)
+    button = dict(
+        label = tran_direction,
+        method = 'update',
+        args = [{'visible': visibility},
+                {'title': f"tran_direction: {tran_direction}"}]
+    )
+    tran_buttons.append(button)
+
+# Add dropdown menus to layout
 fig.update_layout(
     updatemenus=[
         dict(
-            buttons=buttons,
+            buttons=orgntd_buttons,
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
@@ -58,9 +65,21 @@ fig.update_layout(
             y=1.1,
             yanchor="top"
         ),
+        dict(
+            buttons=tran_buttons,
+            direction="down",
+            pad={"r": 10, "t": 10},
+            showactive=True,
+            x=0.3,
+            xanchor="left",
+            y=1.1,
+            yanchor="top"
+        ),
     ],
-    title=f"orgntd_trans_ind: {orgntd_values[0]}, tran_direction: {tran_values[0]}",
-    autosize=True,
+    title="Most Active Industries by ACH Transaction"
 )
+
+# Make the first trace visible
+fig.data[0].visible = True
 
 fig.show()
