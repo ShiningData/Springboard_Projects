@@ -1,43 +1,31 @@
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-import numpy as np
-import pandas as pd
+import tensorflow as tf
 
-model_names = ['Model1', 'Model2', 'Model3', 'Model4', 'Model5', 'Model6']
-predictions = [pred1, pred2, pred3, pred4, pred5, pred6]  # these are your model predictions
-y_true = [... ]  # these are the actual values
+# Define custom metrics
+def mape(y_true, y_pred):
+    diff = tf.abs((y_true - y_pred) / tf.maximum(tf.abs(y_true), tf.keras.backend.epsilon()))
+    return 100.0 * tf.reduce_mean(tf.where(tf.math.is_finite(diff), diff, tf.zeros_like(diff)))
 
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-import numpy as np
-import pandas as pd
+def smape(y_true, y_pred):
+    denominator = tf.maximum(tf.abs(y_true) + tf.abs(y_pred), tf.keras.backend.epsilon())
+    diff = tf.abs(y_true - y_pred) / denominator
+    return 200.0 * tf.reduce_mean(tf.where(tf.math.is_finite(diff), diff, tf.zeros_like(diff)))
 
-def calculate_mape(y_true, y_pred):
-    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+# Create the metrics objects
+mape_metric = tf.keras.metrics.Mean(name='mape')
+smape_metric = tf.keras.metrics.Mean(name='smape')
+rmse_metric = tf.keras.metrics.RootMeanSquaredError(name='rmse')
+mae_metric = tf.keras.metrics.MeanAbsoluteError(name='mae')
 
-def calculate_smape(y_true, y_pred):
-    return 2.0 * np.mean(np.abs(y_true - y_pred) / (np.abs(y_true) + np.abs(y_pred))) * 100
+# Example usage:
+y_true = tf.constant([10.0, 20.0, 30.0])
+y_pred = tf.constant([8.0, 18.0, 33.0])
 
-def calculate_rmse(y_true, y_pred):
-    return np.sqrt(mean_squared_error(y_true, y_pred))
+mape_metric.update_state(y_true, y_pred)
+smape_metric.update_state(y_true, y_pred)
+rmse_metric.update_state(y_true, y_pred)
+mae_metric.update_state(y_true, y_pred)
 
-def calculate_mae(y_true, y_pred):
-    return mean_absolute_error(y_true, y_pred)
-
-# Calculate metrics for each model and store them in a list
-results = []
-for i in range(len(model_names)):
-    mape = calculate_mape(y_true, predictions[i])
-    smape = calculate_smape(y_true, predictions[i])
-    rmse = calculate_rmse(y_true, predictions[i])
-    mae = calculate_mae(y_true, predictions[i])
-    results.append({'Model': model_names[i], 'MAPE': mape, 'sMAPE': smape, 'RMSE': rmse, 'MAE': mae})
-
-# Convert the results to a pandas DataFrame
-df_results = pd.DataFrame(results)
-
-
-
-
-
-
-
-
+print("MAPE:", mape_metric.result().numpy())
+print("sMAPE:", smape_metric.result().numpy())
+print("RMSE:", rmse_metric.result().numpy())
+print("MAE:", mae_metric.result().numpy())
