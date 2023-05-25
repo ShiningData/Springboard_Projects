@@ -1,1 +1,43 @@
+import pandas as pd
+from autogluon.tabular import TabularPredictor, TimeSeriesPredictor
+
+# Assuming you have a DataFrame called 'data' with time series data
+# Each time series should have a column named 'time' for timestamps and a column named 'value' for the target variable
+
+# Function to build and evaluate a forecasting model for each time series
+def build_forecasting_models(data):
+    models = {}
+    for series_id, series_data in data.groupby('series_id'):
+        print(f"Building model for series {series_id}...")
+        # Prepare training data for the series
+        train_data = series_data[['time', 'value']]
+        train_data.columns = ['time', 'target']
+        
+        # Initialize and fit AutoGluon's time series model
+        predictor = TimeSeriesPredictor(label='target',
+                                        problem_type='regression',
+                                        eval_metric='sMAPE',
+                                        freq_pred='infer',
+                                        time_column='time')
+        predictor.fit(train_data)
+        
+        # Evaluate the model on the training data
+        eval_result = predictor.evaluate_predictions(train_data)
+        
+        # Store the trained model and evaluation result
+        models[series_id] = {'model': predictor, 'eval_result': eval_result}
+    
+    return models
+
+# Call the function to build forecasting models for each time series in the DataFrame
+trained_models = build_forecasting_models(data)
+
+# Access the models and evaluation results for individual time series
+for series_id, model_info in trained_models.items():
+    print(f"Model performance for series {series_id}:")
+    model = model_info['model']
+    eval_result = model_info['eval_result']
+    print("Evaluation metrics:")
+    print(eval_result)
+    print("")
 
