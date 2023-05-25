@@ -3,12 +3,16 @@ from autogluon.tabular import TabularPredictor, TimeSeriesPredictor
 
 # Assuming you have a DataFrame called 'data' with time series data
 # Each time series should have a column named 'time' for timestamps and a column named 'value' for the target variable
+# Each time series should also have a column named 'series_id' to identify the series
 
 # Function to build and evaluate a forecasting model for each time series
 def build_forecasting_models(data):
     models = {}
-    for series_id, series_data in data.groupby('series_id'):
+    series_ids = data['series_id'].unique()
+    for series_id in series_ids:
         print(f"Building model for series {series_id}...")
+        # Filter data for the current series
+        series_data = data[data['series_id'] == series_id]
         # Prepare training data for the series
         train_data = series_data[['time', 'value']]
         train_data.columns = ['time', 'target']
@@ -40,4 +44,3 @@ for series_id, model_info in trained_models.items():
     print("Evaluation metrics:")
     print(eval_result)
     print("")
-
