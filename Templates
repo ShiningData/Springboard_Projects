@@ -1,87 +1,30 @@
-WITH 
-  tran_count AS (
-    SELECT 
-      segment, 
-      tran_direction, 
-      date_dt, 
-      COUNT(*) as total_tran_count
-    FROM your_table
+WITH yesterday_data AS (
+    SELECT segment, tran_direction, date_dt,
+           COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
+           SUM(tran_amt) AS total_tran_amt,
+           COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
+    FROM your_table_name
+    WHERE date_dt = CURRENT_DATE - INTERVAL 1 DAY
     GROUP BY segment, tran_direction, date_dt
-  ),
-  
-  tran_count_lag AS (
-    SELECT 
-      segment, 
-      tran_direction, 
-      date_dt, 
-      total_tran_count, 
-      LAG(total_tran_count, 1) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt) as total_tran_count_prev
-    FROM tran_count
-  ),
-  
-  tran_amount AS (
-    SELECT 
-      segment, 
-      tran_direction, 
-      date_dt, 
-      SUM(transaction_amount) as total_tran_amount
-    FROM your_table
+),
+before_yesterday_data AS (
+    SELECT segment, tran_direction, date_dt,
+           COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
+           SUM(tran_amt) AS total_tran_amt,
+           COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
+    FROM your_table_name
+    WHERE date_dt = CURRENT_DATE - INTERVAL 2 DAY
     GROUP BY segment, tran_direction, date_dt
-  ),
-  
-  tran_amount_lag AS (
-    SELECT 
-      segment, 
-      tran_direction, 
-      date_dt, 
-      total_tran_amount, 
-      LAG(total_tran_amount, 1) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt) as total_tran_amount_prev
-    FROM tran_amount
-  ),
-
-  active_clients AS (
-    SELECT
-      segment,
-      tran_direction,
-      date_dt,
-      COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id WHEN tran_direction = 'outgoing' THEN dbtr_acct_id END) as num_active_client
-    FROM your_table
-    GROUP BY segment, tran_direction, date_dt
-  ),
-
-  active_clients_lag AS (
-    SELECT 
-      segment, 
-      tran_direction, 
-      date_dt, 
-      num_active_client, 
-      LAG(num_active_client, 1) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt) as num_active_client_prev
-    FROM active_clients
-  )
-
-SELECT 
-  tc.segment, 
-  tc.tran_direction, 
-  tc.date_dt, 
-  tc.total_tran_count, 
-  (tc.total_tran_count - tc.total_tran_count_prev) / NULLIF(tc.total_tran_count_prev, 0) as percent_change_count,
-  ta.total_tran_amount, 
-  (ta.total_tran_amount - ta.total_tran_amount_prev) / NULLIF(ta.total_tran_amount_prev, 0) as percent_change_amt,
-  ac.num_active_client,
-  (ac.num_active_client - ac.num_active_client_prev) / NULLIF(ac.num_active_client_prev, 0) as percent_change_client
-FROM 
-  tran_count_lag tc
-JOIN 
-  tran_amount_lag ta 
-ON 
-  tc.segment = ta.segment AND
-  tc.tran_direction = ta.tran_direction AND
-  tc.date_dt = ta.date_dt
-JOIN
-  active_clients_lag ac
-ON
-  tc.segment = ac.segment AND
-  tc.tran_direction = ac.tran_direction AND
-  tc.date_dt = ac.date_dt
-ORDER BY 
-  tc.segment, tc.tran_direction, tc.date_dt;
+)
+SELECT y.segment, y.tran_direction,
+       y.total_tran_count, 
+       CASE WHEN by.total_tran_count > 0 THEN (y.total_tran_count - by.total_tran_count) / by.total_tran_count * 100 ELSE NULL END AS percent_change_count,
+       y.total_tran_amt, 
+       CASE WHEN by.total_tran_amt > 0 THEN (y.total_tran_amt - by.total_tran_amt) / by.total_tran_amt * 100 ELSE NULL END AS percent_change_amt,
+       y.num_active_clients,
+       CASE WHEN by.num_active_clients > 0 THEN (y.num_active_clients - by.num_active_clients) / by.num_active_clients * 100 ELSE NULL END AS percent_change_client
+FROM yesterday_data y
+LEFT JOIN before_yesterday_data by
+    ON y.segment = by.segment
+    AND y.tran_direction = by.tran_direction
+    AND y.date_dt = by.date_dt;
