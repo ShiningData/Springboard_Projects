@@ -28,3 +28,35 @@ LEFT JOIN before_yesterday_data by
     ON y.segment = by.segment
     AND y.tran_direction = by.tran_direction
     AND y.date_dt = by.date_dt;
+
+
+--------------------------------
+
+WITH previous_day AS (
+    SELECT segment, tran_direction, date_dt,
+        COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
+        SUM(tran_amt) AS total_tran_amt,
+        COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
+    FROM your_table_name
+    WHERE date_dt = DATEADD(DAY, -1, GETDATE())
+    GROUP BY segment, tran_direction, date_dt
+),
+day_before_yesterday AS (
+    SELECT segment, tran_direction, date_dt,
+        COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
+        SUM(tran_amt) AS total_tran_amt,
+        COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
+    FROM your_table_name
+    WHERE date_dt = DATEADD(DAY, -2, GETDATE())
+    GROUP BY segment, tran_direction, date_dt
+)
+SELECT p.segment, p.tran_direction,
+    p.total_tran_count,
+    (p.total_tran_count - db.total_tran_count) / db.total_tran_count AS percent_change_count,
+    p.total_tran_amt,
+    (p.total_tran_amt - db.total_tran_amt) / db.total_tran_amt AS percent_change_amt
+FROM previous_day p
+JOIN day_before_yesterday db
+    ON p.segment = db.segment
+    AND p.tran_direction = db.tran_direction
+    AND p.date_dt = db.date_dt;
