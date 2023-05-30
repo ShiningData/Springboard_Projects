@@ -1,46 +1,39 @@
-import pandas as pd
-from autogluon.tabular import TabularPredictor, TimeSeriesPredictor
+WITH 
+prev_day AS (
+  SELECT 
+    segment, 
+    date_dt, 
+    tran_direction, 
+    SUM(transaction_count) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as prev_day_tran_count,
+    SUM(transaction_amount) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as prev_day_tran_amount
+  FROM 
+    your_table
+),
 
-# Assuming you have a DataFrame called 'data' with time series data
-# Each time series should have a column named 'time' for timestamps and a column named 'value' for the target variable
-# Each time series should also have a column named 'series_id' to identify the series
+day_before_prev AS (
+  SELECT 
+    segment, 
+    date_dt, 
+    tran_direction, 
+    SUM(transaction_count) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt ROWS BETWEEN 2 PRECEDING AND 2 PRECEDING) as day_before_tran_count,
+    SUM(transaction_amount) OVER (PARTITION BY segment, tran_direction ORDER BY date_dt ROWS BETWEEN 2 PRECEDING AND 2 PRECEDING) as day_before_tran_amount
+  FROM 
+    your_table
+)
 
-# Function to build and evaluate a forecasting model for each time series
-def build_forecasting_models(data):
-    models = {}
-    series_ids = data['series_id'].unique()
-    for series_id in series_ids:
-        print(f"Building model for series {series_id}...")
-        # Filter data for the current series
-        series_data = data[data['series_id'] == series_id]
-        # Prepare training data for the series
-        train_data = series_data[['time', 'value']]
-        train_data.columns = ['time', 'target']
-        
-        # Initialize and fit AutoGluon's time series model
-        predictor = TimeSeriesPredictor(label='target',
-                                        problem_type='regression',
-                                        eval_metric='sMAPE',
-                                        freq_pred='infer',
-                                        time_column='time')
-        predictor.fit(train_data)
-        
-        # Evaluate the model on the training data
-        eval_result = predictor.evaluate_predictions(train_data)
-        
-        # Store the trained model and evaluation result
-        models[series_id] = {'model': predictor, 'eval_result': eval_result}
-    
-    return models
-
-# Call the function to build forecasting models for each time series in the DataFrame
-trained_models = build_forecasting_models(data)
-
-# Access the models and evaluation results for individual time series
-for series_id, model_info in trained_models.items():
-    print(f"Model performance for series {series_id}:")
-    model = model_info['model']
-    eval_result = model_info['eval_result']
-    print("Evaluation metrics:")
-    print(eval_result)
-    print("")
+SELECT 
+  prev_day.segment, 
+  prev_day.date_dt,
+  prev_day.tran_direction,
+  prev_day.prev_day_tran_count as total_tran_count, 
+  (prev_day.prev_day_tran_count - day_before_prev.day_before_tran_count) / day_before_prev.day_before_tran_count * 100 as percent_change_count, 
+  prev_day.prev_day_tran_amount as total_tran_amt, 
+  (prev_day.prev_day_tran_amount - day_before_prev.day_before_tran_amount) / day_before_prev.day_before_tran_amount * 100 as percent_change_amt 
+FROM 
+  prev_day 
+JOIN 
+  day_before_prev 
+ON 
+  prev_day.segment = day_before_prev.segment AND 
+  prev_day.date_dt = day_before_prev.date_dt AND
+  prev_day.tran_direction = day_before_prev.tran_direction
