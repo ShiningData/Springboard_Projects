@@ -1,41 +1,26 @@
 import pandas as pd
 import plotly.graph_objects as go
-from ipywidgets import widgets
-from IPython.display import display
-
-# Assuming df_tran is your DataFrame
-
-# Dropdown widgets
-tran_dir_dropdown = widgets.Dropdown(options=df_tran['tran_direction'].unique(), description='Transaction Direction:')
-freq_dropdown = widgets.Dropdown(options=df_tran['frequency'].unique(), description='Frequency:')
-
-# Display the dropdowns
-display(tran_dir_dropdown, freq_dropdown)
-
-import pandas as pd
-import plotly.graph_objects as go
 from ipywidgets import interact
 
-# Assuming df_tran is your DataFrame
+# Assuming df_tran is your DataFrame and already processed for conditional formatting
+# ...
 
-# Create a function to handle interaction
-@interact(Transaction_Direction=df_tran['tran_direction'].unique(), Frequency=df_tran['frequency'].unique())
-def create_table(Transaction_Direction, Frequency):
-    filtered_df = df_tran[(df_tran['tran_direction'] == Transaction_Direction) & (df_tran['frequency'] == Frequency)]
+@interact
+def show_table(frequency=df_tran['frequency'].unique(), tran_direction=df_tran['tran_direction'].unique()):
+    filtered_df = df_tran[(df_tran['frequency'] == frequency) & (df_tran['tran_direction'] == tran_direction)]
+    
+    trace = go.Table(
+        header=dict(values=["Segment", "Transaction Count", "Transaction Amount", "Number of Active Clients"],
+                    fill_color='paleturquoise',
+                    align='left'),
+        cells=dict(values=[filtered_df['segment'], 
+                           filtered_df['total_tran_count'].astype(str) + ' ' + filtered_df['total_tran_count_symbol'], 
+                           filtered_df['total_tran_amt'].astype(str) + ' ' + filtered_df['total_tran_amt_symbol'], 
+                           filtered_df['num_active_clients'].astype(str) + ' ' + filtered_df['num_active_clients_symbol']],
+                   fill_color='lavender',
+                   align='left')
+    )
 
-    fig = go.Figure(data=[go.Table(
-        header=dict(values=["Segment", "Transaction Count", "Transaction Amount", "Number of Active Clients"], fill_color='paleturquoise', align='left'),
-        cells=dict(values=[filtered_df['segment'], filtered_df['total_tran_count'], filtered_df['total_tran_amt'], filtered_df['num_active_clients']], fill_color='lavender', align='left')
-    )])
-    fig.update_layout(title='Most Active Segments by Wire Transactions')
+    fig = go.Figure(data=[trace])
 
     fig.show()
-
-# Create button to update table
-update_button = widgets.Button(description='Update Table')
-
-def on_button_clicked(b):
-    create_table(tran_dir_dropdown.value, freq_dropdown.value)
-
-update_button.on_click(on_button_clicked)
-display(update_button)
