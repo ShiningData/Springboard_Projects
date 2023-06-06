@@ -1,52 +1,33 @@
 import pandas as pd
 import plotly.graph_objects as go
+from ipywidgets import widgets
+from IPython.display import display
 
-# Assuming df_tran is your DataFrame and already processed for conditional formatting
+# Assuming df_tran is your DataFrame
 
-# create a list of conditions for symbols
-symbols = []
-for _, row in df_tran.iterrows():
-    if row['total_tran_count'] > row['pre_total_tran_count']:
-        symbols.append('▲')
-    elif row['total_tran_count'] < row['pre_total_tran_count']:
-        symbols.append('▼')
-    else:
-        symbols.append('')
-df_tran['total_tran_count_symbol'] = symbols
+# Dropdown widgets
+tran_dir_dropdown = widgets.Dropdown(options=df_tran['tran_direction'].unique(), description='Transaction Direction:')
+freq_dropdown = widgets.Dropdown(options=df_tran['frequency'].unique(), description='Frequency:')
 
-symbols = []
-for _, row in df_tran.iterrows():
-    if row['total_tran_amt'] > row['pre_total_tran_amt']:
-        symbols.append('▲')
-    elif row['total_tran_amt'] < row['pre_total_tran_amt']:
-        symbols.append('▼')
-    else:
-        symbols.append('')
-df_tran['total_tran_amt_symbol'] = symbols
+# Display the dropdowns
+display(tran_dir_dropdown, freq_dropdown)
 
-symbols = []
-for _, row in df_tran.iterrows():
-    if row['num_active_clients'] > row['pre_num_active_clients']:
-        symbols.append('▲')
-    elif row['num_active_clients'] < row['pre_num_active_clients']:
-        symbols.append('▼')
-    else:
-        symbols.append('')
-df_tran['num_active_clients_symbol'] = symbols
+def create_table(tran_dir, freq):
+    filtered_df = df_tran[(df_tran['tran_direction'] == tran_dir) & (df_tran['frequency'] == freq)]
 
-# Create a trace for table
-trace = go.Table(
-    header=dict(values=list(df_tran.columns),
-                fill_color='paleturquoise',
-                align='left'),
-    cells=dict(values=[df_tran['segment'], df_tran['frequency'], 
-                       df_tran['total_tran_count'].astype(str) + ' ' + df_tran['total_tran_count_symbol'], 
-                       df_tran['total_tran_amt'].astype(str) + ' ' + df_tran['total_tran_amt_symbol'], 
-                       df_tran['num_active_clients'].astype(str) + ' ' + df_tran['num_active_clients_symbol']],
-               fill_color='lavender',
-               align='left'))
+    fig = go.Figure(data=[go.Table(
+        header=dict(values=list(filtered_df.columns), fill_color='paleturquoise', align='left'),
+        cells=dict(values=[filtered_df[column] for column in filtered_df.columns], fill_color='lavender', align='left')
+    )])
+    fig.update_layout(title='Most Active Segments by Wire Transactions')
 
-# Add trace to a figure
-fig = go.Figure(data=[trace])
+    fig.show()
 
-fig.show()
+# Create button to update table
+update_button = widgets.Button(description='Update Table')
+
+def on_button_clicked(b):
+    create_table(tran_dir_dropdown.value, freq_dropdown.value)
+
+update_button.on_click(on_button_clicked)
+display(update_button)
