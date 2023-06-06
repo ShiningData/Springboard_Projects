@@ -1,62 +1,62 @@
-WITH yesterday_data AS (
-    SELECT segment, tran_direction, date_dt,
-           COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
-           SUM(tran_amt) AS total_tran_amt,
-           COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
-    FROM your_table_name
-    WHERE date_dt = CURRENT_DATE - INTERVAL 1 DAY
-    GROUP BY segment, tran_direction, date_dt
-),
-before_yesterday_data AS (
-    SELECT segment, tran_direction, date_dt,
-           COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
-           SUM(tran_amt) AS total_tran_amt,
-           COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
-    FROM your_table_name
-    WHERE date_dt = CURRENT_DATE - INTERVAL 2 DAY
-    GROUP BY segment, tran_direction, date_dt
+import dash
+import dash_table
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
+import pandas as pd
+
+# Assuming df_tran is already defined and preprocessed
+df_tran = ...
+
+# Create the Dash app
+app = dash.Dash(__name__)
+
+# Define the layout
+app.layout = html.Div([
+    html.H1("Most Active Segments by Wire Transactions"),
+
+    dcc.Dropdown(
+        id='tran_direction_filter',
+        options=[{'label': i, 'value': i} for i in df_tran['tran_direction'].unique()],
+        placeholder='Transaction Direction',
+    ),
+
+    dcc.Dropdown(
+        id='frequency_filter',
+        options=[{'label': i, 'value': i} for i in df_tran['frequency'].unique()],
+        placeholder='Frequency',
+    ),
+
+    dash_table.DataTable(
+        id='table',
+        columns=[
+            {'name': 'Segment', 'id': 'segment'},
+            {'name': 'Transaction Count', 'id': 'total_tran_count'},
+            {'name': 'Transaction Amount', 'id': 'total_tran_amt'},
+            {'name': 'Number of Active Clients', 'id': 'num_active_clients'},
+        ],
+    ),
+])
+
+@app.callback(
+    Output('table', 'data'),
+    [Input('tran_direction_filter', 'value'),
+     Input('frequency_filter', 'value')]
 )
-SELECT y.segment, y.tran_direction,
-       y.total_tran_count, 
-       CASE WHEN by.total_tran_count > 0 THEN (y.total_tran_count - by.total_tran_count) / by.total_tran_count * 100 ELSE NULL END AS percent_change_count,
-       y.total_tran_amt, 
-       CASE WHEN by.total_tran_amt > 0 THEN (y.total_tran_amt - by.total_tran_amt) / by.total_tran_amt * 100 ELSE NULL END AS percent_change_amt,
-       y.num_active_clients,
-       CASE WHEN by.num_active_clients > 0 THEN (y.num_active_clients - by.num_active_clients) / by.num_active_clients * 100 ELSE NULL END AS percent_change_client
-FROM yesterday_data y
-LEFT JOIN before_yesterday_data by
-    ON y.segment = by.segment
-    AND y.tran_direction = by.tran_direction
-    AND y.date_dt = by.date_dt;
+def update_table(tran_direction, frequency):
+    dff = df_tran
 
+    if tran_direction:
+        dff = dff[dff['tran_direction'] == tran_direction]
+    if frequency:
+        dff = dff[dff['frequency'] == frequency]
 
---------------------------------
+    # Add the triangles for indicating increase or decrease
+    dff['total_tran_count'] = dff.apply(lambda row: str(row['total_tran_count']) + (' ▲' if row['total_tran_count'] > row['pre_total_tran_count'] else ' ▼'), axis=1)
+    dff['total_tran_amt'] = dff.apply(lambda row: str(row['total_tran_amt']) + (' ▲' if row['total_tran_amt'] > row['pre_total_tran_amt'] else ' ▼'), axis=1)
+    dff['num_active_clients'] = dff.apply(lambda row: str(row['num_active_clients']) + (' ▲' if row['num_active_clients'] > row['pre_num_active_clients'] else ' ▼'), axis=1)
 
-WITH previous_day AS (
-    SELECT segment, tran_direction, date_dt,
-        COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
-        SUM(tran_amt) AS total_tran_amt,
-        COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
-    FROM your_table_name
-    WHERE date_dt = DATEADD(DAY, -1, GETDATE())
-    GROUP BY segment, tran_direction, date_dt
-),
-day_before_yesterday AS (
-    SELECT segment, tran_direction, date_dt,
-        COUNT(DISTINCT unique_transaction_id) AS total_tran_count,
-        SUM(tran_amt) AS total_tran_amt,
-        COUNT(DISTINCT CASE WHEN tran_direction = 'incoming' THEN cdtr_acct_id ELSE dbtr_acct_id END) AS num_active_clients
-    FROM your_table_name
-    WHERE date_dt = DATEADD(DAY, -2, GETDATE())
-    GROUP BY segment, tran_direction, date_dt
-)
-SELECT p.segment, p.tran_direction,
-    p.total_tran_count,
-    (p.total_tran_count - db.total_tran_count) / db.total_tran_count AS percent_change_count,
-    p.total_tran_amt,
-    (p.total_tran_amt - db.total_tran_amt) / db.total_tran_amt AS percent_change_amt
-FROM previous_day p
-JOIN day_before_yesterday db
-    ON p.segment = db.segment
-    AND p.tran_direction = db.tran_direction
-    AND p.date_dt = db.date_dt;
+    return dff.to_dict('records')
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
