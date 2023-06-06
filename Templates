@@ -1,62 +1,52 @@
-import dash
-import dash_table
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output
 import pandas as pd
+import plotly.graph_objects as go
 
-# Assuming df_tran is already defined and preprocessed
-df_tran = ...
+# Assuming df_tran is your DataFrame and already processed for conditional formatting
 
-# Create the Dash app
-app = dash.Dash(__name__)
+# create a list of conditions for symbols
+symbols = []
+for _, row in df_tran.iterrows():
+    if row['total_tran_count'] > row['pre_total_tran_count']:
+        symbols.append('▲')
+    elif row['total_tran_count'] < row['pre_total_tran_count']:
+        symbols.append('▼')
+    else:
+        symbols.append('')
+df_tran['total_tran_count_symbol'] = symbols
 
-# Define the layout
-app.layout = html.Div([
-    html.H1("Most Active Segments by Wire Transactions"),
+symbols = []
+for _, row in df_tran.iterrows():
+    if row['total_tran_amt'] > row['pre_total_tran_amt']:
+        symbols.append('▲')
+    elif row['total_tran_amt'] < row['pre_total_tran_amt']:
+        symbols.append('▼')
+    else:
+        symbols.append('')
+df_tran['total_tran_amt_symbol'] = symbols
 
-    dcc.Dropdown(
-        id='tran_direction_filter',
-        options=[{'label': i, 'value': i} for i in df_tran['tran_direction'].unique()],
-        placeholder='Transaction Direction',
-    ),
+symbols = []
+for _, row in df_tran.iterrows():
+    if row['num_active_clients'] > row['pre_num_active_clients']:
+        symbols.append('▲')
+    elif row['num_active_clients'] < row['pre_num_active_clients']:
+        symbols.append('▼')
+    else:
+        symbols.append('')
+df_tran['num_active_clients_symbol'] = symbols
 
-    dcc.Dropdown(
-        id='frequency_filter',
-        options=[{'label': i, 'value': i} for i in df_tran['frequency'].unique()],
-        placeholder='Frequency',
-    ),
+# Create a trace for table
+trace = go.Table(
+    header=dict(values=list(df_tran.columns),
+                fill_color='paleturquoise',
+                align='left'),
+    cells=dict(values=[df_tran['segment'], df_tran['frequency'], 
+                       df_tran['total_tran_count'].astype(str) + ' ' + df_tran['total_tran_count_symbol'], 
+                       df_tran['total_tran_amt'].astype(str) + ' ' + df_tran['total_tran_amt_symbol'], 
+                       df_tran['num_active_clients'].astype(str) + ' ' + df_tran['num_active_clients_symbol']],
+               fill_color='lavender',
+               align='left'))
 
-    dash_table.DataTable(
-        id='table',
-        columns=[
-            {'name': 'Segment', 'id': 'segment'},
-            {'name': 'Transaction Count', 'id': 'total_tran_count'},
-            {'name': 'Transaction Amount', 'id': 'total_tran_amt'},
-            {'name': 'Number of Active Clients', 'id': 'num_active_clients'},
-        ],
-    ),
-])
+# Add trace to a figure
+fig = go.Figure(data=[trace])
 
-@app.callback(
-    Output('table', 'data'),
-    [Input('tran_direction_filter', 'value'),
-     Input('frequency_filter', 'value')]
-)
-def update_table(tran_direction, frequency):
-    dff = df_tran
-
-    if tran_direction:
-        dff = dff[dff['tran_direction'] == tran_direction]
-    if frequency:
-        dff = dff[dff['frequency'] == frequency]
-
-    # Add the triangles for indicating increase or decrease
-    dff['total_tran_count'] = dff.apply(lambda row: str(row['total_tran_count']) + (' ▲' if row['total_tran_count'] > row['pre_total_tran_count'] else ' ▼'), axis=1)
-    dff['total_tran_amt'] = dff.apply(lambda row: str(row['total_tran_amt']) + (' ▲' if row['total_tran_amt'] > row['pre_total_tran_amt'] else ' ▼'), axis=1)
-    dff['num_active_clients'] = dff.apply(lambda row: str(row['num_active_clients']) + (' ▲' if row['num_active_clients'] > row['pre_num_active_clients'] else ' ▼'), axis=1)
-
-    return dff.to_dict('records')
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
+fig.show()
