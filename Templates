@@ -12,12 +12,20 @@ freq_dropdown = widgets.Dropdown(options=df_tran['frequency'].unique(), descript
 # Display the dropdowns
 display(tran_dir_dropdown, freq_dropdown)
 
-def create_table(tran_dir, freq):
-    filtered_df = df_tran[(df_tran['tran_direction'] == tran_dir) & (df_tran['frequency'] == freq)]
+import pandas as pd
+import plotly.graph_objects as go
+from ipywidgets import interact
+
+# Assuming df_tran is your DataFrame
+
+# Create a function to handle interaction
+@interact(Transaction_Direction=df_tran['tran_direction'].unique(), Frequency=df_tran['frequency'].unique())
+def create_table(Transaction_Direction, Frequency):
+    filtered_df = df_tran[(df_tran['tran_direction'] == Transaction_Direction) & (df_tran['frequency'] == Frequency)]
 
     fig = go.Figure(data=[go.Table(
-        header=dict(values=list(filtered_df.columns), fill_color='paleturquoise', align='left'),
-        cells=dict(values=[filtered_df[column] for column in filtered_df.columns], fill_color='lavender', align='left')
+        header=dict(values=["Segment", "Transaction Count", "Transaction Amount", "Number of Active Clients"], fill_color='paleturquoise', align='left'),
+        cells=dict(values=[filtered_df['segment'], filtered_df['total_tran_count'], filtered_df['total_tran_amt'], filtered_df['num_active_clients']], fill_color='lavender', align='left')
     )])
     fig.update_layout(title='Most Active Segments by Wire Transactions')
 
