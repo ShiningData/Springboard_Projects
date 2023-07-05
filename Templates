@@ -1,1 +1,18 @@
+# Step 1: Create a new environment and clone the existing environment into it
+conda create --name temp_clone --clone root
+
+# Step 2: Activate the new environment
+source activate temp_clone
+
+# Step 3: Convert the new environment to use pip
+conda env export | grep -v "^prefix: " | grep -v "^name: " | grep -v "^channels: " | grep -v "pip:" | grep -v "dependencies:" | sed '/- pip:/,$d' > condaenv.txt
+pip freeze --exclude-editable | grep -v "@ file" > pipfreeze.txt
+
+# Step 4: Deactivate the new environment and delete it
+source deactivate
+conda env remove --name temp_clone
+
+# Step 5: Create a pip-style requirements.txt
+cat condaenv.txt pipfreeze.txt > requirements.txt
+rm condaenv.txt pipfreeze.txt
 
