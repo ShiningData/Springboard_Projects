@@ -1,45 +1,29 @@
-**Product Requirement Document**
+import dash
+import dash_table
+import pandas as pd
 
-**1. Overview of the Product:**
-The churn model dashboard is a data-driven tool that provides insights into customer churn for businesses in various industries. The primary target customer for this product is the marketing and customer retention teams within companies that rely on subscription-based or recurring revenue models. The dashboard aims to solve the problem of customer churn by identifying potential churn risks, analyzing their underlying causes, and offering data-driven recommendations to reduce churn and improve customer retention. By leveraging machine learning algorithms and data analysis, the solution enables businesses to make informed decisions and implement targeted strategies to retain valuable customers.
+# Sample data
+df = pd.DataFrame({
+    'Name': ['Alice', 'Bob', 'Charlie'],
+    'Age': [28, 22, 35],
+    'Salary': [70000, 80000, 90000],
+    'Experience': [5, 3, 10],
+    'Position': ['Manager', 'Engineer', 'Director'],
+    'Department': ['HR', 'IT', 'Admin']
+})
 
-**2. Solution Overview:**
-The churn model dashboard consists of three main pages:
-1. Main Page: This page displays churn analysis, churn causes/recommendations, and a list of top customers at risk of churn. Users can quickly grasp the current state of churn and prioritize their efforts based on the top-risk customers.
-2. Second Page: Here, users can explore the impact of churn on revenue and retention through interactive graphs and visualizations. This page provides a comprehensive view of the business implications of churn.
-3. Last Page: This page offers insights into the churn prediction model, including its features, training, and prediction information. Technical users can dive deeper into the model's workings and performance.
+app = dash.Dash(__name__)
 
-**Key Product and Design Challenges:**
-- Balancing technical details and simplicity: One of the main challenges is to present complex machine learning concepts and analysis in a user-friendly manner to cater to both technical and non-technical users.
-- Data integration and reliability: Ensuring seamless data flow from various sources and maintaining data integrity to support accurate churn predictions.
-- Scalability and performance: The dashboard needs to handle large datasets and a growing number of users without compromising on speed and responsiveness.
+app.layout = dash.html.Div([
+    dash_table.DataTable(
+        id='table',
+        columns=[{'name': i, 'id': i} for i in df.columns],
+        data=df.to_dict('records'),
+        sort_action='native',  # Enables sorting on columns
+        sort_mode='single',   # Allows single column sorting
+        sort_by=[{'column_id': 'Name', 'direction': 'desc'}]  # Default sorting (descending by "Name")
+    )
+])
 
-**Plans to Overcome Challenges:**
-- Designing intuitive and interactive data visualizations: We will work closely with designers to create visuals that effectively communicate insights without overwhelming the users.
-- Rigorous testing and quality control: The data engineering team will implement robust data quality checks and regularly monitor the dashboard's performance to ensure reliable data outputs.
-- Scalable architecture: The data engineering team will design a scalable infrastructure to handle increasing data volumes and user traffic.
-
-**3. Main Alternatives and Differentiation:**
-Main alternatives to our product include traditional business intelligence tools and custom-built churn analysis solutions. Our product differentiates itself by providing a user-friendly, pre-built dashboard specifically focused on churn prediction and analysis. Its machine learning capabilities enable accurate churn risk assessment and personalized recommendations, setting it apart from standard BI tools.
-
-**Potential for Success:**
-The product's success relies on its ability to deliver actionable insights to users and enable data-driven decision-making. By addressing customer churn proactively, businesses can improve customer retention, increase revenue, and enhance overall customer satisfaction.
-
-**Potential for Failure and Key Risks:**
-The product may face challenges in accurately predicting churn due to limitations in data quality or model performance. Ensuring a reliable and constantly updated data source is critical to mitigating this risk. Additionally, user adoption and engagement are vital for the product's success; failure to communicate the dashboard's value to users may lead to low utilization and eventual disuse.
-
-**Initial Roadmap and Prioritization:**
-The major features to build and prioritize are:
-1. Data Integration and Model Development: Set up data pipelines, integrate various data sources, and develop the churn prediction model.
-2. Main Page: Implement churn analysis, churn causes/recommendations, and the top customer list.
-3. Second Page: Create interactive graphs to showcase churn impact on revenue and retention.
-4. Last Page: Design the model feature, train, and prediction information section.
-
-The initial release will include the Main Page and basic data integration. Subsequent releases will gradually add the remaining features, with regular user feedback and testing to drive continuous improvement.
-
-**Key Metrics:**
-- Churn Rate: The reduction in customer churn rate over time.
-- Retention Rate: The increase in customer retention rate as a result of implementing the dashboard's recommendations.
-- User Engagement: The frequency and depth of user interactions with the dashboard to gauge its effectiveness.
-
-With a clear product roadmap, well-defined features, and a focus on solving the customer's churn-related challenges, the churn model dashboard aims to become an essential tool for businesses to retain valuable customers and achieve sustainable growth.
+if __name__ == '__main__':
+    app.run_server(debug=True)
