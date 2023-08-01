@@ -1,21 +1,60 @@
-**What worked well?**
+**Data Scientist:**
 
-In the churn model product project, several aspects worked well during the development of the clickable prototype. Firstly, the organization of the dashboard into three distinct pages was effective in providing users with a clear and intuitive navigation experience. The main page with churn analysis and churn causes/recommendations allowed users to quickly understand the churn-related insights and potential actions to mitigate it. The inclusion of the churn risk top customer list also provided valuable information to prioritize efforts. The second page, focusing on churn's impact on revenue and retention, offered valuable visualizations with graphs, allowing stakeholders to grasp the overall business implications of churn. The use of clear icons (home, graph, and machine learning) facilitated easy access to specific sections, ensuring seamless user interaction.
+Responsibilities:
+- Develop and maintain the churn prediction model using machine learning techniques.
+- Analyze and interpret large datasets to identify churn patterns and customer behavior trends.
+- Collaborate with the product manager and data analyst to define churn-related KPIs and metrics.
+- Conduct A/B tests and experiments to validate model performance and refine predictive algorithms.
+- Continuously monitor and improve the model's accuracy and robustness.
 
-Secondly, the incorporation of a comprehensive model feature on the last page was beneficial for the users, especially for those with a technical background. The presence of train and prediction information helped the audience understand the model's workings and performance, instilling confidence in its accuracy and reliability. By providing insights into how the model was trained and its predictive capabilities, users could better align their decision-making processes with the model's outputs.
+Notes/Potential Friction Areas:
+- Data scientists may require access to large and diverse datasets, which could lead to potential friction with data engineers in terms of data access and data integration.
+- Balancing model complexity and interpretability may cause conflicts with the product manager's preference for simplicity and transparency in presenting churn insights to stakeholders.
 
-**What didn't work well?**
+**Data Analyst:**
 
-Despite the successes, a few aspects of the clickable prototype did not work well. One issue was related to user feedback during the testing phase. While the organization of pages was intuitive for some users, others found it challenging to remember which icon led to a specific page, leading to confusion and navigation difficulties. This feedback highlighted the need for improved visual cues and labels to enhance the user experience.
+Responsibilities:
+- Collect, clean, and preprocess data from various sources to ensure its usability for analysis.
+- Conduct exploratory data analysis to identify trends and patterns related to churn and customer retention.
+- Create and maintain visualizations and dashboards to communicate churn-related insights to stakeholders.
+- Collaborate with the data engineer and data scientist to ensure data integrity and accuracy.
 
-Another area of improvement was the presentation of churn impact on revenue and retention information. While the graphs were helpful, some users felt overwhelmed with the volume of data and had difficulty interpreting the insights. To address this, a more streamlined visualization approach or interactive elements could be explored to enable users to focus on specific data points and dive deeper into the analysis.
+Notes/Potential Friction Areas:
+- Data analysts may require access to timely and accurate data, leading to potential conflicts with data engineers if there are delays in data processing and integration.
+- Balancing the depth of analysis and the simplicity of communication in visualizations may cause disagreements with the product manager's preference for concise and actionable insights.
 
-**What did you discover?**
+**Data Engineer:**
 
-Throughout the development of the clickable prototype, several important discoveries emerged. The most significant one was the diverse nature of the end-users' backgrounds and expertise. Some users were more business-oriented and required straightforward insights to make informed decisions, while others, particularly technical stakeholders, sought detailed information about the underlying model. This finding underscored the importance of striking the right balance in presenting information that caters to both types of users.
+Responsibilities:
+- Design and maintain data pipelines and infrastructure to ensure the smooth flow of data for analysis.
+- Develop and manage databases and data warehouses to store large volumes of churn-related data.
+- Collaborate with the data scientist and data analyst to ensure data availability and accessibility for analysis.
+- Implement and monitor data quality checks to identify and resolve data issues.
 
-Additionally, user testing highlighted the necessity of continually iterating and refining the prototype based on feedback. While the initial design was well-conceived, incorporating real user feedback was crucial in identifying pain points and refining the user interface to enhance usability and overall satisfaction.
+Notes/Potential Friction Areas:
+- Data engineers may prioritize optimizing data infrastructure and performance, which could lead to potential conflicts with the product manager's focus on feature development and customer-facing improvements.
+- Balancing short-term data needs for analysis with long-term scalability and data architecture may cause tensions between data engineers and data scientists.
 
-Lastly, the clickable prototype revealed the potential for further exploration of interactive features within the graphs and visualizations. Interactive elements could empower users to customize their views and obtain specific insights relevant to their unique needs, improving engagement and understanding of the churn data.
+**Product Manager:**
 
-By addressing the areas that didn't work well and capitalizing on the positive discoveries, the churn model dashboard can be further optimized to deliver a compelling and user-friendly experience, ultimately driving better business decision-making and customer retention strategies.
+Responsibilities:
+- Define the product vision, goals, and roadmap for the churn model dashboard.
+- Prioritize features and enhancements based on user needs and business objectives.
+- Coordinate and facilitate communication among data scientists, analysts, engineers, and designers.
+- Collaborate with the team to ensure timely and successful delivery of product milestones.
+
+Notes/Potential Friction Areas:
+- The product manager's focus on user experience and feature development may conflict with data scientists' and data analysts' technical requirements for the model's accuracy and data access.
+- Balancing short-term customer needs and long-term product strategy may cause tensions with data engineers who prioritize data infrastructure and scalability.
+
+**Designer:**
+
+Responsibilities:
+- Design and create user interfaces for the churn model dashboard that are visually appealing and user-friendly.
+- Conduct user research to understand user needs and pain points related to churn analysis.
+- Collaborate with the product manager and data analyst to incorporate user feedback into the design.
+- Ensure consistency and usability across all pages and interactions within the dashboard.
+
+Notes/Potential Friction Areas:
+- The designer's focus on aesthetics and user experience may lead to potential conflicts with data scientists and analysts, who prioritize data presentation and information clarity.
+- Balancing design creativity with data visualization best practices may cause tensions with the product manager's preference for simplicity and ease of understanding.
