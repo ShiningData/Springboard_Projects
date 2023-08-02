@@ -4,13 +4,9 @@ import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
-import plotly.graph_objects as go
+import data_module  # Assuming data_module is the python module that provides the data
 
 app = dash.Dash(__name__)
-
-# Sample DataFrames as placeholders
-table_top_banks = pd.DataFrame()
-table_top_customers = pd.DataFrame()
 
 app.layout = html.Div([
     dcc.Dropdown(
@@ -33,47 +29,49 @@ app.layout = html.Div([
         placeholder="Select a Market",
         # options should be filled with the actual options
     ),
-    dash_table.DataTable(
-        id='table_top_banks',
-        columns=[{"name": i, "id": i} for i in table_top_banks.columns],
-        style_cell={'textAlign': 'left'},
-        style_data_conditional=[
-            {
-                'if': {'column_id': 'bank_name'},
-                'textDecoration': 'underline',
-                'cursor': 'pointer'
-            }
-        ]
-    ),
-    dash_table.DataTable(
-        id='table_top_customers',
-        columns=[{"name": i, "id": i} for i in table_top_customers.columns],
-        style_cell={'textAlign': 'left'}
-    )
+    html.Div([
+        html.Div([
+            dash_table.DataTable(
+                id='table_top_banks',
+                columns=[],
+                style_cell={'textAlign': 'left'},
+                style_data_conditional=[
+                    {
+                        'if': {'column_id': 'bank_name'},
+                        'textDecoration': 'underline',
+                        'cursor': 'pointer'
+                    }
+                ]
+            ),
+        ], className='six columns'),
+        
+        html.Div([
+            dash_table.DataTable(
+                id='table_top_customers',
+                columns=[],
+                style_cell={'textAlign': 'left'}
+            )
+        ], className='six columns'),
+    ], className='row')
 ])
 
 @app.callback(
     Output('table_top_banks', 'data'),
+    Output('table_top_banks', 'columns'),
     [Input('transaction_date', 'value'),
      Input('direction', 'value'),
      Input('segment', 'value'),
      Input('market', 'value')]
 )
 def update_top_banks(transaction_date, direction, segment, market):
-    # Placeholder for database query
-    # Replace with a real query and database connection
-    df_banks = pd.read_sql_query("""
-        SELECT bank_name, inflow_trx, inflow_amt, inflow_pct, outflow_trx, outflow_amt, outflow_pct
-        FROM your_table
-        WHERE transaction_date = ? AND direction = ? AND segment = ? AND market = ?
-        ORDER BY inflow_trx DESC
-        LIMIT 20
-    """, params=(transaction_date, direction, segment, market))
+    df_banks = data_module.get_top_banks_data(transaction_date, direction, segment, market)
+    columns = [{"name": i, "id": i} for i in df_banks.columns]
 
-    return df_banks.to_dict('records')
+    return df_banks.to_dict('records'), columns
 
 @app.callback(
     Output('table_top_customers', 'data'),
+    Output('table_top_customers', 'columns'),
     [Input('table_top_banks', 'active_cell'),
      Input('transaction_date', 'value'),
      Input('direction', 'value'),
@@ -82,20 +80,13 @@ def update_top_banks(transaction_date, direction, segment, market):
 )
 def update_top_customers(active_cell, transaction_date, direction, segment, market):
     if active_cell:
-        bank_name = table_top_banks.iloc[active_cell['row']]['bank_name']
-        # Placeholder for database query
-        # Replace with a real query and database connection
-        df_customers = pd.read_sql_query("""
-            SELECT customer_name, transaction_trx, transaction_amt
-            FROM your_table
-            WHERE transaction_date = ? AND direction = ? AND segment = ? AND market = ? AND bank_name = ?
-            ORDER BY transaction_trx DESC
-            LIMIT 20
-        """, params=(transaction_date, direction, segment, market, bank_name))
+        bank_name = data_module.table_top_banks.iloc[active_cell['row']]['bank_name']
+        df_customers = data_module.get_top_customers_data(bank_name, transaction_date, direction, segment, market)
+        columns = [{"name": i, "id": i} for i in df_customers.columns]
 
-        return df_customers.to_dict('records')
+        return df_customers.to_dict('records'), columns
 
-    return []
+    return [], []
 
 if __name__ == '__main__':
     app.run_server(debug=True)
