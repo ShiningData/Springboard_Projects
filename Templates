@@ -1,44 +1,62 @@
 import dash
-from dash.dependencies import Input, Output
+from dash import dcc, html, Input, Output
 import dash_table
 import pandas as pd
 
-# Sample data
-df = pd.DataFrame({
-    'Name': ['Alice', 'Bob', 'Charlie'],
-    'Age': [28, 22, 35],
-    'Salary': [70000, 80000, 90000],
-    'Experience': [5, 3, 10],
-    'Position': ['Manager', 'Engineer', 'Director'],
-    'Department': ['HR', 'IT', 'Admin']
-})
+# Sample data for the main table
+data = {
+    'Bank Name': ['Bank A', 'Bank B', 'Bank C'],
+    'Top Customer Name': ['John', 'Alice', 'Bob'],
+    'Number of Transactions': [100, 50, 75],
+    'Transaction Amount': [5000, 3000, 4500]
+}
 
+df = pd.DataFrame(data)
+
+# Sample data for the detailed table
+detailed_data = {
+    'Bank Name': ['Bank A', 'Bank A', 'Bank A', 'Bank B', 'Bank B', 'Bank C'],
+    'Customer Name': ['John Doe', 'Jane Smith', 'James Johnson', 'Alice Brown', 'Bob Lee', 'Charlie Davis'],
+    'Number of Transactions': [20, 15, 10, 25, 30, 5],
+    'Transaction Amount': [1000, 800, 1200, 1500, 2000, 300]
+}
+
+detailed_df = pd.DataFrame(detailed_data)
+
+# Initialize the Dash app
 app = dash.Dash(__name__)
 
-app.layout = dash.html.Div([
+# Create the main table
+app.layout = html.Div([
     dash_table.DataTable(
-        id='table',
-        columns=[{'name': i, 'id': i} for i in df.columns],
+        id='main-table',
+        columns=[{'name': col, 'id': col} for col in df.columns],
         data=df.to_dict('records'),
-        sort_action='native',  # Enables sorting on columns
-        sort_mode='single'   # Allows single column sorting
+        style_table={'height': '300px', 'overflowY': 'auto'},
+        row_selectable='single'
+    ),
+    html.Hr(),
+    dash_table.DataTable(
+        id='detailed-table',
+        columns=[{'name': col, 'id': col} for col in detailed_df.columns],
+        data=[],
+        style_table={'height': '300px', 'overflowY': 'auto'},
     )
 ])
 
-# Callback to update the sorting of the table
+# Callback to update the detailed table based on the selected bank
 @app.callback(
-    Output('table', 'data'),
-    Input('table', 'sort_by')
+    Output('detailed-table', 'data'),
+    Input('main-table', 'selected_rows'),
+    prevent_initial_call=True
 )
-def update_table(sort_by):
-    if len(sort_by):
-        column_name = sort_by[0]['column_id']
-        direction = sort_by[0]['direction']
-        if direction == 'asc':
-            return df.sort_values(column_name, ascending=True).to_dict('records')
-        else:
-            return df.sort_values(column_name, ascending=False).to_dict('records')
-    return df.to_dict('records')
+def update_detailed_table(selected_row):
+    if selected_row is not None and len(selected_row) > 0:
+        selected_bank_name = df.iloc[selected_row[0]]['Bank Name']
+        filtered_df = detailed_df[detailed_df['Bank Name'] == selected_bank_name]
+        return filtered_df.to_dict('records')
+    else:
+        return []
 
 if __name__ == '__main__':
     app.run_server(debug=True)
