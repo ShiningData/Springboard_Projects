@@ -1,3 +1,76 @@
+import dash
+from dash import dcc, html, Input, Output
+import dash_table
+import pandas as pd
+
+# Sample data for the detailed table
+detailed_data = {
+    'Bank Name': ['Bank A', 'Bank A', 'Bank A', 'Bank B', 'Bank B', 'Bank C'],
+    'Customer Name': ['John Doe', 'Jane Smith', 'James Johnson', 'Alice Brown', 'Bob Lee', 'Charlie Davis'],
+    'Number of Transactions': [20, 15, 10, 25, 30, 5],
+    'Transaction Amount': [1000, 800, 1200, 1500, 2000, 300]
+}
+
+detailed_df = pd.DataFrame(detailed_data)
+
+# Initialize the Dash app
+app = dash.Dash(__name__)
+
+# Create the main table
+app.layout = html.Div([
+    dcc.Dropdown(
+        id='bank-filter',
+        options=[
+            {'label': 'Bank A', 'value': 'Bank A'},
+            {'label': 'Bank B', 'value': 'Bank B'},
+            {'label': 'Bank C', 'value': 'Bank C'}
+        ],
+        value='Bank A',
+        style={'width': '50%'}
+    ),
+    html.Hr(),
+    dash_table.DataTable(
+        id='main-table',
+        columns=[
+            {'name': 'Bank Name', 'id': 'Bank Name', 'presentation': 'markdown'},
+            {'name': 'Top Customer Name', 'id': 'Top Customer Name'},
+            {'name': 'Number of Transactions', 'id': 'Number of Transactions'},
+            {'name': 'Transaction Amount', 'id': 'Transaction Amount'}
+        ],
+        data=[],
+        style_table={'height': '300px', 'overflowY': 'auto'},
+        row_selectable='single'
+    ),
+    html.Hr(),
+    dash_table.DataTable(
+        id='detailed-table',
+        columns=[{'name': col, 'id': col} for col in detailed_df.columns],
+        data=[],
+        style_table={'height': '300px', 'overflowY': 'auto'},
+    )
+])
+
+# Callback to update the main table based on the selected bank from the dropdown
+@app.callback(
+    Output('main-table', 'data'),
+    Input('bank-filter', 'value')
+)
+def update_main_table(selected_bank):
+    # Create the main table data based on the selected bank
+    main_table_data = {
+        'Bank Name': [f"[{selected_bank}](#{selected_bank})"],
+        'Top Customer Name': detailed_df[detailed_df['Bank Name'] == selected_bank]['Customer Name'].tolist(),
+        'Number of Transactions': detailed_df[detailed_df['Bank Name'] == selected_bank]['Number of Transactions'].tolist(),
+        'Transaction Amount': detailed_df[detailed_df['Bank Name'] == selected_bank]['Transaction Amount'].tolist()
+    }
+    return pd.DataFrame(main_table_data).to_dict('records')
+
+# Callback to update the detailed table based on the clicked bank name
+@app.callback(
+    Output('detailed-table', 'data'),
+    Input('main-table', 'active_cell'),
+    prevent_initial_call=True
+)
 def update_detailed_table(active_cell):
     if active_cell is not None and active_cell['column_id'] == 'Bank Name':
         selected_bank_name = detailed_df.iloc[active_cell['row']]['Bank Name']
@@ -5,3 +78,6 @@ def update_detailed_table(active_cell):
         return filtered_df.to_dict('records')
     else:
         return []
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
