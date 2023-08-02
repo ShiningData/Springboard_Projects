@@ -1,78 +1,101 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash.dependencies import Input, Output
 import dash_table
+import dash_core_components as dcc
+import dash_html_components as html
 import pandas as pd
+import plotly.graph_objects as go
 
-# Sample data for the main table
-data = {
-    'Bank Name': ['Bank A', 'Bank B', 'Bank C'],
-    'Top Customer Name': ['John', 'Alice', 'Bob'],
-    'Number of Transactions': [100, 50, 75],
-    'Transaction Amount': [5000, 3000, 4500]
-}
-
-df = pd.DataFrame(data)
-
-# Sample data for the detailed table
-detailed_data = {
-    'Bank Name': ['Bank A', 'Bank A', 'Bank A', 'Bank B', 'Bank B', 'Bank C'],
-    'Customer Name': ['John Doe', 'Jane Smith', 'James Johnson', 'Alice Brown', 'Bob Lee', 'Charlie Davis'],
-    'Number of Transactions': [20, 15, 10, 25, 30, 5],
-    'Transaction Amount': [1000, 800, 1200, 1500, 2000, 300]
-}
-
-detailed_df = pd.DataFrame(detailed_data)
-
-# Initialize the Dash app
 app = dash.Dash(__name__)
 
-# Create the main table
+# Sample DataFrames as placeholders
+table_top_banks = pd.DataFrame()
+table_top_customers = pd.DataFrame()
+
 app.layout = html.Div([
-    dash_table.DataTable(
-        id='main-table',
-        columns=[
-            {'name': 'Bank Name', 'id': 'Bank Name', 'presentation': 'markdown'},
-            {'name': 'Top Customer Name', 'id': 'Top Customer Name'},
-            {'name': 'Number of Transactions', 'id': 'Number of Transactions'},
-            {'name': 'Transaction Amount', 'id': 'Transaction Amount'}
-        ],
-        data=df.to_dict('records'),
-        style_table={'height': '300px', 'overflowY': 'auto'},
-        row_selectable='single'
+    dcc.Dropdown(
+        id='transaction_date',
+        placeholder="Select a Transaction Date",
+        # options should be filled with the actual options
     ),
-    html.Hr(),
+    dcc.Dropdown(
+        id='direction',
+        placeholder="Select Direction",
+        # options should be filled with the actual options
+    ),
+    dcc.Dropdown(
+        id='segment',
+        placeholder="Select a Segment",
+        # options should be filled with the actual options
+    ),
+    dcc.Dropdown(
+        id='market',
+        placeholder="Select a Market",
+        # options should be filled with the actual options
+    ),
     dash_table.DataTable(
-        id='detailed-table',
-        columns=[{'name': col, 'id': col} for col in detailed_df.columns],
-        data=[],
-        style_table={'height': '300px', 'overflowY': 'auto'},
+        id='table_top_banks',
+        columns=[{"name": i, "id": i} for i in table_top_banks.columns],
+        style_cell={'textAlign': 'left'},
+        style_data_conditional=[
+            {
+                'if': {'column_id': 'bank_name'},
+                'textDecoration': 'underline',
+                'cursor': 'pointer'
+            }
+        ]
+    ),
+    dash_table.DataTable(
+        id='table_top_customers',
+        columns=[{"name": i, "id": i} for i in table_top_customers.columns],
+        style_cell={'textAlign': 'left'}
     )
 ])
 
-# Callback to update the detailed table based on the clicked bank name
 @app.callback(
-    Output('detailed-table', 'data'),
-    Input('main-table', 'active_cell'),
-    prevent_initial_call=True
+    Output('table_top_banks', 'data'),
+    [Input('transaction_date', 'value'),
+     Input('direction', 'value'),
+     Input('segment', 'value'),
+     Input('market', 'value')]
 )
-def update_detailed_table(active_cell):
-    if active_cell is not None and active_cell['column_id'] == 'Bank Name':
-        selected_bank_name = df.iloc[active_cell['row']]['Bank Name']
-        filtered_df = detailed_df[detailed_df['Bank Name'] == selected_bank_name]
-        return filtered_df.to_dict('records')
-    else:
-        return []
+def update_top_banks(transaction_date, direction, segment, market):
+    # Placeholder for database query
+    # Replace with a real query and database connection
+    df_banks = pd.read_sql_query("""
+        SELECT bank_name, inflow_trx, inflow_amt, inflow_pct, outflow_trx, outflow_amt, outflow_pct
+        FROM your_table
+        WHERE transaction_date = ? AND direction = ? AND segment = ? AND market = ?
+        ORDER BY inflow_trx DESC
+        LIMIT 20
+    """, params=(transaction_date, direction, segment, market))
 
-# Convert the bank name in the main table to hyperlinks
+    return df_banks.to_dict('records')
+
 @app.callback(
-    Output('main-table', 'data'),
-    Input('main-table', 'data'),
-    prevent_initial_call=True
+    Output('table_top_customers', 'data'),
+    [Input('table_top_banks', 'active_cell'),
+     Input('transaction_date', 'value'),
+     Input('direction', 'value'),
+     Input('segment', 'value'),
+     Input('market', 'value')]
 )
-def update_main_table(data):
-    for row in data:
-        row['Bank Name'] = f"[{row['Bank Name']}](#{row['Bank Name']})"
-    return data
+def update_top_customers(active_cell, transaction_date, direction, segment, market):
+    if active_cell:
+        bank_name = table_top_banks.iloc[active_cell['row']]['bank_name']
+        # Placeholder for database query
+        # Replace with a real query and database connection
+        df_customers = pd.read_sql_query("""
+            SELECT customer_name, transaction_trx, transaction_amt
+            FROM your_table
+            WHERE transaction_date = ? AND direction = ? AND segment = ? AND market = ? AND bank_name = ?
+            ORDER BY transaction_trx DESC
+            LIMIT 20
+        """, params=(transaction_date, direction, segment, market, bank_name))
+
+        return df_customers.to_dict('records')
+
+    return []
 
 if __name__ == '__main__':
     app.run_server(debug=True)
