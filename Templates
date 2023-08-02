@@ -30,7 +30,12 @@ app = dash.Dash(__name__)
 app.layout = html.Div([
     dash_table.DataTable(
         id='main-table',
-        columns=[{'name': col, 'id': col} for col in df.columns],
+        columns=[
+            {'name': 'Bank Name', 'id': 'Bank Name', 'presentation': 'markdown'},
+            {'name': 'Top Customer Name', 'id': 'Top Customer Name'},
+            {'name': 'Number of Transactions', 'id': 'Number of Transactions'},
+            {'name': 'Transaction Amount', 'id': 'Transaction Amount'}
+        ],
         data=df.to_dict('records'),
         style_table={'height': '300px', 'overflowY': 'auto'},
         row_selectable='single'
@@ -44,19 +49,30 @@ app.layout = html.Div([
     )
 ])
 
-# Callback to update the detailed table based on the selected bank
+# Callback to update the detailed table based on the clicked bank name
 @app.callback(
     Output('detailed-table', 'data'),
-    Input('main-table', 'selected_rows'),
+    Input('main-table', 'active_cell'),
     prevent_initial_call=True
 )
-def update_detailed_table(selected_row):
-    if selected_row is not None and len(selected_row) > 0:
-        selected_bank_name = df.iloc[selected_row[0]]['Bank Name']
+def update_detailed_table(active_cell):
+    if active_cell is not None and active_cell['column_id'] == 'Bank Name':
+        selected_bank_name = df.iloc[active_cell['row']]['Bank Name']
         filtered_df = detailed_df[detailed_df['Bank Name'] == selected_bank_name]
         return filtered_df.to_dict('records')
     else:
         return []
+
+# Convert the bank name in the main table to hyperlinks
+@app.callback(
+    Output('main-table', 'data'),
+    Input('main-table', 'data'),
+    prevent_initial_call=True
+)
+def update_main_table(data):
+    for row in data:
+        row['Bank Name'] = f"[{row['Bank Name']}](#{row['Bank Name']})"
+    return data
 
 if __name__ == '__main__':
     app.run_server(debug=True)
