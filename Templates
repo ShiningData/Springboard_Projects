@@ -1,1 +1,43 @@
+Setting meaningful thresholds for primary performance metrics (F-1 Score, Recall, Precision) in a multiclass classification model is crucial for effective model monitoring and decision-making. These thresholds should strike a balance between being achievable based on the specific data and problem and being meaningful for the intended application. Let's discuss the rationale for choosing thresholds, actions to take if thresholds are breached, and how to handle secondary metrics (Precision-Recall Curve, ROC AUC Curve) thresholds.
 
+**Primary Metric Thresholds:**
+1. **F-1 Score**: The F-1 Score is the harmonic mean of precision and recall, providing a balanced measure of a model's accuracy. The threshold for the F-1 Score would typically be set based on the desired trade-off between precision and recall. For instance, if precision and recall are both equally important, a threshold that balances them (e.g., F-1 Score > 0.7) might be chosen.
+
+2. **Recall (Sensitivity)**: The recall threshold could be set to ensure that a certain percentage of positive instances are correctly identified by the model. This threshold might be influenced by the criticality of missing positive cases. A threshold like Recall > 0.8 might be established to ensure a high proportion of positive instances are captured.
+
+3. **Precision**: Precision reflects the model's ability to make accurate positive predictions. The threshold for precision could be set based on the tolerance for false positives. If false positives are particularly costly, a threshold like Precision > 0.9 might be chosen.
+
+**Actions for Breached Thresholds:**
+If any of the primary metric thresholds are breached, the following actions could be taken:
+
+- **Alert Stakeholders**: Notify relevant stakeholders about the breach so they are aware of the model's compromised performance.
+
+- **Investigate and Recalibrate**: Investigate the reasons behind the breach. If necessary, recalibrate the model by fine-tuning hyperparameters, adjusting class weights, or retraining on updated data.
+
+- **Compensating Measures**: Implement compensating measures such as adding more features, enhancing feature engineering, or applying more advanced algorithms to improve performance.
+
+- **Review Portfolio Exposure Limits**: If the model's performance has a direct impact on portfolio decisions, consider reviewing and potentially adjusting portfolio exposure limits based on the new insights.
+
+- **Redevelopment**: If breaches are significant and persistent, it might be necessary to redevelop the model from scratch, incorporating lessons learned from the breach.
+
+- **Performance Assessment Review**: Assess the impact of the breach on the quarterly performance assessment and consider adjusting performance targets if necessary.
+
+**Secondary Metric Thresholds:**
+1. **Precision-Recall Curve**: The area under the Precision-Recall Curve (AP) is often used as a secondary metric. A threshold might be set based on the desired balance between precision and recall. For instance, a threshold of AP > 0.7 might indicate acceptable performance.
+
+2. **ROC AUC Curve**: The ROC AUC (Area Under the Receiver Operating Characteristic Curve) is another secondary metric that quantifies the model's ability to distinguish between classes. A threshold might be set based on the problem's requirements. For example, ROC AUC > 0.8 could be chosen.
+
+**Actions for Breached Secondary Metric Thresholds:**
+Breaches in secondary metric thresholds might trigger actions such as:
+
+- **Review Model Behavior**: Assess how the model's behavior is changing across different classes or thresholds.
+
+- **Feature Importance Analysis**: Investigate which features might be contributing to the breach in secondary metric thresholds.
+
+- **Consider Context**: Understand if the breach in secondary metrics is related to specific classes or scenarios that might require further investigation or data collection.
+
+- **Fine-Tuning Strategies**: Fine-tune the model with targeted adjustments to address the specific aspects causing the breach.
+
+- **Iterative Development**: Consider iterating on model development to refine its behavior based on insights from secondary metric breaches.
+
+In summary, setting appropriate thresholds for primary performance metrics in multiclass classification models is essential for meaningful monitoring and decision-making. Breaches in these thresholds should trigger well-defined actions to ensure the model's performance is improved, and the overall impact on business decisions is well-managed. Secondary metric thresholds, such as Precision-Recall Curve and ROC AUC Curve, can provide additional insights and trigger actions focused on understanding specific aspects of the model's performance.
