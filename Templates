@@ -1,1 +1,53 @@
+**Key Metrics:**
 
+1. **Churn Rate:**
+   - **Calculation:** Churn Rate is calculated as the number of customers who have churned divided by the total number of customers during a specific period (usually monthly).
+   - **Strengths:** Churn Rate provides a direct measure of customer attrition and indicates the effectiveness of retention efforts. It helps to identify trends and monitor the success of strategies aimed at reducing churn.
+   - **Weaknesses:** Churn Rate doesn't account for the reasons behind churn. A high Churn Rate might not necessarily be alarming if the customers churning are low-value users or those who were not engaged in the first place.
+
+2. **Retention Rate:**
+   - **Calculation:** Retention Rate is calculated as 1 minus the Churn Rate. It represents the percentage of customers who remain active over a specific period.
+   - **Strengths:** Retention Rate offers a positive perspective on customer engagement and loyalty. It complements the Churn Rate by showing the proportion of retained customers.
+   - **Weaknesses:** Similar to Churn Rate, Retention Rate doesn't reveal the underlying reasons for customer retention or provide insights into customer behavior before churning.
+
+3. **User Engagement:**
+   - **Calculation:** User Engagement can be calculated using various metrics, such as the average number of sessions per user, average session duration, and interaction with specific dashboard features.
+   - **Strengths:** User Engagement measures the level of interaction with the dashboard, reflecting its value to users. It helps identify which features are most popular and impactful.
+   - **Weaknesses:** User Engagement alone doesn't indicate whether users are achieving their desired outcomes. A highly engaged user might not necessarily be a retained customer if the dashboard doesn't translate into effective action.
+
+4. **Top Customers at Risk:**
+   - **Calculation:** Based on the algorithm's prediction, identify the customers with the highest churn risk scores.
+   - **Strengths:** This metric highlights the most critical customers to focus retention efforts on, enabling teams to take proactive actions.
+   - **Weaknesses:** Depending solely on top-risk customers might neglect those with medium or low risk scores but potential to churn if the underlying causes are not addressed.
+
+5. **Recommendation Adoption Rate:**
+   - **Calculation:** Calculate the percentage of recommendations provided by the dashboard that are implemented by the users.
+   - **Strengths:** This metric indicates the dashboard's influence on decision-making and the value users find in its recommendations.
+   - **Weaknesses:** A high adoption rate doesn't guarantee that the recommendations are effective or lead to actual churn reduction.
+
+6. **Model Accuracy:**
+   - **Calculation:** Measure the accuracy of the churn prediction model by comparing its predictions to actual churn outcomes.
+   - **Strengths:** Model Accuracy reflects the model's performance in predicting churn and forms the basis for trusting its recommendations.
+   - **Weaknesses:** Focusing solely on accuracy might lead to overfitting and disregarding other important model evaluation metrics like precision, recall, and F1-score.
+
+7. **Time to Action:**
+   - **Calculation:** Measure the average time it takes for the users to take action based on the dashboard's insights.
+   - **Strengths:** Time to Action assesses the dashboard's effectiveness in prompting timely responses and interventions.
+   - **Weaknesses:** This metric might not account for situations where users take immediate action based on external factors, irrespective of dashboard insights.
+
+8. **Dashboard Adoption Rate:**
+   - **Calculation:** Calculate the percentage of eligible users who actively engage with the dashboard.
+   - **Strengths:** Dashboard Adoption Rate shows the overall acceptance and utility of the product among its target audience.
+   - **Weaknesses:** Adoption rate alone might not capture the depth of engagement or the quality of insights users are deriving from the dashboard.
+
+9. **Feature Interaction Rates:**
+   - **Calculation:** Measure the frequency of interactions with specific features of the dashboard, such as churn causes/recommendations, revenue impact graphs, and model insights.
+   - **Strengths:** Feature Interaction Rates highlight which parts of the dashboard are attracting user attention and providing value.
+   - **Weaknesses:** Isolated feature interaction might not indicate holistic engagement with the dashboard as users could be cherry-picking certain elements.
+
+10. **Conversion Rate from Insights to Action:**
+    - **Calculation:** Calculate the percentage of times users translate dashboard insights into actionable steps to mitigate churn.
+    - **Strengths:** This metric demonstrates the dashboard's practical impact on users' decision-making and its contribution to reducing churn.
+    - **Weaknesses:** Conversion Rate might not account for the complexity of organizational processes that could hinder prompt action, even with valuable insights.
+
+Careful consideration of these metrics, their calculations, strengths, and potential weaknesses will ensure a comprehensive and insightful evaluation of the churn model dashboard's performance, helping the team make informed decisions and drive effective strategies for customer retention.
