@@ -1,46 +1,27 @@
-import numpy as np
-import matplotlib.pyplot as plt
+Subject: Update on Model Output Labels
 
-def plot_colored_confusion_matrix(y_true, y_pred, classes):
-    """
-    Display a confusion matrix with errors highlighted.
+Dear MRMG Team,
 
-    :param y_true: List of true labels
-    :param y_pred: List of predicted labels
-    :param classes: List of class names
-    :return: None
-    """
+I hope this email finds you well. I wanted to inform you about a recent update we received from our client concerning the model we sent for review.
 
-    # Compute the confusion matrix
-    confusion = np.zeros((len(classes), len(classes)), dtype=int)
-    for true, pred in zip(y_true, y_pred):
-        confusion[true][pred] += 1
+While the content and significance of the model output labels remain unchanged, the client has decided to rename some of these labels for clarity or internal consistency. It is important to note that these modifications will not impact the way the model runs, as they are purely cosmetic and pertain only to the naming convention of the outputs.
 
-    fig, ax = plt.subplots(figsize=(10, 10))
-    
-    # Plot the matrix
-    for i in range(len(classes)):
-        for j in range(len(classes)):
-            if i == j:
-                ax.text(j, i, confusion[i, j], ha='center', va='center', color='blue')
-            else:
-                ax.text(j, i, confusion[i, j], ha='center', va='center', color='red')
+Here's a summary of the changes:
 
-    # Set the ticks
-    ax.set_xticks(np.arange(len(classes)))
-    ax.set_yticks(np.arange(len(classes)))
-    ax.set_xticklabels(classes)
-    ax.set_yticklabels(classes)
+**Old Label** -> **New Label**
+1. OldLabel1 -> NewLabel1
+2. OldLabel2 -> NewLabel2
+3. OldLabel3 -> NewLabel3
+(Continue the list as needed)
 
-    # Display
-    ax.set_xlabel('Predicted')
-    ax.set_ylabel('True')
-    ax.set_title('Confusion Matrix with Errors Highlighted')
-    plt.show()
+These changes will be integrated into all subsequent model documentation and reports. I wanted to make sure you were aware of this adjustment so that there's no confusion moving forward.
 
-# Example usage:
-y_true = [0, 1, 2, 0, 2, 1, 1, 2]
-y_pred = [0, 1, 0, 0, 2, 1, 0, 2]
-classes = ['Class 0', 'Class 1', 'Class 2']
+Please let me know if you have any questions or require further clarification on this matter.
 
-plot_colored_confusion_matrix(y_true, y_pred, classes)
+Thank you for your understanding and cooperation.
+
+Best regards,
+
+[Your Name]
+[Your Position]
+[Your Contact Information]
