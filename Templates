@@ -1,25 +1,24 @@
-**FOR IMMEDIATE RELEASE**
+from sklearn.metrics import confusion_matrix
 
-Introducing "ChurnInsights": Revolutionizing Customer Retention and Growth Strategies
+cm = confusion_matrix(y_true, y_pred)
 
-[City, Date] — We are thrilled to announce the official launch of ChurnInsights, a groundbreaking data-driven solution designed to empower businesses across industries to reduce customer churn and unlock unparalleled growth opportunities. With ChurnInsights, businesses can now proactively identify potential churn risks, analyze underlying causes, and receive actionable recommendations to foster customer retention like never before.
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-ChurnInsights provides an intuitive dashboard that presents churn analysis, causes, and recommendations in a comprehensive and visually engaging manner. Our sophisticated machine learning algorithms leverage historical data to accurately predict churn and equip businesses with the tools they need to tailor their strategies and enhance customer loyalty.
+# Create a heatmap of the confusion matrix
+plt.figure(figsize=(8, 6))
+sns.set(font_scale=1.2)  # Adjust the font scale for better readability
+sns.heatmap(
+    cm,
+    annot=True,  # Annotate each cell with the numeric value
+    fmt="d",      # Format annotation as integer
+    cmap="Blues",  # Choose a colormap (e.g., Blues, Reds, Greens)
+    xticklabels=['Class 0', 'Class 1', 'Class 2'],  # Replace with your class labels
+    yticklabels=['Class 0', 'Class 1', 'Class 2'],  # Replace with your class labels
+)
 
-"We are excited to introduce ChurnInsights to businesses seeking to elevate their customer retention game," says Jane Smith, Chief Product Officer at ChurnInsights. "Our platform is a game-changer that will enable companies to anticipate customer behavior and take strategic actions to improve their overall customer experience."
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
 
-Designed for marketing and customer retention teams within subscription-based and recurring revenue models, ChurnInsights offers a vital advantage by enabling businesses to minimize churn and maximize growth. John Doe, a fictional customer and CEO of a software-as-a-service company, shares his enthusiasm: "ChurnInsights has completely transformed the way we understand customer churn. With actionable insights at our fingertips, we are confident in our ability to retain valuable customers and drive sustainable growth."
-
-ChurnInsights envisions a future where businesses can confidently invest in customer retention strategies, resulting in increased revenue, enhanced customer satisfaction, and improved brand loyalty. As we embark on this journey, we invite businesses to join us in shaping the future of customer retention through data-driven decision-making.
-
-For media inquiries, contact:
-[Your Name]
-[Your Email Address]
-[Your Phone Number]
-
-###
-
-*About ChurnInsights:*
-ChurnInsights is a leading-edge customer churn analysis solution designed to empower businesses with actionable insights for customer retention and growth. With its comprehensive dashboard and cutting-edge algorithms, ChurnInsights is committed to helping businesses reduce churn and achieve long-term success.
-
-*Note: This press release is a fictional exercise and does not represent a real product or company.*
+plt.show()
