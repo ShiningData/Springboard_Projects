@@ -1,42 +1,18 @@
-import seaborn as sns
+import numpy as np
+from yellowbrick.classifier import ConfusionMatrix
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 
 # Fabricated actual values (ground truth) for a 3-class problem
-y_true = np.array([0, 1, 2, 0, 1, 2, 0, 2, 1, 0])
+y_actual = np.array([0, 1, 2, 0, 1, 2, 0, 2, 1, 0])
 
 # Fabricated predicted values from a classification model
 y_pred = np.array([0, 1, 2, 0, 1, 2, 0, 2, 0, 1])
 
-# Calculate confusion matrix
-cm = confusion_matrix(y_true, y_pred)
+# Create a ConfusionMatrix visualizer
+cm = ConfusionMatrix.from_estimator(estimator=None, X=None, y_true=y_actual, y_pred=y_pred)
 
-# Get the total actual and total predicted counts for each class
-total_actual = np.sum(cm, axis=1)
-total_predicted = np.sum(cm, axis=0)
-
-# Create a colorful confusion matrix with class totals
-plt.figure(figsize=(8, 6))
-sns.set(font_scale=1.2)
-
-# Create the heatmap
-sns.heatmap(
-    cm,
-    annot=True,
-    fmt="d",
-    cmap="Blues",
-    xticklabels=['Class 0', 'Class 1', 'Class 2'],
-    yticklabels=['Class 0', 'Class 1', 'Class 2'],
-    cbar=False,  # Hide color bar
-)
-
-# Add class totals to the last row and last column
-for i in range(len(total_actual)):
-    plt.text(i + 0.5, len(total_actual) + 0.5, str(total_actual[i]), ha='center', va='center')
-    plt.text(len(total_predicted) + 0.5, i + 0.5, str(total_predicted[i]), ha='center', va='center')
-
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.title('Confusion Matrix with Class Totals')
+# Draw and display the confusion matrix
+cm.figure_.suptitle("Confusion Matrix")
+cm.poof()
 
 plt.show()
