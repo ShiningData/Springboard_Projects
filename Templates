@@ -21,4 +21,12 @@ plt.xlabel('Predicted')
 plt.ylabel('Actual')
 plt.title('Confusion Matrix')
 
+import numpy as np
+
+# Fabricated actual values (ground truth) for a 3-class problem
+y_true = np.array([0, 1, 2, 0, 1, 2, 0, 2, 1, 0])
+
+# Fabricated predicted values from a classification model
+y_pred = np.array([0, 1, 2, 0, 1, 2, 0, 2, 0, 1])
+
 plt.show()
