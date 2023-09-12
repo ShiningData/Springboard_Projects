@@ -1,7 +1,7 @@
-In the domain of time series forecasting, Autogluon initiates its workflow by engaging in a data preparation and temporal decomposition phase, aiming to isolate significant seasonal and trend components. During the training phase, the framework automatically performs feature engineering to extract crucial temporal elements like day of the week, month, and year, among others.
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-Following data preparation, multiple machine learning algorithms tailored for time series forecasting, such as LSTMs, Decision Trees, and Ensemble Methods, are trained on the dataset. These models are assessed using time-specific cross-validation techniques to ensure they are highly adapted to the temporal structure of the data. Metrics like MAE, MSE, or RMSE serve as quantitative benchmarks for model performance during this phase.
+After installing, you'll have to add Rust's bin directory to your PATH. The installation will usually suggest how to do this. You can also manually add it by editing your .bashrc or .zshrc file and adding this line:
 
-After the individual models have been trained, hyperparameter optimization is conducted, commonly using Bayesian optimization techniques to fine-tune each model's specific settings for optimal performance. 
+export PATH="$HOME/.cargo/bin:$PATH"
 
-The final step of the training phase involves the synthesis of an ensemble model, comprising the highest-performing individual models, each weighted according to its predictive accuracy. This ensemble model is specifically engineered for high-precision forecasting in time series applications, representing the culmination of Autogluon's rigorous training and optimization processes.
+Then, either restart your terminal or execute source ~/.bashrc or source ~/.zshrc.
