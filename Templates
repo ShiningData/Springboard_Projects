@@ -1,58 +1,43 @@
-import dash
-from dash import dcc, html, Input, Output, State
+import numpy as np
 import pandas as pd
-import urllib.parse
+from tbats import BATS
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import mean_squared_error
 
-app = dash.Dash(__name__)
+def tbats_cross_val_score(data, n_splits=5, seasonal_periods=None):
+    """
+    Perform cross-validation for a TBATS model.
 
-# Sample data for tables
-data_splash_table1 = pd.DataFrame({'Column1': [1, 2, 3], 'Column2': ['A', 'B', 'C']})
-data_splash_table2 = pd.DataFrame({'Column3': [4, 5, 6], 'Column4': ['X', 'Y', 'Z']})
+    Parameters:
+        data (pd.Series): Time series data to be forecasted.
+        n_splits (int): Number of cross-validation splits.
+        seasonal_periods (int or None): Number of seasonal periods in the data.
+            If None, the seasonal period will be automatically detected.
 
-app.layout = html.Div([
-    # Splash Page
-    html.Div([
-        dcc.Dropdown(id='splash-filter1', options=[{'label': 'Option 1', 'value': 'option1'},
-                                                   {'label': 'Option 2', 'value': 'option2'}]),
-        dcc.Dropdown(id='splash-filter2', options=[{'label': 'Option A', 'value': 'optionA'},
-                                                   {'label': 'Option B', 'value': 'optionB'}]),
-        dcc.Dropdown(id='splash-filter3', options=[{'label': 'Market 1', 'value': 'market1'},
-                                                   {'label': 'Market 2', 'value': 'market2'}]),
-        html.Button('Export Total Data Filtered Summary', id='export-splash-table1'),
-        dcc.Table(id='splash-table1'),
-        html.Button('Export Transaction with All Banks', id='export-splash-table2'),
-        dcc.Table(id='splash-table2'),
-    ], id='splash-page'),
-])
+    Returns:
+        mean_rmse (float): Mean root mean squared error across cross-validation folds.
+    """
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    rmse_scores = []
 
-# Callbacks to trigger CSV downloads for Splash Page
-@app.callback(
-    Output('export-splash-table1', 'n_clicks'),
-    Output('export-splash-table2', 'n_clicks'),
-    Input('export-splash-table1', 'n_clicks'),
-    Input('export-splash-table2', 'n_clicks'),
-    prevent_initial_call=True
-)
-def export_table(n1, n2):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return [0, 0]
+    for train_idx, test_idx in tscv.split(data):
+        train_data, test_data = data.iloc[train_idx], data.iloc[test_idx]
 
-    # Get the ID of the button that triggered the callback
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        # Fit a TBATS model
+        estimator = BATS(seasonal_periods=seasonal_periods)
+        model = estimator.fit(train_data)
 
-    if button_id == 'export-splash-table1':
-        data = data_splash_table1
-    elif button_id == 'export-splash-table2':
-        data = data_splash_table2
+        # Make predictions
+        forecast = model.forecast(steps=len(test_data))
 
-    # Convert the DataFrame to a CSV string
-    csv_string = data.to_csv(index=False, encoding='utf-8', sep=',')
+        # Calculate RMSE
+        rmse = np.sqrt(mean_squared_error(test_data, forecast))
+        rmse_scores.append(rmse)
 
-    # Create a download link
-    csv_data = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
+    mean_rmse = np.mean(rmse_scores)
+    return mean_rmse
 
-    return [0, 0]
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
+# Example usage:
+# Assuming you have a pandas Series 'time_series_data'
+# mean_rmse = tbats_cross_val_score(time_series_data, n_splits=5, seasonal_periods=12)
+# print("Mean RMSE:", mean_rmse)
