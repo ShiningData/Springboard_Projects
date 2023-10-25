@@ -14,9 +14,10 @@ df['year_month'] = pd.to_datetime(df['year_month'], format='%Y-%m')
 
 # Create a DataFrame with the desired date range
 date_range = pd.date_range(start='2021-01', end='2023-10', freq='M')
-cust_ids = df['cust_id'].unique()
 date_df = pd.DataFrame({'year_month': date_range})
-date_df['cust_id'] = date_df.apply(lambda row: cust_ids, axis=1)
+
+# Repeat cust_ids for each date in the date range
+date_df['cust_id'] = df['cust_id'].unique()[0]
 
 # Merge the date DataFrame with the original DataFrame to fill in missing values as 0
 merged_df = pd.merge(df, date_df, on=['cust_id', 'year_month'], how='right')
