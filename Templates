@@ -1,25 +1,32 @@
 import pandas as pd
 
-# Sample data
+# Sample DataFrame (Replace this with your actual DataFrame)
 data = {
-    'cust_id': [1, 1, 1, 2, 2, 2],
-    'year_month': ['2022-01', '2022-02', '2022-03', '2022-01', '2022-02', '2022-03'],
-    'trx_num': [100, 110, 120, 200, 210, 220]
+    'cust_pwr_id': [1, 2, 3, 4],
+    '2022-09': [150, 120, 200, 90],
+    '2022-10': [160, 130, 210, 110],
+    '2022-11': [170, 140, 220, 120],
+    # Add columns for other months up to 2023-09
 }
 
 df = pd.DataFrame(data)
 
-# Convert year_month to datetime
-df['year_month'] = pd.to_datetime(df['year_month'], format='%Y-%m')
+# List of columns representing months from 2022-09 to 2023-09
+month_columns = df.columns[1:]
 
-# Create a DataFrame with the desired date range
-date_range = pd.date_range(start='2021-01', end='2023-10', freq='M')
-date_df = pd.DataFrame({'year_month': date_range})
+# Function to determine if all values in a row are above 100
+def is_all_above_100(row):
+    return all(row[month] >= 100 for month in month_columns)
 
-# Repeat cust_ids for each date in the date range
-date_df['cust_id'] = date_df.apply(lambda row: df['cust_id'].unique(), axis=1)
+# Create the 'persistent_cust' column based on the condition
+df['persistent_cust'] = df.apply(is_all_above_100, axis=1)
 
-# Explode the cust_id list to create individual rows
+# Map True/False values to 'Y'/'N'
+df['persistent_cust'] = df['persistent_cust'].map({True: 'Y', False: 'N'})
+
+# Print the resulting DataFrame
+print(df)
+rows
 date_df = date_df.explode('cust_id')
 
 # Merge the date DataFrame with the original DataFrame to fill in missing values as 0
