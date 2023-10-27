@@ -1,46 +1,40 @@
-import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 
-# Sample DataFrame (Replace this with your actual DataFrame)
-data = {
-    'cust_pwr_id': [1, 2, 3, 4],
-    '2022-09': [150, 120, 200, 90],
-    '2022-10': [160, 130, 210, 110],
-    '2022-11': [170, 140, 220, 120],
-    # Add columns for other months up to 2023-09
-}
+# Sample data
+x = np.arange(0, 10, 0.1)
+data1 = np.sin(x)
+data2 = np.cos(x)
 
-df = pd.DataFrame(data)
+# Create the first axis
+fig, ax1 = plt.subplots()
 
-# List of columns representing months from 2022-09 to 2023-09
-month_columns = df.columns[1:]
+# Plot the first dataset on the first axis
+sns.lineplot(x=x, y=data1, ax=ax1, label="Dataset 1", color='b')
 
-# Function to determine if all values in a row are above 100
-def is_all_above_100(row):
-    return all(row[month] >= 100 for month in month_columns)
+# Set the y-axis label for the first axis
+ax1.set_ylabel("Y-axis (Dataset 1)", color='b')
 
-# Create the 'persistent_cust' column based on the condition
-df['persistent_cust'] = df.apply(is_all_above_100, axis=1)
+# Create the second axis (twin axis)
+ax2 = ax1.twinx()
 
-# Map True/False values to 'Y'/'N'
-df['persistent_cust'] = df['persistent_cust'].map({True: 'Y', False: 'N'})
+# Plot the second dataset on the second axis
+sns.lineplot(x=x, y=data2, ax=ax2, label="Dataset 2", color='r')
 
-# Print the resulting DataFrame
-print(df)
-rows
-date_df = date_df.explode('cust_id')
+# Set the y-axis label for the second axis
+ax2.set_ylabel("Y-axis (Dataset 2)", color='r')
 
-# Merge the date DataFrame with the original DataFrame to fill in missing values as 0
-merged_df = pd.merge(df, date_df, on=['cust_id', 'year_month'], how='right')
-merged_df['trx_num'] = merged_df['trx_num'].fillna(0)
+# Customize the plot
+plt.xlabel("X-axis")
+plt.title("Seaborn Line Plots with Twin Axes")
 
-# Find the maximum and minimum trx_num for each customer
-result = merged_df.groupby('cust_id')['trx_num'].agg(max_trx_num='max', min_trx_num='min')
+# Add legends for both datasets
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+lines = lines1 + lines2
+labels = labels1 + labels2
+plt.legend(lines, labels, loc="upper left")
 
-# Calculate the difference between max_trx_num and min_trx_num, filling NaN with 0
-result['trx_num_difference'] = result['max_trx_num'] - result['min_trx_num']
-result['trx_num_difference'] = result['trx_num_difference'].fillna(0).astype(int)
-
-# Reset the index
-result = result.reset_index()
-
-print(result)
+# Display the plot
+plt.show()
