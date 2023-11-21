@@ -1,40 +1,22 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 
-# Sample data
-x = np.arange(0, 10, 0.1)
-data1 = np.sin(x)
-data2 = np.cos(x)
+# Initialize Spark Session
+spark = SparkSession.builder.appName("Unique ID Filter").getOrCreate()
 
-# Create the first axis
-fig, ax1 = plt.subplots()
+# Assuming df1, df2, df3 are the three DataFrames with the column 'cust_pwr_id'
+# and df_to_filter is the DataFrame you want to filter
 
-# Plot the first dataset on the first axis
-sns.lineplot(x=x, y=data1, ax=ax1, label="Dataset 1", color='b')
+# Step 1: Get unique 'cust_pwr_id' from each DataFrame
+unique_ids_df1 = df1.select("cust_pwr_id").distinct()
+unique_ids_df2 = df2.select("cust_pwr_id").distinct()
+unique_ids_df3 = df3.select("cust_pwr_id").distinct()
 
-# Set the y-axis label for the first axis
-ax1.set_ylabel("Y-axis (Dataset 1)", color='b')
+# Step 2: Combine these unique values into a single DataFrame
+combined_unique_ids = unique_ids_df1.union(unique_ids_df2).union(unique_ids_df3).distinct()
 
-# Create the second axis (twin axis)
-ax2 = ax1.twinx()
+# Step 3: Filter the df_to_filter DataFrame using the combined_unique_ids DataFrame
+filtered_df = df_to_filter.join(combined_unique_ids, df_to_filter["cust_pwr_id"] == combined_unique_ids["cust_pwr_id"], "inner")
 
-# Plot the second dataset on the second axis
-sns.lineplot(x=x, y=data2, ax=ax2, label="Dataset 2", color='r')
-
-# Set the y-axis label for the second axis
-ax2.set_ylabel("Y-axis (Dataset 2)", color='r')
-
-# Customize the plot
-plt.xlabel("X-axis")
-plt.title("Seaborn Line Plots with Twin Axes")
-
-# Add legends for both datasets
-lines1, labels1 = ax1.get_legend_handles_labels()
-lines2, labels2 = ax2.get_legend_handles_labels()
-lines = lines1 + lines2
-labels = labels1 + labels2
-plt.legend(lines, labels, loc="upper left")
-
-# Display the plot
-plt.show()
+# Show the result
+filtered_df.show()
