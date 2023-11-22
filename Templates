@@ -1,20 +1,22 @@
 from pyspark.sql import SparkSession
-from pyspark.sql import Window
-from pyspark.sql.functions import col, sum as sum_, round
+from pyspark.sql.functions import col, when, round
 
 # Initialize Spark Session
-spark = SparkSession.builder.appName("Percentage Calculation without Collect").getOrCreate()
+spark = SparkSession.builder.appName("Year Over Year Percent Change").getOrCreate()
 
 # Assuming 'df' is your PySpark DataFrame
 
-# Define a window specification without partitioning (covers entire DataFrame)
-windowSpec = Window.rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-
-# Calculate the sum over the entire DataFrame for the column "2023-10-01"
-sum_column = sum_("2023-10-01").over(windowSpec)
-
-# Calculate the percentage and round to 2 decimal places
-df = df.withColumn("percentage", round((col("2023-10-01") / sum_column) * 100, 2))
+# Calculate year-over-year percent change
+df = df.withColumn(
+    "year over year percent change",
+    when(
+        (col("2023-10-01") == 0) & (col("2022-10-01") == 0), 0
+    ).when(
+        col("2023-10-01") == 0, float("2023-10-01")
+    ).otherwise(
+        round(((col("2023-10-01") - col("2022-10-01")) / col("2023-10-01")) * 100, 2)
+    )
+)
 
 # Show the result (optional)
 df.show()
