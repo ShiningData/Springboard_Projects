@@ -1,17 +1,21 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.window import Window
-from pyspark.sql.functions import dense_rank, col
+# Sample dictionary and list
+sample_dict = {
+    'key1': 'value1',
+    'key2': 'value2',
+    'key3': 'value3'
+}
+keys_list = ['new_key1', 'new_key2', 'new_key3']
 
-# Initialize Spark Session
-spark = SparkSession.builder.appName("Dense Rank Column Values").getOrCreate()
+# Python script to change dictionary keys
+def change_dict_keys(dictionary, new_keys):
+    # Check if the number of new keys matches the number of dictionary keys
+    if len(dictionary) != len(new_keys):
+        return "Error: The number of new keys must match the number of dictionary keys."
 
-# Assuming 'df' is your PySpark DataFrame
+    # Creating a new dictionary with changed keys
+    new_dict = dict(zip(new_keys, dictionary.values()))
 
-# Define a window specification for ordering
-windowSpec = Window.orderBy(col("2023-10-01").desc())  # Change to .asc() for ascending order
+    return new_dict
 
-# Rank the '2023-10-01' column using dense_rank and create a new column 'dense_rank'
-df = df.withColumn("dense_rank", dense_rank().over(windowSpec))
-
-# Show the result (optional)
-df.show()
+# Applying the function to the sample dictionary and keys list
+changed_dict = change_dict_keys(sample_dict, keys_list)
