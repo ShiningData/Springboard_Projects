@@ -1,21 +1,20 @@
-# Sample dictionary and list
-sample_dict = {
-    'key1': 'value1',
-    'key2': 'value2',
-    'key3': 'value3'
-}
-keys_list = ['new_key1', 'new_key2', 'new_key3']
-
-# Python script to change dictionary keys
-def change_dict_keys(dictionary, new_keys):
+def change_dict_keys_handle_none(dictionary, new_keys):
     # Check if the number of new keys matches the number of dictionary keys
     if len(dictionary) != len(new_keys):
         return "Error: The number of new keys must match the number of dictionary keys."
 
-    # Creating a new dictionary with changed keys
-    new_dict = dict(zip(new_keys, dictionary.values()))
+    # Creating a new dictionary with changed keys and handling None values
+    new_dict = {new_key: (dictionary[old_key] if dictionary[old_key] is not None else "MISSING") 
+                for new_key, old_key in zip(new_keys, dictionary.keys())}
 
     return new_dict
 
-# Applying the function to the sample dictionary and keys list
-changed_dict = change_dict_keys(sample_dict, keys_list)
+# Sample dictionary with a None value
+sample_dict_with_none = {
+    'key1': 'value1',
+    'key2': None,
+    'key3': 'value3'
+}
+
+# Applying the modified function
+changed_dict_with_none = change_dict_keys_handle_none(sample_dict_with_none, keys_list)
