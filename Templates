@@ -1,20 +1,29 @@
-def change_dict_keys_handle_none(dictionary, new_keys):
-    # Check if the number of new keys matches the number of dictionary keys
-    if len(dictionary) != len(new_keys):
-        return "Error: The number of new keys must match the number of dictionary keys."
+**FOR IMMEDIATE RELEASE**
 
-    # Creating a new dictionary with changed keys and handling None values
-    new_dict = {new_key: (dictionary[old_key] if dictionary[old_key] is not None else "MISSING") 
-                for new_key, old_key in zip(new_keys, dictionary.keys())}
+**Introducing Zeno: PNC Bank's Revolutionary Customer Segmentation Dashboard**
 
-    return new_dict
+DSI proudly introduces Zeno, an innovative customer segmentation dashboard poised to redefine the banking experience. Zeno leverages advanced machine learning models and data analysis techniques to provide a comprehensive understanding of our customers' behaviors, preferences, and needs.
 
-# Sample dictionary with a None value
-sample_dict_with_none = {
-    'key1': 'value1',
-    'key2': None,
-    'key3': 'value3'
-}
+Zeno doesn't just ask questions; it delivers answers that empower us to enhance our customers' financial well-being. Through predictive modeling, Feature Importance Analysis, Monte Carlo Simulations, Customer Segmentation Algorithms, Time Series Analysis, and tear sheets, Zeno unveils insights that enable us to take action at the right time and with precision.
 
-# Applying the modified function
-changed_dict_with_none = change_dict_keys_handle_none(sample_dict_with_none, keys_list)
+With Zeno, we can identify when and why customer behavior changes, allowing us to respond proactively and effectively. By classifying customer archetypes, we can structure interactions for maximum impact, saving time, increasing efficiency, and ensuring a consistent and tailored customer experience.
+
+Our management teams will now have access to standardized metrics and insights, enabling quick assessments of portfolio health and areas for improvement. Zeno also guides us through customer life stages, helps determine their current stage, and even suggests strategies to induce transitions, ultimately maximizing profitability.
+
+Zeno's capabilities extend to our relationship managers (TMOs), enabling them to optimize time management through enhanced insights into portfolio composition. This empowers them to maintain existing relationships, foster new ones, and tailor interactions to meet specific customer needs.
+
+*Hypothetical Customer Quote:*
+
+"As a PNC Bank customer, I am excited about Zeno's potential to enhance my banking experience. With its predictive insights and personalized approach, I feel that PNC truly understands my financial needs and is there to support me every step of the way." - Jane Doe, Happy PNC Bank Customer
+
+*Quote from PNC Bank:*
+
+"We believe Zeno will revolutionize the future of banking. By providing our customers with tailored experiences and equipping our teams with unparalleled insights, we are confident that Zeno will elevate our customer relationships to new heights. Zeno is not just a product; it's a commitment to delivering the best in banking." - [Your Name], Product Owner, PNC Bank
+
+Zeno represents PNC Bank's unwavering dedication to innovation and customer-centricity. We are excited to embark on this journey with our customers, and we look forward to a future where banking is not just a service but a personalized, seamless, and transformative experience.
+
+For more information, please visit [insert product website or contact information].
+
+**About PNC Bank:**
+
+PNC Bank is a leading financial institution committed to providing exceptional banking and financial services to individuals, businesses, and communities. With a legacy of innovation and a commitment to excellence, PNC Bank strives to make banking easier, more convenient, and more rewarding for all its customers.
