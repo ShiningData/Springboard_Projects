@@ -1,29 +1,37 @@
-Subject: Draft Capstone Project Model Documentation Report Template
+import pandas as pd
 
-Dear [Manager's Name],
+# Sample DataFrame
+data = {
+    'acc_id': [1, 1, 2, 2, 3],
+    'cust_pwr_id': [101, 101, 102, 102, 103],
+    'cust_name': ['Customer A', 'Customer A', 'Customer B', 'Customer B', 'Customer C'],
+    'year_dt': [2023, 2023, 2023, 2023, 2023],
+    'segment': ['Segment 1', 'Segment 1', 'Segment 2', 'Segment 2', 'Segment 3'],
+    'naics': ['111111', '*******', '222222', '333333', '*******'],
+    'tran_direction': ['In', 'Out', 'In', 'Out', 'In'],
+    'tran_num': [100, 50, 75, 25, 200]
+}
 
-I hope this email finds you well. I wanted to share an important update regarding our efforts to streamline the documentation process for capstone projects undertaken by our PNC colleagues. As part of our ongoing commitment to enhancing efficiency and ensuring clarity in our model development processes, I have created a draft Capstone Project Model Documentation Report Template.
+df = pd.DataFrame(data)
 
-This template is specifically tailored to meet the documentation requirements of our capstone projects, encompassing all essential elements needed for developers to understand the end-to-end project cycle. The goal is to provide our capstone project developers with a comprehensive document that helps them adhere to the PNC MRMG documentation requirements and structure their model development process effectively.
+# Function to fix NAICS codes
+def fix_naics(df):
+    # Group by cust_pwr_id and count unique NAICS codes
+    naics_counts = df.groupby('cust_pwr_id')['naics'].nunique()
+    
+    # Filter cust_pwr_id with exactly 2 unique NAICS codes (excluding "*******")
+    valid_cust_pwr_ids = naics_counts[naics_counts == 2].index.tolist()
+    
+    # Iterate over valid cust_pwr_ids and replace "*******" with the other valid NAICS code
+    for cust_pwr_id in valid_cust_pwr_ids:
+        naics_values = df.loc[df['cust_pwr_id'] == cust_pwr_id, 'naics'].unique()
+        if '*******' in naics_values:
+            valid_naics = [naics for naics in naics_values if naics != '*******'][0]
+            df.loc[(df['cust_pwr_id'] == cust_pwr_id) & (df['naics'] == '*******'), 'naics'] = valid_naics
+    
+    return df
 
-To create this template, I have meticulously merged relevant information from existing documents, including the Capstone Project Model Initiation Form, Tiering Template, Model Documentation, Outcome Analysis, and Operating Model Guide. My aim is to:
+# Call the function to fix the NAICS codes
+fixed_df = fix_naics(df)
 
-1. Simplify documentation: Developers will no longer need to refer to multiple documents, saving time and reducing the risk of overlooking important details.
-
-2. Ensure consistency: This template will establish uniform documentation standards for all capstone projects, enhancing collaboration and simplifying management reviews.
-
-3. Facilitate onboarding: New developers will find it easier to grasp our documentation requirements and project processes, leading to quicker integration into our team.
-
-4. Improve project communication: A standardized document will enhance communication between developers, project managers, and stakeholders.
-
-I have attached the draft Capstone Project Model Documentation Report Template to this email for your review and feedback. I would greatly appreciate your insights and suggestions to refine and optimize this template further, ensuring it serves its intended purpose effectively for our capstone projects.
-
-Please take some time to review the document at your earliest convenience, and if possible, provide your feedback by [insert deadline or date]. Once we have incorporated your input and made any necessary adjustments, we can proceed with sharing this template with our colleagues involved in capstone projects.
-
-Thank you for your continued support in our efforts to improve our capstone project processes and documentation. I look forward to your feedback and guidance.
-
-Best regards,
-
-[Your Name]
-[Your Title]
-[Your Contact Information]
+print(fixed_df)
