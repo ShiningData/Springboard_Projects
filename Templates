@@ -2,36 +2,34 @@ import pandas as pd
 
 # Sample DataFrame
 data = {
-    'acc_id': [1, 1, 2, 2, 3],
-    'cust_pwr_id': [101, 101, 102, 102, 103],
-    'cust_name': ['Customer A', 'Customer A', 'Customer B', 'Customer B', 'Customer C'],
-    'year_dt': [2023, 2023, 2023, 2023, 2023],
-    'segment': ['Segment 1', 'Segment 1', 'Segment 2', 'Segment 2', 'Segment 3'],
-    'naics': ['111111', '*******', '222222', '333333', '*******'],
-    'tran_direction': ['In', 'Out', 'In', 'Out', 'In'],
-    'tran_num': [100, 50, 75, 25, 200]
+    'cust_pwr_id': [101, 101, 102, 102, 103, 103, 104, 104],
+    'cust_name': ['Customer A', 'Customer A', 'Customer B', 'Customer B', 'Customer C', 'Customer C', 'Customer D', 'Customer D'],
+    'segment': ['Segment 1', 'Segment 2', 'Segment 3', 'Segment 4', 'Segment 5', 'Segment 6', 'Segment 7', 'Segment 8'],
+    'naics': ['111111', '111111', '222222', '222222', '333333', '333333', '444444', '444444'],
+    'tran_direction': ['In', 'Out', 'In', 'Out', 'In', 'Out', 'In', 'Out'],
+    'year_dt': [2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023],
+    'tran_total': [100, 50, 75, 25, 200, 300, 150, 80]
 }
 
 df = pd.DataFrame(data)
 
-# Function to fix NAICS codes
-def fix_naics(df):
-    # Group by cust_pwr_id and count unique NAICS codes
-    naics_counts = df.groupby('cust_pwr_id')['naics'].nunique()
-    
-    # Filter cust_pwr_id with exactly 2 unique NAICS codes (excluding "*******")
-    valid_cust_pwr_ids = naics_counts[naics_counts == 2].index.tolist()
-    
-    # Iterate over valid cust_pwr_ids and replace "*******" with the other valid NAICS code
-    for cust_pwr_id in valid_cust_pwr_ids:
-        naics_values = df.loc[df['cust_pwr_id'] == cust_pwr_id, 'naics'].unique()
-        if '*******' in naics_values:
-            valid_naics = [naics for naics in naics_values if naics != '*******'][0]
-            df.loc[(df['cust_pwr_id'] == cust_pwr_id) & (df['naics'] == '*******'), 'naics'] = valid_naics
-    
-    return df
+# Check for multiple segments per cust_pwr_id
+segment_counts = df.groupby('cust_pwr_id')['segment'].nunique()
+multiple_segments = segment_counts[segment_counts > 1].index
 
-# Call the function to fix the NAICS codes
-fixed_df = fix_naics(df)
+# Create a new DataFrame for unique cust_pwr_id
+unique_df = df[df['cust_pwr_id'].isin(multiple_segments)].copy()
 
-print(fixed_df)
+# Aggregate segments into a list for cust_pwr_id with multiple segments
+segment_lists = unique_df.groupby('cust_pwr_id')['segment'].apply(list).reset_index()
+
+# Merge the aggregated DataFrame with the original DataFrame
+merged_df = df.merge(segment_lists, on='cust_pwr_id', suffixes=('', '_agg'), how='left')
+
+# Fill NaN values in the new column with the original segments
+merged_df['segment'] = merged_df['segment_agg'].fillna(merged_df['segment'])
+
+# Drop the redundant column
+merged_df = merged_df.drop(columns=['segment_agg'])
+
+print(merged_df)
