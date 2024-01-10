@@ -1,11 +1,27 @@
 import pandas as pd
 
-# Example DataFrame:
-# df = pd.DataFrame({'cust_id': [1, 2, 3, 4],
-#                    'wire_count': [100, 200, 150, 200]})
+# Example DataFrame
+data = {'cust_id': [1, 2, 3, 4, 5],
+        'prev_mean': [100, 200, 0, 300, 0],
+        'recent_mean': [20, 250, 0, 0, 0]}
 
-# Add a new column 'wire_count_rank' with the ranked values using 'max' method
-df['wire_count_rank'] = df['wire_count'].rank(method='max', ascending=False)
+df = pd.DataFrame(data)
+
+# Define a function to calculate 'exit_client' based on conditions
+def calculate_exit_client(row):
+    if row['prev_mean'] == 0 and row['recent_mean'] != 0:
+        return 'N'
+    elif row['prev_mean'] != 0 and row['recent_mean'] == 0:
+        return 'Y'
+    elif row['prev_mean'] == 0 and row['recent_mean'] == 0:
+        return 'Y'
+    elif (row['prev_mean'] - row['recent_mean']) / row['prev_mean'] >= 0.8:
+        return 'Y'
+    else:
+        return 'N'
+
+# Apply the function to create the 'exit_client' feature
+df['exit_client'] = df.apply(calculate_exit_client, axis=1)
 
 # Display the updated DataFrame
 print(df)
