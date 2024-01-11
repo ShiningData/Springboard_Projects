@@ -1,27 +1,18 @@
 import pandas as pd
 
-# Example DataFrame
-data = {'cust_id': [1, 2, 3, 4, 5],
-        'prev_mean': [100, 200, 0, 300, 0],
-        'recent_mean': [20, 250, 0, 0, 0]}
+# Assuming df is your DataFrame
+# Replace 'your_dataframe.csv' with your actual file
+# df = pd.read_csv('your_dataframe.csv')
 
-df = pd.DataFrame(data)
+# Function to get the longest naics_desc for a given cust_id
+def get_longest_naics_desc(group):
+    return group.loc[group['naics_desc'].str.len().idxmax()]
 
-# Define a function to calculate 'exit_client' based on conditions
-def calculate_exit_client(row):
-    if row['prev_mean'] == 0 and row['recent_mean'] != 0:
-        return 'N'
-    elif row['prev_mean'] != 0 and row['recent_mean'] == 0:
-        return 'Y'
-    elif row['prev_mean'] == 0 and row['recent_mean'] == 0:
-        return 'Y'
-    elif (row['prev_mean'] - row['recent_mean']) / row['prev_mean'] >= 0.8:
-        return 'Y'
-    else:
-        return 'N'
+# Group by cust_id and apply the function
+longest_naics_desc = df.groupby('cust_id').apply(get_longest_naics_desc)
 
-# Apply the function to create the 'exit_client' feature
-df['exit_client'] = df.apply(calculate_exit_client, axis=1)
+# Merge the original df with the longest naics_desc on cust_id
+df = df.drop('naics_desc', axis=1).merge(longest_naics_desc[['cust_id', 'naics_desc']], on='cust_id')
 
-# Display the updated DataFrame
-print(df)
+# If you want to save the updated DataFrame
+# df.to_csv('updated_dataframe.csv', index=False)
