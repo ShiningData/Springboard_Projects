@@ -1,18 +1,26 @@
 import pandas as pd
 
 # Assuming df is your DataFrame
-# Replace 'your_dataframe.csv' with your actual file
-# df = pd.read_csv('your_dataframe.csv')
+# Example DataFrame creation for demonstration
+# df = pd.DataFrame({
+#     'cust_id': [...], 
+#     'cust_name': [...], 
+#     'naics': [...], 
+#     'naics_desc': [...], 
+#     'segment': [...], 
+#     'direction': [...], 
+#     'year_dt': [...], 
+#     'tran_total': [...]
+# })
 
-# Function to get the longest naics_desc for a given cust_id
-def get_longest_naics_desc(group):
-    return group.loc[group['naics_desc'].str.len().idxmax()]
+# Identifying the longest naics_desc for each cust_id
+df['naics_desc_length'] = df['naics_desc'].str.len()
+df['max_naics_desc'] = df.groupby('cust_id')['naics_desc_length'].transform('max')
 
-# Group by cust_id and apply the function
-longest_naics_desc = df.groupby('cust_id').apply(get_longest_naics_desc)
+# Selecting rows where the length of naics_desc matches the max length for that cust_id
+df_longest = df[df['naics_desc_length'] == df['max_naics_desc']]
 
-# Merge the original df with the longest naics_desc on cust_id
-df = df.drop('naics_desc', axis=1).merge(longest_naics_desc[['cust_id', 'naics_desc']], on='cust_id')
+# Dropping temporary columns
+df_longest = df_longest.drop(['naics_desc_length', 'max_naics_desc'], axis=1)
 
-# If you want to save the updated DataFrame
-# df.to_csv('updated_dataframe.csv', index=False)
+# Now df_longest contains the desired output
