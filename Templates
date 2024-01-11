@@ -1,26 +1,29 @@
 import pandas as pd
 
-# Assuming df is your DataFrame
-# Example DataFrame creation for demonstration
-# df = pd.DataFrame({
-#     'cust_id': [...], 
-#     'cust_name': [...], 
-#     'naics': [...], 
-#     'naics_desc': [...], 
-#     'segment': [...], 
-#     'direction': [...], 
-#     'year_dt': [...], 
-#     'tran_total': [...]
-# })
+# Sample data
+data = {
+    'cust_id': [1, 1, 2, 2, 3, 4],
+    'cust_name': ['Alice', 'Alice', 'Bob', 'Bob', 'Charlie', 'David'],
+    'naics': [101, 101, 102, 102, 103, 104],
+    'naics_desc': ['Retail', 'Wholesale', 'Manufacturing', 'Service', 'Banking', 'IT'],
+    'segment': ['A', 'A', 'B', 'B', 'C', 'D'],
+    'direction': ['North', 'South', 'East', 'West', 'North', 'South'],
+    'year_dt': [2020, 2020, 2021, 2021, 2022, 2023],
+    'tran_total': [1000, 1500, 2000, 2500, 3000, 3500]
+}
 
-# Identifying the longest naics_desc for each cust_id
-df['naics_desc_length'] = df['naics_desc'].str.len()
-df['max_naics_desc'] = df.groupby('cust_id')['naics_desc_length'].transform('max')
+# Create DataFrame
+df = pd.DataFrame(data)
 
-# Selecting rows where the length of naics_desc matches the max length for that cust_id
-df_longest = df[df['naics_desc_length'] == df['max_naics_desc']]
+# Sorting the DataFrame by 'cust_id' and then by 'naics_desc'
+df_sorted = df.sort_values(['cust_id', 'naics_desc'])
 
-# Dropping temporary columns
-df_longest = df_longest.drop(['naics_desc_length', 'max_naics_desc'], axis=1)
+# Grouping by 'cust_id' and getting the first 'naics_desc' for each group
+first_naics_desc = df_sorted.groupby('cust_id')['naics_desc'].first()
 
-# Now df_longest contains the desired output
+# Mapping the first 'naics_desc' back to the original DataFrame
+df['naics_desc'] = df['cust_id'].map(first_naics_desc)
+
+# Display the modified DataFrame
+print("Modified DataFrame:")
+print(df)
