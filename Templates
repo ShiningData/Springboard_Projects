@@ -1,29 +1,26 @@
 import pandas as pd
+import random
+import numpy as np
 
-# Sample data
+# Create a list of customer IDs and names
+customer_ids = ['Cust1', 'Cust2', 'Cust3', 'Cust4', 'Cust5']
+customer_names = ['Alice', 'Bob', 'Charlie', 'David', 'Eve']
+
+# Create a dictionary to store the data
 data = {
-    'cust_id': [1, 1, 2, 2, 3, 4],
-    'cust_name': ['Alice', 'Alice', 'Bob', 'Bob', 'Charlie', 'David'],
-    'naics': [101, 101, 102, 102, 103, 104],
-    'naics_desc': ['Retail', 'Wholesale', 'Manufacturing', 'Service', 'Banking', 'IT'],
-    'segment': ['A', 'A', 'B', 'B', 'C', 'D'],
-    'direction': ['North', 'South', 'East', 'West', 'North', 'South'],
-    'year_dt': [2020, 2020, 2021, 2021, 2022, 2023],
-    'tran_total': [1000, 1500, 2000, 2500, 3000, 3500]
+    'cust_id': random.choices(customer_ids, k=100),  # Generating 100 random customer IDs
+    'cust_name': random.choices(customer_names, k=100),  # Generating 100 random customer names
 }
 
-# Create DataFrame
+# Add columns for each month from January to December with random float values or np.nan
+months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+for month in months:
+    values = [random.uniform(0, 100) if random.random() > 0.2 else np.nan for _ in range(100)]  # 20% chance of np.nan
+    data[month] = values
+
+# Create the DataFrame
 df = pd.DataFrame(data)
 
-# Sorting the DataFrame by 'cust_id' and then by 'naics_desc'
-df_sorted = df.sort_values(['cust_id', 'naics_desc'])
-
-# Grouping by 'cust_id' and getting the first 'naics_desc' for each group
-first_naics_desc = df_sorted.groupby('cust_id')['naics_desc'].first()
-
-# Mapping the first 'naics_desc' back to the original DataFrame
-df['naics_desc'] = df['cust_id'].map(first_naics_desc)
-
-# Display the modified DataFrame
-print("Modified DataFrame:")
+# Display the DataFrame
 print(df)
