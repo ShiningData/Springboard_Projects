@@ -1,26 +1,46 @@
-import pandas as pd
-import random
+import xgboost as xgb
 import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from hyperopt import hp, tpe, fmin, Trials
 
-# Create a list of customer IDs and names
-customer_ids = ['Cust1', 'Cust2', 'Cust3', 'Cust4', 'Cust5']
-customer_names = ['Alice', 'Bob', 'Charlie', 'David', 'Eve']
+# Load dataset
+iris = load_iris()
+X = iris.data
+y = iris.target
 
-# Create a dictionary to store the data
-data = {
-    'cust_id': random.choices(customer_ids, k=100),  # Generating 100 random customer IDs
-    'cust_name': random.choices(customer_names, k=100),  # Generating 100 random customer names
+# Split dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Define hyperparameter search space
+space = {
+    'max_depth': hp.quniform('max_depth', 3, 10, 1),
+    'learning_rate': hp.loguniform('learning_rate', np.log(0.01), np.log(0.3)),
+    'n_estimators': hp.quniform('n_estimators', 100, 1000, 1),
+    'gamma': hp.uniform('gamma', 0, 5),
+    'min_child_weight': hp.quniform('min_child_weight', 1, 10, 1),
+    'subsample': hp.uniform('subsample', 0.5, 1),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.5, 1)
 }
 
-# Add columns for each month from January to December with random float values or np.nan
-months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+# Define objective function
+def objective(params):
+    model = xgb.XGBClassifier(**params, objective='multi:softmax', num_class=len(np.unique(y)), random_state=42)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    return -accuracy  # Minimize negative accuracy (equivalent to maximizing accuracy)
 
-for month in months:
-    values = [random.uniform(0, 100) if random.random() > 0.2 else np.nan for _ in range(100)]  # 20% chance of np.nan
-    data[month] = values
+# Perform hyperparameter optimization
+trials = Trials()
+best = fmin(fn=objective,
+            space=space,
+            algo=tpe.suggest,
+            max_evals=50,
+            trials=trials,
+            rstate=np.random.RandomState(42))
 
-# Create the DataFrame
-df = pd.DataFrame(data)
-
-# Display the DataFrame
-print(df)
+# Print best hyperparameters
+print("Best Hyperparameters:")
+print(best)
