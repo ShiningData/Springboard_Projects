@@ -1,46 +1,35 @@
-import xgboost as xgb
+from sklearn.cluster import AgglomerativeClustering
+from fuzzywuzzy import fuzz
 import numpy as np
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from hyperopt import hp, tpe, fmin, Trials
 
-# Load dataset
-iris = load_iris()
-X = iris.data
-y = iris.target
+# Sample data
+bank_names = ['PNCBANK', 'PNC BANK NA', 'PNC', 'BANK OF AMERICA NA', 'BOFA', 'BANK OF AMERICA']
 
-# Split dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Compute similarity matrix
+def similarity_matrix(names):
+    length = len(names)
+    sim_matrix = np.zeros((length, length))
+    for i in range(length):
+        for j in range(length):
+            sim_matrix[i, j] = fuzz.token_sort_ratio(names[i], names[j])
+    # Normalize similarity values to [0, 1]
+    return sim_matrix / 100
 
-# Define hyperparameter search space
-space = {
-    'max_depth': hp.quniform('max_depth', 3, 10, 1),
-    'learning_rate': hp.loguniform('learning_rate', np.log(0.01), np.log(0.3)),
-    'n_estimators': hp.quniform('n_estimators', 100, 1000, 1),
-    'gamma': hp.uniform('gamma', 0, 5),
-    'min_child_weight': hp.quniform('min_child_weight', 1, 10, 1),
-    'subsample': hp.uniform('subsample', 0.5, 1),
-    'colsample_bytree': hp.uniform('colsample_bytree', 0.5, 1)
-}
+sim_matrix = similarity_matrix(bank_names)
 
-# Define objective function
-def objective(params):
-    model = xgb.XGBClassifier(**params, objective='multi:softmax', num_class=len(np.unique(y)), random_state=42)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    return -accuracy  # Minimize negative accuracy (equivalent to maximizing accuracy)
+# Perform clustering
+clustering = AgglomerativeClustering(n_clusters=None, affinity='precomputed', linkage='average', distance_threshold=0.8)
+clusters = clustering.fit_predict(1 - sim_matrix)  # 1 - sim_matrix because we need distance
 
-# Perform hyperparameter optimization
-trials = Trials()
-best = fmin(fn=objective,
-            space=space,
-            algo=tpe.suggest,
-            max_evals=50,
-            trials=trials,
-            rstate=np.random.RandomState(42))
+# Map each name to its cluster
+clustered_names = {}
+for idx, cluster_id in enumerate(clusters):
+    if cluster_id in clustered_names:
+        clustered_names[cluster_id].append(bank_names[idx])
+    else:
+        clustered_names[cluster_id] = [bank_names[idx]]
 
-# Print best hyperparameters
-print("Best Hyperparameters:")
-print(best)
+# Choose a representative name for each cluster (e.g., the longest name)
+canonical_names = [max(names, key=len) for names in clustered_names.values()]
+
+print("Canonical Bank Names:", canonical_names)
