@@ -15,15 +15,17 @@ grouped_df = df.groupBy("bank_name", "routing_number")
 # Create a struct of account_length and acc_num
 struct_df = grouped_df.agg(collect_list(struct("account_length", "acc_num")).alias("acc_info_list"))
 
-# Count the occurrences of each (account_length, acc_num) combination and create a map
-mapped_df = struct_df.withColumn("acc_num_counts",
-                                 create_map("account_length", count("acc_num")).alias("acc_length_counts"))
+# Extract the account lengths and acc_nums from the list of structs
+extracted_df = struct_df.select("bank_name", "routing_number", "acc_info_list.account_length", "acc_info_list.acc_num")
 
-# Select required columns
-result_df = mapped_df.select("bank_name", "routing_number", "acc_length_counts")
+# Group by bank_name, routing_number, and account_length
+grouped_counts_df = extracted_df.groupBy("bank_name", "routing_number", "account_length").agg(count("acc_num").alias("count"))
+
+# Create a map of account_length and count
+mapped_df = grouped_counts_df.groupBy("bank_name", "routing_number").agg(create_map("account_length", "count").alias("acc_length_counts"))
 
 # Show the result
-result_df.show(truncate=False)
+mapped_df.show(truncate=False)
 
 # Stop SparkSession
 spark.stop()
