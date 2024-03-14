@@ -10,19 +10,20 @@ spark = SparkSession.builder.appName("aggregate_accounts").getOrCreate()
 # Define the window spec
 windowSpec = Window.partitionBy('bank_name', 'routing_number', 'account_length')
 
-# Add a count of acc_num over the defined windowSpec
-df = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec))
+# Count the occurrences of each account_length within each window partition
+df_with_count = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec)) \
+                  .distinct()
 
-# Now, group by bank_name and routing_number and create the dictionary for acc_info
-df_new = df.groupBy('bank_name', 'routing_number') \
+# Group by bank_name and routing_number, and collect lists of account_length and acc_num_count
+grouped_df = df_with_count.groupBy('bank_name', 'routing_number') \
     .agg(
-        F.collect_list(
-            F.struct('account_length', 'acc_num_count')
-        ).alias('acc_info')
+        F.collect_list('account_length').alias('account_lengths'),
+        F.collect_list('acc_num_count').alias('acc_num_counts')
     )
 
-# Convert the list of structs to a dictionary
-df_new = df_new.withColumn('acc_info', F.create_map(F.col('acc_info')))
+# Create the map of account_length to acc_num_count for each bank_name and routing_number
+df_new = grouped_df.withColumn('acc_info', F.map_from_arrays('account_lengths', 'acc_num_counts')) \
+                   .drop('account_lengths', 'acc_num_counts')
 
 # Show the result
 df_new.show(truncate=False)
