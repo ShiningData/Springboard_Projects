@@ -1,25 +1,8 @@
-from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
-# Initialize a Spark session
-spark = SparkSession.builder.appName("aggregate_example").getOrCreate()
+# Define the window spec
+windowSpec = Window.partitionBy('account_length')
 
-# Sample data creation, in your case, it seems you already have a df
-df = spark.createDataFrame([
-    ("Bank A", "123456", 5, "111111"),
-    # ... other rows ...
-], ["bank_name", "routing_number", "account_length", "acc_num"])
-
-# Group by bank_name and routing_number, and then aggregate
-df_new = df.groupBy("bank_name", "routing_number") \
-    .agg(
-        F.collect_list(
-            F.struct("account_length", F.count("acc_num").over(Window.partitionBy("account_length")))
-        ).alias("acc_info")
-    )
-
-# Show the result
-df_new.show(truncate=False)
-
-# Stop the Spark session
-spark.stop()
+# Use the window spec in an aggregation
+df_new = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec))
