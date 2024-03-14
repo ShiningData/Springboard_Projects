@@ -1,8 +1,18 @@
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
-# Define the window spec
-windowSpec = Window.partitionBy('account_length')
+# Define the window spec to partition by bank_name, routing_number, and account_length
+windowSpec = Window.partitionBy('bank_name', 'routing_number', 'account_length')
 
-# Use the window spec in an aggregation
-df_new = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec))
+# Use the window spec with the count function over the defined windowSpec
+# and then group by bank_name and routing_number to collect the account_length and count pairs
+df_new = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec)) \
+    .groupBy('bank_name', 'routing_number') \
+    .agg(
+        F.collect_list(
+            F.struct('account_length', 'acc_num_count')
+        ).alias('acc_info')
+    )
+
+# Show the resulting DataFrame
+df_new.show(truncate=False)
