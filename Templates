@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, collect_list, struct, count, create_map
+from pyspark.sql.functions import col, count, struct, collect_list, create_map
 
 # Create SparkSession
 spark = SparkSession.builder \
@@ -9,23 +9,20 @@ spark = SparkSession.builder \
 # Assuming you have already loaded your dataset into a DataFrame called 'df'
 # If not, you can load it using spark.read.csv() or any other suitable method
 
-# Group by bank_name and routing_number
-grouped_df = df.groupBy("bank_name", "routing_number")
-
-# Create a struct of account_length and acc_num
-struct_df = grouped_df.agg(collect_list(struct("account_length", "acc_num")).alias("acc_info_list"))
-
-# Extract the account lengths and acc_nums from the list of structs
-extracted_df = struct_df.select("bank_name", "routing_number", "acc_info_list.account_length", "acc_info_list.acc_num")
-
 # Group by bank_name, routing_number, and account_length
-grouped_counts_df = extracted_df.groupBy("bank_name", "routing_number", "account_length").agg(count("acc_num").alias("count"))
+grouped_df = df.groupBy("bank_name", "routing_number", "account_length")
 
-# Create a map of account_length and count
-mapped_df = grouped_counts_df.groupBy("bank_name", "routing_number").agg(create_map("account_length", "count").alias("acc_length_counts"))
+# Aggregate by collecting a list of acc_num for each group
+agg_df = grouped_df.agg(collect_list("acc_num").alias("acc_num_list"))
+
+# Count the occurrences of acc_num for each account_length
+count_df = agg_df.withColumn("acc_length_counts", create_map("account_length", count("acc_num_list")))
+
+# Select required columns
+result_df = count_df.select("bank_name", "routing_number", "acc_length_counts")
 
 # Show the result
-mapped_df.show(truncate=False)
+result_df.show(truncate=False)
 
 # Stop SparkSession
 spark.stop()
