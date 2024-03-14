@@ -1,18 +1,31 @@
+from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
-# Define the window spec to partition by bank_name, routing_number, and account_length
+# Initialize Spark Session
+spark = SparkSession.builder.appName("aggregate_accounts").getOrCreate()
+
+# Assuming 'df' is your original DataFrame
+
+# Define the window spec
 windowSpec = Window.partitionBy('bank_name', 'routing_number', 'account_length')
 
-# Use the window spec with the count function over the defined windowSpec
-# and then group by bank_name and routing_number to collect the account_length and count pairs
-df_new = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec)) \
-    .groupBy('bank_name', 'routing_number') \
+# Add a count of acc_num over the defined windowSpec
+df = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec))
+
+# Now, group by bank_name and routing_number and create the dictionary for acc_info
+df_new = df.groupBy('bank_name', 'routing_number') \
     .agg(
         F.collect_list(
             F.struct('account_length', 'acc_num_count')
         ).alias('acc_info')
     )
 
-# Show the resulting DataFrame
+# Convert the list of structs to a dictionary
+df_new = df_new.withColumn('acc_info', F.create_map(F.col('acc_info')))
+
+# Show the result
 df_new.show(truncate=False)
+
+# Stop the Spark session
+spark.stop()
