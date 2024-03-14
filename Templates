@@ -1,32 +1,28 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, collect_list, struct, count
+from pyspark.sql.functions import col, collect_list, struct, count, create_map
 
-# Initialize SparkSession
+# Create SparkSession
 spark = SparkSession.builder \
-    .appName("Bank Account Analysis") \
+    .appName("AccNumCounts") \
     .getOrCreate()
 
-# Sample data
-data = [
-    ("Bank A", "123456", 5, "111111"),
-    ("Bank A", "123456", 5, "222222"),
-    ("Bank A", "123456", 7, "333333"),
-    ("Bank B", "789012", 5, "444444"),
-    ("Bank B", "789012", 7, "555555"),
-    ("Bank B", "789012", 7, "666666")
-]
+# Assuming you have already loaded your dataset into a DataFrame called 'df'
+# If not, you can load it using spark.read.csv() or any other suitable method
 
-# Create DataFrame
-df = spark.createDataFrame(data, ["bank_name", "routing_number", "account_length", "acc_num"])
+# Group by bank_name and routing_number
+grouped_df = df.groupBy("bank_name", "routing_number")
 
-# Group by bank_name and routing_number, and create a column with a dictionary of counts of acc_num for associated account_length
-result_df = df.groupby("bank_name", "routing_number") \
-    .agg(collect_list(struct("account_length", "acc_num")).alias("account_info")) \
-    .select("bank_name", "routing_number", 
-            {str(i[0]): count(i[1]).alias("count") for i in df.select("account_length").distinct().collect()}) \
-    .withColumn("account_info", col("account_info").cast("string"))
+# Create a struct of account_length and acc_num
+struct_df = grouped_df.agg(collect_list(struct("account_length", "acc_num")).alias("acc_info_list"))
 
-# Show result
+# Count the occurrences of each (account_length, acc_num) combination and create a map
+mapped_df = struct_df.withColumn("acc_num_counts",
+                                 create_map("account_length", count("acc_num")).alias("acc_length_counts"))
+
+# Select required columns
+result_df = mapped_df.select("bank_name", "routing_number", "acc_length_counts")
+
+# Show the result
 result_df.show(truncate=False)
 
 # Stop SparkSession
