@@ -1,29 +1,33 @@
-Subject: Completion of Real Data Model and Metrics
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, collect_list, struct, count
 
-Dear [Recipient's Name],
+# Initialize SparkSession
+spark = SparkSession.builder \
+    .appName("Bank Account Analysis") \
+    .getOrCreate()
 
-I hope this email finds you well. I'm pleased to inform you that our team has successfully completed building the model using real data and have obtained the associated performance metrics. Additionally, we have prepared a slide showcasing the model infrastructure and performance metrics, which I believe will provide valuable insights into our progress.
+# Sample data
+data = [
+    ("Bank A", "123456", 5, "111111"),
+    ("Bank A", "123456", 5, "222222"),
+    ("Bank A", "123456", 7, "333333"),
+    ("Bank B", "789012", 5, "444444"),
+    ("Bank B", "789012", 7, "555555"),
+    ("Bank B", "789012", 7, "666666")
+]
 
-**Model Infrastructure:**
+# Create DataFrame
+df = spark.createDataFrame(data, ["bank_name", "routing_number", "account_length", "acc_num"])
 
-Our model architecture comprises [brief description of the architecture, e.g., deep neural network with several layers] tailored to handle the intricacies of the dataset. We have implemented various preprocessing techniques to ensure optimal data representation and feature engineering.
+# Group by bank_name and routing_number, and create a column with a dictionary of counts of acc_num for associated account_length
+result_df = df.groupby("bank_name", "routing_number") \
+    .agg(collect_list(struct("account_length", "acc_num")).alias("account_info")) \
+    .select("bank_name", "routing_number", 
+            {str(i[0]): count(i[1]).alias("count") for i in df.select("account_length").distinct().collect()}) \
+    .withColumn("account_info", col("account_info").cast("string"))
 
-**Performance Metrics:**
+# Show result
+result_df.show(truncate=False)
 
-The performance metrics we have obtained include [list of metrics, e.g., accuracy, precision, recall, F1-score, ROC AUC, etc.]. These metrics provide a comprehensive evaluation of the model's effectiveness in capturing the underlying patterns in the real data.
-
-**Next Steps:**
-
-Now that we have completed this phase, we are ready to proceed with testing the synthetic data generation tool using our model. Before we move forward, I wanted to check if there are any specific additional documentation or information requirements for the next step. We aim to ensure that our collaboration proceeds smoothly and efficiently.
-
-**Ready to Move:**
-
-Please let us know if there are any additional resources or assistance required from our end. We are excited about the potential of this collaboration and eager to move forward with testing the synthetic data.
-
-Looking forward to your feedback and the next steps.
-
-Best regards,
-
-[Your Name]  
-[Your Position]  
-[Your Contact Information]
+# Stop SparkSession
+spark.stop()
