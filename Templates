@@ -1,31 +1,27 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.window import Window
 
 # Initialize Spark Session
 spark = SparkSession.builder.appName("aggregate_accounts").getOrCreate()
 
 # Assuming 'df' is your original DataFrame
 
-# Define the window spec
-windowSpec = Window.partitionBy('bank_name', 'routing_number', 'account_length')
+# First, we'll create a grouped DataFrame to count acc_num per bank_name, routing_number, and account_length
+counts_df = df.groupBy('bank_name', 'routing_number', 'account_length') \
+              .agg(F.count('acc_num').alias('acc_num_count'))
 
-# Count the occurrences of each account_length within each window partition
-df_with_count = df.withColumn('acc_num_count', F.count('acc_num').over(windowSpec)) \
-                  .distinct()
+# Now, we will group by bank_name and routing_number, and collect the account_length and acc_num_count
+# into two separate lists
+grouped_df = counts_df.groupBy('bank_name', 'routing_number') \
+                      .agg(
+                          F.collect_list('account_length').alias('account_lengths'),
+                          F.collect_list('acc_num_count').alias('acc_num_counts')
+                      )
 
-# Group by bank_name and routing_number, and collect lists of account_length and acc_num_count
-grouped_df = df_with_count.groupBy('bank_name', 'routing_number') \
-    .agg(
-        F.collect_list('account_length').alias('account_lengths'),
-        F.collect_list('acc_num_count').alias('acc_num_counts')
-    )
+# Now, create a map from the collected lists
+df_new = grouped_df.withColumn('acc_info', F.map_from_arrays('account_lengths', 'acc_num_counts'))
 
-# Create the map of account_length to acc_num_count for each bank_name and routing_number
-df_new = grouped_df.withColumn('acc_info', F.map_from_arrays('account_lengths', 'acc_num_counts')) \
-                   .drop('account_lengths', 'acc_num_counts')
-
-# Show the result
+# Show the resulting DataFrame
 df_new.show(truncate=False)
 
 # Stop the Spark session
