@@ -1,28 +1,43 @@
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
+from pyspark.sql.functions import col, expr, when
 
-# Initialize Spark Session
-spark = SparkSession.builder.appName("aggregate_accounts").getOrCreate()
+# Create SparkSession
+spark = SparkSession.builder \
+    .appName("Merge Datasets and Update Dictionary") \
+    .getOrCreate()
 
-# Assuming 'df' is your original DataFrame
+# Sample data for demonstration
+data1 = [("123456789", {"11": 40, "5": 15, "4": 12}),
+         ("987654321", {"10": 20, "6": 10, "4": 8})]
+data2 = [("123456789", {"11": 20, "3": 5}),
+         ("987654321", {"5": 25, "4": 15})]
 
-# First, we'll create a grouped DataFrame to count acc_num per bank_name, routing_number, and account_length
-counts_df = df.groupBy('bank_name', 'routing_number', 'account_length') \
-              .agg(F.count('acc_num').alias('acc_num_count'))
+# Define schemas
+schema1 = ["routing_number", "bank_info"]
+schema2 = ["routing_number", "bank_info"]
 
-# Now, we will group by bank_name and routing_number, and collect the account_length and acc_num_count
-# into two separate lists
-grouped_df = counts_df.groupBy('bank_name', 'routing_number') \
-                      .agg(
-                          F.collect_list('account_length').alias('account_lengths'),
-                          F.collect_list('acc_num_count').alias('acc_num_counts')
-                      )
+# Create DataFrames
+df1 = spark.createDataFrame(data1, schema=schema1)
+df2 = spark.createDataFrame(data2, schema=schema2)
 
-# Now, create a map from the collected lists
-df_new = grouped_df.withColumn('acc_info', F.map_from_arrays('account_lengths', 'acc_num_counts'))
+# Perform the merge and update
+merged_df = df1.join(df2, "routing_number", "outer") \
+    .select(
+        df1.routing_number,
+        expr("""
+            map_concat(
+                coalesce(df1.bank_info, map()),
+                coalesce(df2.bank_info, map())
+            )
+        """).alias("bank_info")
+    ) \
+    .groupBy("routing_number") \
+    .agg(
+        expr("map_concat_agg(bank_info)").alias("bank_info")
+    )
 
-# Show the resulting DataFrame
-df_new.show(truncate=False)
+# Show the result
+merged_df.show(truncate=False)
 
-# Stop the Spark session
+# Stop SparkSession
 spark.stop()
