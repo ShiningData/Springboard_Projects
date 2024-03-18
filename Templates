@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, expr, map_concat, coalesce, map_concat_agg
+from pyspark.sql.functions import col, expr, map_concat, coalesce, collect_list, create_map
 
 # Create SparkSession
 spark = SparkSession.builder \
@@ -24,11 +24,20 @@ df2 = spark.createDataFrame(data2, schema=schema2)
 merged_df = df1.join(df2, "routing_number", "outer") \
     .select(
         col("routing_number"),
-        expr("map_concat(coalesce(df1.bank_info, map()), coalesce(df2.bank_info, map()))").alias("bank_info")
-    ) \
-    .groupBy("routing_number") \
-    .agg(
-        expr("map_concat_agg(bank_info)").alias("bank_info")
+        expr("""
+            aggregate(
+                concat(
+                    collect_list(coalesce(df1.bank_info, map())),
+                    collect_list(coalesce(df2.bank_info, map()))
+                ),
+                map(),
+                (acc, x) -> aggregate(
+                    x,
+                    acc,
+                    (a, y) -> map_concat(a, y, (k, v1, v2) -> coalesce(v1, 0) + coalesce(v2, 0))
+                )
+            )
+        """).alias("bank_info")
     )
 
 # Show the result
