@@ -1,22 +1,24 @@
-def merge_dicts(dict1, dict2):
-    merged_dict = dict1.copy()  # Make a copy of the first dictionary
-    
-    for key, value in dict2.items():
-        if key in merged_dict:
-            # If the key exists in both dictionaries, add the values
-            merged_dict[key] += value
-        else:
-            # If the key doesn't exist in the first dictionary, add it
-            merged_dict[key] = value
-    
-    return merged_dict
+Subject: Completion of Task: Lab Table Creation and Sample Data Presentation
 
-# Example dictionaries
-dict1 = {"a": 10, "b": 20, "c": 30}
-dict2 = {"b": 5, "c": 15, "d": 25}
+Dear [Manager's Name],
 
-# Merge the dictionaries
-merged_dict = merge_dicts(dict1, dict2)
+I hope this email finds you well.
 
-# Print the merged dictionary
-print("Merged Dictionary:", merged_dict)
+I am writing to inform you that I have successfully completed the task you assigned regarding the creation of the lab table. As per your request, I have compiled the data of ACH, Wire, and RTP routing numbers and account numbers into a single Excel spreadsheet. The table consists of 36,023 rows and 4 columns.
+
+To give you a glimpse of the data structure, I have included a sample portion below:
+
+| Routing Number | Account Number | Acc_Num_Lengths | Acc_Info                        |
+|----------------|----------------|-----------------|---------------------------------|
+| 123456         | 987654321      | 9               | {"9": 1}                        |
+| 234567         | 123456789      | 9               | {"9": 1}                        |
+| ...            | ...            | ...             | ...                             |
+
+As you can see, the table encompasses routing numbers, account numbers, account number lengths (calculated after removing preceding zeroes), and a dictionary named "Acc_Info". This dictionary provides unique account lengths for each routing number along with the count of accounts for those account number lengths.
+
+I have attached the Excel spreadsheet containing the complete lab table to this email for your review. Please feel free to reach out if you have any questions or require further clarification on the data.
+
+Thank you for entrusting me with this task. I look forward to your feedback.
+
+Best regards,
+[Your Name]
