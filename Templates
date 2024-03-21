@@ -2,20 +2,23 @@ import pandas as pd
 import re
 
 # Sample DataFrame
-data = {'financial_inst_name': ['US BANK CU', 'US BANK Credit Union', 'ABC CU', 'XYZ Credit Union', 'US BANK FCU']}
+data = {'financial_inst_name': ['US BANK FCU', 'US BANK Federal Credit Union', 'BOAFCU', 'XYZ Federal Credit Union', 'ABC FCU']}
 df = pd.DataFrame(data)
 
-# Define a function to replace 'CU' with 'Credit Union' only if it's separate
-def replace_cu(text):
-    # Use regular expression to find 'CU' as a separate word
-    # Ensure that 'CU' is not part of another word (e.g., 'FCU')
-    if re.search(r'\bCU\b', text) and not re.search(r'\bFCU\b', text):
-        # Replace 'CU' with 'Credit Union'
-        return re.sub(r'\bCU\b', 'Credit Union', text)
+# Define a function to replace 'FCU' with 'Federal Credit Union' only if it's a separate word
+def replace_fcu(text):
+    # Use regular expression to find 'FCU' or 'Federal Credit Union' as separate words
+    # Ensure that 'FCU' is not part of another word
+    if re.search(r'\bFCU\b', text) and not re.search(r'\wFCU\w', text):
+        # Replace 'FCU' with 'Federal Credit Union'
+        return re.sub(r'\bFCU\b', 'Federal Credit Union', text)
+    elif re.search(r'\bFederal Credit Union\b', text):
+        # Replace 'Federal Credit Union' with itself to ensure consistency
+        return re.sub(r'\bFederal Credit Union\b', 'Federal Credit Union', text)
     else:
         return text
 
 # Apply the function to the 'financial_inst_name' column
-df['financial_inst_name'] = df['financial_inst_name'].apply(replace_cu)
+df['financial_inst_name'] = df['financial_inst_name'].apply(replace_fcu)
 
 print(df)
