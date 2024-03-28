@@ -2,23 +2,19 @@ import pandas as pd
 import re
 
 # Sample DataFrame
-data = {'financial_inst_name': ['US BANK FCU', 'US BANK Federal Credit Union', 'BOAFCU', 'XYZ Federal Credit Union', 'ABC FCU']}
+data = {
+    'bank_name': ['TEXASCREDIT UNION', 'ABC Bank', 'DEF CREDIT UNION', 'GHI Bank'],
+    'formatted_bank_name': ['TEXASCREDIT UNION', 'ABC Bank', 'DEF CREDIT UNION', 'GHI Bank']
+}
+
 df = pd.DataFrame(data)
 
-# Define a function to replace 'FCU' with 'Federal Credit Union' only if it's a separate word
-def replace_fcu(text):
-    # Use regular expression to find 'FCU' or 'Federal Credit Union' as separate words
-    # Ensure that 'FCU' is not part of another word
-    if re.search(r'\bFCU\b', text) and not re.search(r'\wFCU\w', text):
-        # Replace 'FCU' with 'Federal Credit Union'
-        return re.sub(r'\bFCU\b', 'Federal Credit Union', text)
-    elif re.search(r'\bFederal Credit Union\b', text):
-        # Replace 'Federal Credit Union' with itself to ensure consistency
-        return re.sub(r'\bFederal Credit Union\b', 'Federal Credit Union', text)
-    else:
-        return text
+# Function to separate 'CREDIT UNION' if not separately written
+def separate_credit_union(name):
+    # Use regular expression to insert space before 'CREDIT UNION' if not separately written
+    return re.sub(r'(?<!\bCREDIT) UNION\b', ' CREDIT UNION', name)
 
-# Apply the function to the 'financial_inst_name' column
-df['financial_inst_name'] = df['financial_inst_name'].apply(replace_fcu)
+# Apply the function to the 'bank_name' column
+df['bank_name'] = df['bank_name'].apply(separate_credit_union)
 
 print(df)
