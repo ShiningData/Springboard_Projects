@@ -1,20 +1,6 @@
-import pandas as pd
-import re
-
-# Sample DataFrame
-data = {
-    'bank_name': ['TEXASCREDIT UNION', 'ABC Bank', 'DEF CREDIT UNION', 'GHI Bank'],
-    'formatted_bank_name': ['TEXASCREDIT UNION', 'ABC Bank', 'DEF CREDIT UNION', 'GHI Bank']
-}
-
-df = pd.DataFrame(data)
-
-# Function to separate 'CREDIT UNION' if not separately written
-def separate_credit_union(name):
-    # Use regular expression to insert space before 'CREDIT UNION' if not separately written
-    return re.sub(r'(?<!\bCREDIT) UNION\b', ' CREDIT UNION', name)
-
-# Apply the function to the 'bank_name' column
-df['bank_name'] = df['bank_name'].apply(separate_credit_union)
-
-print(df)
+This table illustrates a distribution of account number lengths corresponding to routing numbers, generated from ACH, Wire, and RTP transactions, both incoming and outgoing, as of January 1st, 2020. The sample data shown provides insight into the typical configurations.
+Displayed routing numbers are in their original form, whereas account numbers have been modified to exclude any leading zeros.
+The 'acc_num_lengths' column enumerates the possible lengths of account numbers associated with each routing number, after omitting leading zeros.
+The 'acc_num_counts' column reveals the frequency of each account number length documented in the 'acc_num_lengths' column.
+The 'acc_info' reflects a consolidated dictionary representation of 'acc_num_lengths' and 'acc_num_counts'.
+The dataset encompasses 36,023 distinct routing numbers, with a detailed breakdown of their corresponding account number lengths featured on the left-hand side of the table.
