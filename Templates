@@ -1,3 +1,10 @@
+Amazon Textract is a machine learning (ML) service that automatically extracts text, handwriting, and data from scanned documents. It goes beyond simple optical character recognition (OCR) to identify, understand, and extract data from forms and tables. With Amazon Textract, you pay only for what you use. There are no minimum fees and no upfront commitments. Amazon Textract charges only for pages processed whether you extract text, text with tables, form data, queries or process invoices and identity documents. Analyze Document API for Forms extracts data such as key-value pairs (“First Name” and associated value, such as “Jane Smith”). It also uses OCR technology to extract all the text and handwriting from a document.
+
+
+
+
+
+
 Based on the information gathered and general knowledge, here are the top 10 open-source Python packages for OCR solutions, aimed at extracting text from images like checks, including names, addresses, amounts, dates, etc. These packages offer various levels of OCR capabilities, from basic text extraction to advanced document analysis:
 
 1. **PyTesseract**: Python wrapper for Google's Tesseract-OCR Engine. It allows for straightforward OCR capabilities in Python applications.
