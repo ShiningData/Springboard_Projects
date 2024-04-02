@@ -1,6 +1,31 @@
-This table illustrates a distribution of account number lengths corresponding to routing numbers, generated from ACH, Wire, and RTP transactions, both incoming and outgoing, as of January 1st, 2020. The sample data shown provides insight into the typical configurations.
-Displayed routing numbers are in their original form, whereas account numbers have been modified to exclude any leading zeros.
-The 'acc_num_lengths' column enumerates the possible lengths of account numbers associated with each routing number, after omitting leading zeros.
-The 'acc_num_counts' column reveals the frequency of each account number length documented in the 'acc_num_lengths' column.
-The 'acc_info' reflects a consolidated dictionary representation of 'acc_num_lengths' and 'acc_num_counts'.
-The dataset encompasses 36,023 distinct routing numbers, with a detailed breakdown of their corresponding account number lengths featured on the left-hand side of the table.
+For extracting text from check images, including potentially handwritten or typed names, dates, check numbers, account numbers, routing numbers, and amounts, the OCR tools need to be versatile in handling both printed and handwritten text, with high accuracy and the capability to understand complex layouts typical in financial documents. Here's an updated list focusing on these requirements:
+
+1. **Tesseract-OCR with pytesseract wrapper**: While Tesseract is strong in typed text recognition, its accuracy for handwritten text varies. However, using custom training with check-specific data can improve its performance for such tasks.
+   - [PyTesseract GitHub](https://github.com/madmaze/pytesseract)
+
+2. **EasyOCR**: Known for its ease of use and support for multiple languages, EasyOCR can handle a wide variety of text in images, including complex characters. It's robust for printed text and can be experimented with for handwritten notes, especially when pre-processed to enhance text clarity.
+   - [EasyOCR GitHub](https://github.com/JaidedAI/EasyOCR)
+
+3. **kraken**: Specializes in historical and challenging document analysis and includes tools for line segmentation. Kraken’s neural network models, trained on diverse datasets, might offer utility in deciphering handwritten elements on checks.
+   - [kraken GitHub](https://github.com/mittagessen/kraken)
+
+4. **mmocr**: An open-source toolbox for text detection and recognition that offers a wide range of pre-trained models suitable for various OCR tasks, including those that require detecting and deciphering both printed and handwritten text.
+   - [mmocr GitHub](https://github.com/open-mmlab/mmocr)
+
+5. **docTR**: A Document Text Recognition tool designed for OCR and document analysis tasks. Given its versatility and the backing of deep learning, docTR could be useful for checks where both printed and handwritten text extraction is needed.
+   - [docTR GitHub](https://github.com/mindee/doctr)
+
+6. **PaddleOCR**: Developed by PaddlePaddle, this tool provides extensive support for text detection and recognition, including handwritten text, through deep learning models. It is known for its high accuracy in multilingual OCR.
+   - [PaddleOCR GitHub](https://github.com/PaddlePaddle/PaddleOCR)
+
+7. **CalliScan**: A project or tool specifically designed for handwritten text recognition could be highly beneficial for extracting handwritten information from checks, although a direct link or official repository might not be readily available, focusing on similar technologies or custom development based on deep learning for handwritten OCR is recommended.
+
+8. **Calamari-OCR**: Focused on Optical Character Recognition using deep learning, Calamari offers state-of-the-art accuracy for printed text and has shown promise in handwritten text recognition as well, making it a candidate for processing checks.
+   - [Calamari GitHub](https://github.com/Calamari-OCR/calamari)
+
+9. **Keras-OCR**: A package built for real-world OCR tasks, leveraging the power of Keras and TensorFlow to provide a toolkit for detecting and recognizing text. With customization, it could be adapted for the specifics of check processing.
+   - [Keras-OCR GitHub](https://github.com/faustomorales/keras-ocr)
+
+10. **Handwritten Text Recognition with TensorFlow**: While not a package but a methodology, utilizing TensorFlow to build a custom model trained on a dataset of handwritten checks could yield the highest accuracy for specific use cases like extracting text from checks.
+   
+For projects focusing on extracting data from checks, combining one or more of these tools with custom preprocessing steps (such as image enhancement and segmentation) and post-processing (such as validation of check details against predefined formats) can significantly improve accuracy and reliability. Leveraging deep learning models trained on datasets that include images of checks could also enhance the performance for both printed and handwritten text recognition tasks.
