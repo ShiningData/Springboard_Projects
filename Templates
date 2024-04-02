@@ -1,3 +1,39 @@
+Based on the information gathered and general knowledge, here are the top 10 open-source Python packages for OCR solutions, aimed at extracting text from images like checks, including names, addresses, amounts, dates, etc. These packages offer various levels of OCR capabilities, from basic text extraction to advanced document analysis:
+
+1. **PyTesseract**: Python wrapper for Google's Tesseract-OCR Engine. It allows for straightforward OCR capabilities in Python applications.
+   - [PyTesseract GitHub](https://github.com/madmaze/pytesseract)
+
+2. **OCRopus**: A collection of OCR tools focusing on document analysis and recognition, built to extend the functionalities of Tesseract with Python.
+   - [OCRopus GitHub](https://github.com/tmbdev/ocropy)
+
+3. **kraken**: A turn-key OCR system designed for historical document analysis, it extends OCRopus's functionalities with a focus on line segmentation and includes pre-trained models.
+   - [kraken GitHub](https://github.com/mittagessen/kraken)
+
+4. **EasyOCR**: A straightforward OCR tool that supports over 80 languages and includes a built-in model for a wide range of character recognition, including complex scripts.
+   - [EasyOCR GitHub](https://github.com/JaidedAI/EasyOCR)
+
+5. **mmocr**: An open-source toolbox for text detection, recognition, and understanding, it offers a comprehensive solution for OCR tasks with pre-trained models.
+   - [mmocr GitHub](https://github.com/open-mmlab/mmocr)
+
+6. **docTR**: Document Text Recognition (docTR) by Mindee is a seamless, high-performing, and accessible library for OCR and document understanding tasks.
+   - [docTR GitHub](https://github.com/mindee/doctr)
+
+7. **PyMuPDF (fitz)**: While primarily focused on PDF manipulation, PyMuPDF offers strong capabilities for text extraction and analysis, useful in OCR workflows.
+   - [PyMuPDF GitHub](https://github.com/pymupdf/PyMuPDF)
+
+8. **Textract**: A Python package that extracts text from any document, including images, leveraging OCR engines like Tesseract under the hood for image-based documents.
+   - [Textract GitHub](https://github.com/deanmalmgren/textract)
+
+9. **PaddleOCR**: Offers rich image text detection and recognition models, including a handy toolset for OCR solutions. It supports multilingual recognition and is developed by PaddlePaddle.
+   - [PaddleOCR GitHub](https://github.com/PaddlePaddle/PaddleOCR)
+
+10. **CRAFT-pytorch**: Character Region Awareness for Text Detection provides a powerful text detection model, which can be the first step in an OCR pipeline to localize text regions in images.
+    - [CRAFT GitHub](https://github.com/clovaai/CRAFT-pytorch)
+
+These packages provide a broad spectrum of OCR capabilities, from basic text recognition to complex document understanding, catering to various needs and levels of complexity in OCR projects.
+
+
+
 For extracting text from check images, including potentially handwritten or typed names, dates, check numbers, account numbers, routing numbers, and amounts, the OCR tools need to be versatile in handling both printed and handwritten text, with high accuracy and the capability to understand complex layouts typical in financial documents. Here's an updated list focusing on these requirements:
 
 1. **Tesseract-OCR with pytesseract wrapper**: While Tesseract is strong in typed text recognition, its accuracy for handwritten text varies. However, using custom training with check-specific data can improve its performance for such tasks.
