@@ -84,8 +84,12 @@ Certainly! Here's a concise summary for the Naive Model suitable for the Model I
 
 ---
 
-**Naive Model Summary:**
+Absolutely, here's a succinct summary for the Seasonal Naive Model:
 
-The Naive Model is a fundamental forecasting approach characterized by its simplicity and efficiency. It assumes that the most recent observation is the best reflection of the future; thus, it projects the last known value into the next time periods as the forecast. This model is particularly effective for stable time series where patterns and trends remain consistent over time.
+---
 
-In the context of PNC's DSI-Commercial Card Control Center, the Naive Model serves as a baseline against which the performance of more sophisticated models can be compared. Its utility lies in its speed and the minimal computation required, making it a valuable tool for quick estimates or when detailed historical data is not available. While it may not capture complex patterns or account for variability in data, it provides a reference point for understanding more complex forecasting outcomes within the ensemble of predictive models.
+**Seasonal Naive Model Summary:**
+
+The Seasonal Naive Model extends the simplicity of the Naive Model by incorporating seasonal patterns. It projects the value from the last observed season cycle into the future, assuming that seasonal effects will repeat themselves. This model is adept at handling data with clear and consistent seasonal fluctuations.
+
+For the DSI-Commercial Card Control Center at PNC, the Seasonal Naive Model offers a straightforward method to account for seasonal trends in commercial card usage, such as quarterly spending habits or holiday effects. By using the most recent seasonal period as the forecast for the same season in the future, it provides a benchmark for seasonal adjustment that more complex models can build upon. While it doesn’t accommodate non-seasonal changes, its value lies in the ability to quickly generate seasonally adjusted forecasts, serving as a foundation in the model ensemble for analyzing and anticipating seasonal demand patterns in commercial card transactions.
