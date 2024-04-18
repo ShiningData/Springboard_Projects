@@ -1,20 +1,64 @@
-Subject: Follow-up Meeting Request: Business Problem Discussion
+import requests
+import zipfile
+import pandas as pd
 
-Dear [Manager's Name],
 
-I hope this email finds you well.
+def get_canada_provinces_cities():
+    # Download and extract the dataset
+    url = "http://download.geonames.org/export/zip/CA.zip"
+    r = requests.get(url)
+    with open("CA.zip", "wb") as f:
+        f.write(r.content)
 
-I'm reaching out to request a follow-up meeting regarding the business problem discussion we had in our session two weeks ago. As per our previous conversation, I've been in touch with [Client Member's Name] to gather essential details and requirements from their end.
+    with zipfile.ZipFile("CA.zip", "r") as zip_ref:
+        zip_ref.extractall("CA")
 
-During my discussion with [Client Member's Name], we identified the need for clarification on each feature calculation logic within the requested table and access to their data. To proceed with our analysis and solution planning, we require the finalized calculation logic from their team.
+        
+def get_usa_states_cities():
+    # Download and extract the dataset
+    url = "http://download.geonames.org/export/zip/US.zip"
+    r = requests.get(url)
+    with open("US.zip", "wb") as f:
+        f.write(r.content)
 
-I've already collaborated with my colleague and the data engineering team to strategize our approach based on the information provided. However, to ensure we're aligned and prepared to move forward, it's imperative that we review the calculation logic in our upcoming meeting.
+    with zipfile.ZipFile("US.zip", "r") as zip_ref:
+        zip_ref.extractall("US")
+        
 
-Could we schedule a follow-up meeting at your earliest convenience to discuss this matter further? It's crucial that the calculation logic is finalized before our meeting to maximize its effectiveness and ensure we can proceed seamlessly with our plans.
+def country_state_city_table():      
+    column_names = [
+                   "country_code",
+                   "postal_code",
+                   "city",
+                   "state",
+                   "state_code",
+                   "county",
+                   "county_code",
+                   "admin_name3",
+                   "admin_code3",
+                   "latitude",
+                   "longitude",
+                   "accuracy"
+    ]
+    
+    usa_df = pd.read_csv("US/US.txt", delimiter="\t", names=column_names, usecols=["country_code", "state", "city", "state_code"])
+    ca_df = pd.read_csv("CA/CA.txt", delimiter="\t", names=column_names, usecols=["country_code", "state", "city", "state_code"])
+    
+    result_df = pd.concat([usa_df, ca_df], axis=0)
+    
+    result_df.to_csv("country_state_city.csv", index=False)
 
-Please let me know your availability, and I'll coordinate with [Client Member's Name] to ensure their team is ready to share the required details.
+    return result_df
 
-Thank you for your attention to this matter. I look forward to our continued collaboration and progress on this project.
 
-Best regards,
-[Your Name]
+def main():
+    
+    get_canada_provinces_cities()
+    
+    get_usa_states_cities()
+    
+    result_df = country_state_city_table()
+    
+    
+if __name__ == "__main__":
+    main()
