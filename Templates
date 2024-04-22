@@ -1,39 +1,45 @@
+import pandas as pd
 import re
 
-def standardize_bank_name(bank_name):
-    # List of keywords that might merge with other words
-    keywords = ["Federal", "Credit", "Union", "Bank"]
+def fullfill_credit_union_info(df, col="financial_inst_name"):
+    # Define patterns and replacements
+    patterns = {
+        r"\bCU\b": "CREDIT UNION",
+        r"\bC U\b": "CREDIT UNION",
+        r"\bCREDIT U\b": "CREDIT UNION",
+        r"\bCREDITS\b": "CREDIT",
+        r"\bCR UN\b": "CREDIT UNION",
+        r"\bCR UNION\b": "CREDIT UNION",
+        r"\bCR UNION\b": "CREDIT UNION",
+        r"\bCRED UN\b": "CREDIT UNION",
+        r"\bCRED UNION\b": "CREDIT UNION",
+        r"\bCR UN\b": "CREDIT UNION",
+        r"\bCR UN\b": "CREDIT UNION",
+        r"\bCRED UNIONS\b": "CREDIT UNIONS",
+        r"\bFED CRED UNION\b": "FEDERAL CREDIT UNION",
+        r"\bFED CRED UN\b": "FEDERAL CREDIT UNION",
+        r"\bFEDERAL CRED UNION\b": "FEDERAL CREDIT UNION",
+        r"\bFEDERAL CRED UN\b": "FEDERAL CREDIT UNION",
+        r"\bFED CREDIT UN\b": "FEDERAL CREDIT UNION",
+        r"\bFEDERAL CU\b": "FEDERAL CREDIT UNION",
+        r"\bFEDERAL C U\b": "FEDERAL CREDIT UNION",
+        r"\bFED CU\b": "FEDERAL CREDIT UNION",
+        r"\bFED C U\b": "FEDERAL CREDIT UNION",
+        r"\bFEDERALCR\b": "FEDERAL CREDIT",
+        r"\bFEDCR\b": "FEDERAL CREDIT",
+        # Add more patterns as necessary
+    }
     
-    # Split the bank name into words
-    words = re.split(r'(\s+)', bank_name)  # Keep spaces to rejoin later
-
-    # Check each keyword for merging issues
-    for keyword in keywords:
-        for i, word in enumerate(words):
-            # If the word ends with the keyword but is longer than the keyword
-            if word.endswith(keyword) and len(word) > len(keyword) and not word[:-len(keyword)].isspace():
-                # Split the word into two parts: before the keyword and the keyword
-                part1 = word[:-len(keyword)]
-                part2 = word[-len(keyword):]
-                words[i] = part1 + ' ' + part2  # Insert a space between them
-
-    # Reconstruct the bank name from the words list
-    corrected_name = ''.join(words)
-
-    # Optional: Rearrange words if needed
-    # Split again to check order
-    word_list = corrected_name.split()
+    # Function to apply the replacements
+    def replace_patterns(text, patterns):
+        for pat, repl in patterns.items():
+            text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+        return text
     
-    # Check if any keyword is at the end and should be at the start
-    for keyword in keywords:
-        if keyword in word_list:
-            # Move the keyword to the front
-            keyword_index = word_list.index(keyword)
-            word_list.insert(0, word_list.pop(keyword_index))
+    # Apply the function across the specified column
+    df[col] = df[col].apply(lambda x: replace_patterns(x, patterns))
     
-    # Return the rearranged name
-    return ' '.join(word_list)
+    return df
 
-# Example Usage
-print(standardize_bank_name("Black ChimneyFederal Credit Union"))  # Chimney Black Federal Credit Union
-print(standardize_bank_name("Red Flag Credit Union"))  # Red Flag Credit Union
+# Assume 'df' is your dataframe and 'financial_inst_name' is the column with the bank names
+# df = fullfill_credit_union_info(df, 'financial_inst_name')
