@@ -2,30 +2,23 @@ import pandas as pd
 import re
 
 def fullfill_credit_union_info(df, col="financial_inst_name"):
-    # Define patterns and replacements
-    patterns = [
-        # Replace 'FED CRED UNION', 'FED CRED UN', or similar with 'FEDERAL CREDIT UNION'
-        (r"\bFED\s*(CRED|CREDIT)?\s*(UNION|UN)?\b", "FEDERAL CREDIT UNION"),
-        # Replace standalone 'CREDIT UN' or 'CRED UN' with 'CREDIT UNION'
-        (r"\b(CRED|CREDIT)\s+(UN(ION)?)\b", "CREDIT UNION"),
-        # Replace any standalone 'FED' with 'FEDERAL'
-        (r"(?<!FEDERAL )\bFED\b", "FEDERAL"),
-        # Handle individual 'CREDIT' and 'UNION' and other abbreviations
-        (r"\bCU\b", "CREDIT UNION"),
-        # Handle 'CREDITS' as 'CREDIT'
-        (r"\bCREDITS\b", "CREDIT"),
-        # Additional patterns can be added here
-    ]
-    
-    # Function to apply the replacements
-    def replace_patterns(text, patterns):
-        for pat, repl in patterns:
-            # Using the regex sub function to replace text
-            text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    # Define a function to replace the patterns
+    def replace_patterns(text):
+        # Pattern to match variations of 'FEDERAL CREDIT UNION'
+        fed_credit_union_pattern = re.compile(
+            r"\b(?:FED(?:ERAL)?\s+)?(?:CRED(?:IT)?\s+)?UN(?:ION)?\b", 
+            flags=re.IGNORECASE
+        )
+        text = fed_credit_union_pattern.sub("FEDERAL CREDIT UNION", text)
+        
+        # Handle 'CREDIT' and 'UNION' individually if they are standalone
+        text = re.sub(r"\bCREDITS?\b", "CREDIT", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bUN\b", "UNION", text, flags=re.IGNORECASE)
+        
         return text
     
     # Apply the function across the specified column
-    df[col] = df[col].apply(lambda x: replace_patterns(x, patterns))
+    df[col] = df[col].apply(replace_patterns)
     
     return df
 
