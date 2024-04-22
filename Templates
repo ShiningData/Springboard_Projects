@@ -2,23 +2,26 @@ import pandas as pd
 import re
 
 def fullfill_credit_union_info(df, col="financial_inst_name"):
-    # Define a function to replace the patterns
-    def replace_patterns(text):
-        # Pattern to match variations of 'FEDERAL CREDIT UNION'
-        fed_credit_union_pattern = re.compile(
-            r"\b(?:FED(?:ERAL)?\s+)?(?:CRED(?:IT)?\s+)?UN(?:ION)?\b", 
-            flags=re.IGNORECASE
-        )
-        text = fed_credit_union_pattern.sub("FEDERAL CREDIT UNION", text)
-        
-        # Handle 'CREDIT' and 'UNION' individually if they are standalone
-        text = re.sub(r"\bCREDITS?\b", "CREDIT", text, flags=re.IGNORECASE)
-        text = re.sub(r"\bUN\b", "UNION", text, flags=re.IGNORECASE)
-        
+    # Define patterns and replacements
+    # The order is important to prevent overlapping replacements
+    patterns = [
+        # First, replace any 'FED' not already followed by 'ERAL' with 'FEDERAL'
+        (r"\bFED\b(?!\s*ERAL)", "FEDERAL"),
+        # Then, replace any standalone 'CRED' not followed by 'IT' with 'CREDIT'
+        (r"\bCRED\b(?!\s*IT)", "CREDIT"),
+        # Lastly, replace 'UN' with 'UNION' if not already followed by 'ION'
+        (r"\bUN\b(?!\s*ION)", "UNION"),
+    ]
+    
+    # Function to apply the replacements
+    def replace_patterns(text, patterns):
+        for pat, repl in patterns:
+            # Using the regex sub function to replace text
+            text = re.sub(pat, repl, text, flags=re.IGNORECASE)
         return text
     
     # Apply the function across the specified column
-    df[col] = df[col].apply(replace_patterns)
+    df[col] = df[col].apply(lambda x: replace_patterns(x, patterns))
     
     return df
 
