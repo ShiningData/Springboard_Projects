@@ -3,25 +3,15 @@ import re
 
 def fullfill_credit_union_info(df, col="financial_inst_name"):
     # Define patterns and replacements
-    # Ensure the order of patterns goes from most specific to least specific
     patterns = [
-        # Replace 'FED CRED UNION' with 'FEDERAL CREDIT UNION'
-        (r"\bFED\s+CRED\s+UNION\b", "FEDERAL CREDIT UNION"),
-        # Replace 'FED CRED UN' with 'FEDERAL CREDIT UNION'
-        (r"\bFED\s+CRED\s+UN\b", "FEDERAL CREDIT UNION"),
-        # Replace 'FEDERAL CRED UN' with 'FEDERAL CREDIT UNION'
-        (r"\bFEDERAL\s+CRED\s+UN\b", "FEDERAL CREDIT UNION"),
-        # Replace 'CRED UNION' with 'CREDIT UNION'
-        (r"\bCRED\s+UNION\b", "CREDIT UNION"),
-        # Replace 'CRED UN' with 'CREDIT UNION'
-        (r"\bCRED\s+UN\b", "CREDIT UNION"),
-        # Replace 'CREDIT UN' with 'CREDIT UNION'
-        (r"\bCREDIT\s+UN\b", "CREDIT UNION"),
-        # Replace 'FED' with 'FEDERAL' when followed by 'CREDIT' or 'CREDIT UNION'
-        (r"\bFED\b(?=\s+CREDIT)", "FEDERAL"),
-        # Handle individual 'CREDIT' and 'UNION'
+        # Replace 'FED CRED UNION', 'FED CRED UN', or similar with 'FEDERAL CREDIT UNION'
+        (r"\bFED\s*(CRED|CREDIT)?\s*(UNION|UN)?\b", "FEDERAL CREDIT UNION"),
+        # Replace standalone 'CREDIT UN' or 'CRED UN' with 'CREDIT UNION'
+        (r"\b(CRED|CREDIT)\s+(UN(ION)?)\b", "CREDIT UNION"),
+        # Replace any standalone 'FED' with 'FEDERAL'
+        (r"(?<!FEDERAL )\bFED\b", "FEDERAL"),
+        # Handle individual 'CREDIT' and 'UNION' and other abbreviations
         (r"\bCU\b", "CREDIT UNION"),
-        (r"\bC\s*U\b", "CREDIT UNION"),
         # Handle 'CREDITS' as 'CREDIT'
         (r"\bCREDITS\b", "CREDIT"),
         # Additional patterns can be added here
