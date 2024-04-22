@@ -2,26 +2,19 @@ import pandas as pd
 import re
 
 def fullfill_credit_union_info(df, col="financial_inst_name"):
-    # Define patterns and replacements
-    # The order is important to prevent overlapping replacements
-    patterns = [
-        # First, replace any 'FED' not already followed by 'ERAL' with 'FEDERAL'
-        (r"\bFED\b(?!\s*ERAL)", "FEDERAL"),
-        # Then, replace any standalone 'CRED' not followed by 'IT' with 'CREDIT'
-        (r"\bCRED\b(?!\s*IT)", "CREDIT"),
-        # Lastly, replace 'UN' with 'UNION' if not already followed by 'ION'
-        (r"\bUN\b(?!\s*ION)", "UNION"),
-    ]
-    
-    # Function to apply the replacements
-    def replace_patterns(text, patterns):
-        for pat, repl in patterns:
-            # Using the regex sub function to replace text
-            text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    # Define a function to replace the patterns
+    def replace_patterns(text):
+        # Define the pattern to match 'FED', 'CRED', and 'UN' variations
+        pattern = re.compile(
+            r'\b(FED)(ERAL)?\s*(CRED|CREDIT)?\s*(UN|UNION)?\b', 
+            flags=re.IGNORECASE
+        )
+        # Replace the found patterns with the full 'FEDERAL CREDIT UNION'
+        text = pattern.sub(lambda m: "FEDERAL CREDIT UNION", text)
         return text
     
-    # Apply the function across the specified column
-    df[col] = df[col].apply(lambda x: replace_patterns(x, patterns))
+    # Apply the function to each entry in the specified column
+    df[col] = df[col].apply(replace_patterns)
     
     return df
 
