@@ -3,36 +3,30 @@ import re
 
 def fullfill_credit_union_info(df, col="financial_inst_name"):
     # Define patterns and replacements
-    patterns = {
-        r"\bCU\b": "CREDIT UNION",
-        r"\bC U\b": "CREDIT UNION",
-        r"\bCREDIT U\b": "CREDIT UNION",
-        r"\bCREDITS\b": "CREDIT",
-        r"\bCR UN\b": "CREDIT UNION",
-        r"\bCR UNION\b": "CREDIT UNION",
-        r"\bCR UNION\b": "CREDIT UNION",
-        r"\bCRED UN\b": "CREDIT UNION",
-        r"\bCRED UNION\b": "CREDIT UNION",
-        r"\bCR UN\b": "CREDIT UNION",
-        r"\bCR UN\b": "CREDIT UNION",
-        r"\bCRED UNIONS\b": "CREDIT UNIONS",
-        r"\bFED CRED UNION\b": "FEDERAL CREDIT UNION",
-        r"\bFED CRED UN\b": "FEDERAL CREDIT UNION",
-        r"\bFEDERAL CRED UNION\b": "FEDERAL CREDIT UNION",
-        r"\bFEDERAL CRED UN\b": "FEDERAL CREDIT UNION",
-        r"\bFED CREDIT UN\b": "FEDERAL CREDIT UNION",
-        r"\bFEDERAL CU\b": "FEDERAL CREDIT UNION",
-        r"\bFEDERAL C U\b": "FEDERAL CREDIT UNION",
-        r"\bFED CU\b": "FEDERAL CREDIT UNION",
-        r"\bFED C U\b": "FEDERAL CREDIT UNION",
-        r"\bFEDERALCR\b": "FEDERAL CREDIT",
-        r"\bFEDCR\b": "FEDERAL CREDIT",
+    patterns = [
+        # First handle the full 'FEDERAL CREDIT UNION' to prevent partial matches later on
+        (r"\bFED\s*CRED\s*UNION\b", "FEDERAL CREDIT UNION"),
+        (r"\bFED\s*CRED\s*UN\b", "FEDERAL CREDIT UNION"),
+        (r"\bFED\s*CREDIT\s*UNION\b", "FEDERAL CREDIT UNION"),
+        (r"\bFED\s*CREDIT\s*UN\b", "FEDERAL CREDIT UNION"),
+        # Then handle the 'CREDIT UNION' to prevent 'CREDIT' being replaced before 'UNION'
+        (r"\bCR\s*UN\b", "CREDIT UNION"),
+        (r"\bCR\s*UNION\b", "CREDIT UNION"),
+        (r"\bCRED\s*UNION\b", "CREDIT UNION"),
+        (r"\bCRED\s*UN\b", "CREDIT UNION"),
+        (r"\bCREDIT\s*UN\b", "CREDIT UNION"),
+        # Specific 'FEDERAL' replacements
+        (r"\bFED\b", "FEDERAL"),
+        # Now handle individual 'CREDIT' and 'UNION'
+        (r"\bCU\b", "CREDIT UNION"),
+        (r"\bC\s*U\b", "CREDIT UNION"),
+        (r"\bCREDITS\b", "CREDIT"),
         # Add more patterns as necessary
-    }
+    ]
     
     # Function to apply the replacements
     def replace_patterns(text, patterns):
-        for pat, repl in patterns.items():
+        for pat, repl in patterns:
             text = re.sub(pat, repl, text, flags=re.IGNORECASE)
         return text
     
