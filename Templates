@@ -3,30 +3,34 @@ import re
 
 def fullfill_credit_union_info(df, col="financial_inst_name"):
     # Define patterns and replacements
+    # Ensure the order of patterns goes from most specific to least specific
     patterns = [
-        # First handle the full 'FEDERAL CREDIT UNION' to prevent partial matches later on
-        (r"\bFED\s*CRED\s*UNION\b", "FEDERAL CREDIT UNION"),
-        (r"\bFED\s*CRED\s*UN\b", "FEDERAL CREDIT UNION"),
-        (r"\bFED\s*CREDIT\s*UNION\b", "FEDERAL CREDIT UNION"),
-        (r"\bFED\s*CREDIT\s*UN\b", "FEDERAL CREDIT UNION"),
-        # Then handle the 'CREDIT UNION' to prevent 'CREDIT' being replaced before 'UNION'
-        (r"\bCR\s*UN\b", "CREDIT UNION"),
-        (r"\bCR\s*UNION\b", "CREDIT UNION"),
-        (r"\bCRED\s*UNION\b", "CREDIT UNION"),
-        (r"\bCRED\s*UN\b", "CREDIT UNION"),
-        (r"\bCREDIT\s*UN\b", "CREDIT UNION"),
-        # Specific 'FEDERAL' replacements
-        (r"\bFED\b", "FEDERAL"),
-        # Now handle individual 'CREDIT' and 'UNION'
+        # Replace 'FED CRED UNION' with 'FEDERAL CREDIT UNION'
+        (r"\bFED\s+CRED\s+UNION\b", "FEDERAL CREDIT UNION"),
+        # Replace 'FED CRED UN' with 'FEDERAL CREDIT UNION'
+        (r"\bFED\s+CRED\s+UN\b", "FEDERAL CREDIT UNION"),
+        # Replace 'FEDERAL CRED UN' with 'FEDERAL CREDIT UNION'
+        (r"\bFEDERAL\s+CRED\s+UN\b", "FEDERAL CREDIT UNION"),
+        # Replace 'CRED UNION' with 'CREDIT UNION'
+        (r"\bCRED\s+UNION\b", "CREDIT UNION"),
+        # Replace 'CRED UN' with 'CREDIT UNION'
+        (r"\bCRED\s+UN\b", "CREDIT UNION"),
+        # Replace 'CREDIT UN' with 'CREDIT UNION'
+        (r"\bCREDIT\s+UN\b", "CREDIT UNION"),
+        # Replace 'FED' with 'FEDERAL' when followed by 'CREDIT' or 'CREDIT UNION'
+        (r"\bFED\b(?=\s+CREDIT)", "FEDERAL"),
+        # Handle individual 'CREDIT' and 'UNION'
         (r"\bCU\b", "CREDIT UNION"),
         (r"\bC\s*U\b", "CREDIT UNION"),
+        # Handle 'CREDITS' as 'CREDIT'
         (r"\bCREDITS\b", "CREDIT"),
-        # Add more patterns as necessary
+        # Additional patterns can be added here
     ]
     
     # Function to apply the replacements
     def replace_patterns(text, patterns):
         for pat, repl in patterns:
+            # Using the regex sub function to replace text
             text = re.sub(pat, repl, text, flags=re.IGNORECASE)
         return text
     
@@ -35,5 +39,6 @@ def fullfill_credit_union_info(df, col="financial_inst_name"):
     
     return df
 
-# Assume 'df' is your dataframe and 'financial_inst_name' is the column with the bank names
+# Example usage:
+# Assuming 'df' is your DataFrame and 'financial_inst_name' is the column with the bank names
 # df = fullfill_credit_union_info(df, 'financial_inst_name')
