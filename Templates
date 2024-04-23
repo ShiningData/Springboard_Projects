@@ -1,23 +1,23 @@
-import pandas as pd
-import re
+Of course, it's always important to send off a colleague with warm wishes. Here's an example of what you might write:
 
-def fullfill_credit_union_info(df, col="financial_inst_name"):
-    # Define a function to replace the patterns
-    def replace_patterns(text):
-        # Define the pattern to match 'FED', 'CRED', and 'UN' variations
-        pattern = re.compile(
-            r'\b(FED)(ERAL)?\s*(CRED|CREDIT)?\s*(UN|UNION)?\b', 
-            flags=re.IGNORECASE
-        )
-        # Replace the found patterns with the full 'FEDERAL CREDIT UNION'
-        text = pattern.sub(lambda m: "FEDERAL CREDIT UNION", text)
-        return text
-    
-    # Apply the function to each entry in the specified column
-    df[col] = df[col].apply(replace_patterns)
-    
-    return df
+---
 
-# Example usage:
-# Assuming 'df' is your DataFrame and 'financial_inst_name' is the column with the bank names
-# df = fullfill_credit_union_info(df, 'financial_inst_name')
+Subject: Wishing You All the Best on Your New Journey!
+
+Dear [Colleague's Name],
+
+I was both happy to hear about your new opportunity and sad to know that we'll no longer be working side by side. It's been a genuine pleasure collaborating with you. Your dedication and passion have been not just an asset to our team but a constant source of inspiration.
+
+Your contributions to our projects and the positive energy you've brought to the team have left a lasting impact that won't soon be forgotten. I have no doubt that you'll bring the same dedication and ingenuity to your new role as you did here.
+
+As you embark on this exciting new chapter, please know that you're leaving behind colleagues who are cheering you on. Keep in touch, and don't be a stranger; professional paths have a funny way of crossing again.
+
+Best of luck, and I hope that we can connect again in the future. Until then, farewell and all the best in your new adventure!
+
+Warm regards,
+
+[Your Name]
+
+---
+
+Remember to personalize it with specific memories or contributions if you can. It's those personal touches that make a goodbye message truly special.
