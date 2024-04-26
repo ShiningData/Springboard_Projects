@@ -1,1 +1,68 @@
+WITH month_names AS (
+    SELECT
+        1 AS month_num, 'Jan' AS month_name UNION ALL
+        SELECT 2, 'Feb' UNION ALL
+        SELECT 3, 'Mar' UNION ALL
+        SELECT 4, 'Apr' UNION ALL
+        SELECT 5, 'May' UNION ALL
+        SELECT 6, 'Jun' UNION ALL
+        SELECT 7, 'Jul' UNION ALL
+        SELECT 8, 'Aug' UNION ALL
+        SELECT 9, 'Sep' UNION ALL
+        SELECT 10, 'Oct' UNION ALL
+        SELECT 11, 'Nov' UNION ALL
+        SELECT 12, 'Dec'
+),
+current_month_info AS (
+    SELECT
+        YEAR(CURRENT_DATE()) AS current_year,
+        MONTH(CURRENT_DATE()) AS current_month
+),
+month_range AS (
+    SELECT
+        month_num,
+        CASE
+            WHEN current_month - month_num < 0 THEN current_year - 1
+            ELSE current_year
+        END AS year
+    FROM month_names
+    CROSS JOIN current_month_info
+),
+transposed_table AS (
+    SELECT 
+        UID_PRULES,
+        CONCAT_WS(' ', month_name, year) AS month_year,
+        NUM_EXECUTIONS
+    FROM RULES_FREQUENCY_TABLE
+    JOIN month_range
+    ON RULES_FREQUENCY_TABLE.EXECUTION_MONTH = month_range.month_num
+    AND RULES_FREQUENCY_TABLE.EXECUTION_YEAR = month_range.year
+)
+SELECT 
+    UID_PRULES,
+    CONCAT_WS('_Total_', YEAR(CURRENT_DATE()), 'Q', QUARTER(CURRENT_DATE())) AS current_quarter,
+    CONCAT_WS('_Total_', YEAR(DATE_ADD(CURRENT_DATE(), -1)), 'Q', QUARTER(DATE_ADD(CURRENT_DATE(), -1))) AS prior_quarter,
+    CONCAT_WS('_Count_', YEAR(CURRENT_DATE()), 'Q', QUARTER(CURRENT_DATE())) AS current_quarter_count,
+    CONCAT_WS('_Count_', YEAR(DATE_ADD(CURRENT_DATE(), -1)), 'Q', QUARTER(DATE_ADD(CURRENT_DATE(), -1))) AS prior_quarter_count,
+    CONCAT_WS('_Usage_Count_', YEAR(CURRENT_DATE()), 'Q', QUARTER(CURRENT_DATE())) AS current_quarter_usage_count,
+    CONCAT_WS('_Usage_Count_', YEAR(DATE_ADD(CURRENT_DATE(), -1)), 'Q', QUARTER(DATE_ADD(CURRENT_DATE(), -1))) AS prior_quarter_usage_count,
+    CONCAT_WS('_Percentage_', YEAR(CURRENT_DATE()), 'Q', QUARTER(CURRENT_DATE())) AS usage_percentage,
+    CONCAT_WS('_Review_', YEAR(CURRENT_DATE()), 'Q', QUARTER(CURRENT_DATE())) AS current_review,
+    CASE 
+        WHEN prior_quarter_total > 15 AND current_quarter_total > 15 THEN 'No Change'
+        WHEN prior_quarter_total > 15 AND current_quarter_total BETWEEN 1 AND 15 THEN 'Monitor'
+        WHEN prior_quarter_total BETWEEN 1 AND 15 AND current_quarter_total > 15 THEN 'Monitor Removed'
+        WHEN prior_quarter_total = 0 AND current_quarter_total > 15 THEN 'New Rule'
+        WHEN prior_quarter_total = 0 AND current_quarter_total BETWEEN 1 AND 15 THEN 'New Monitor'
+        WHEN prior_quarter_total > 15 AND current_quarter_total = 0 THEN 'Rule Deleted'
+    END AS current_review_label
+FROM (
+    SELECT 
+        UID_PRULES,
+        SUM(CASE WHEN EXECUTION_MONTH BETWEEN current_month - 5 AND current_month AND EXECUTION_YEAR = current_year THEN NUM_EXECUTIONS ELSE 0 END) AS current_quarter_total,
+        SUM(CASE WHEN EXECUTION_MONTH BETWEEN current_month - 11 AND current_month - 6 AND EXECUTION_YEAR = CASE WHEN current_month - 6 < 1 THEN current_year - 1 ELSE current_year END THEN NUM_EXECUTIONS ELSE 0 END) AS prior_quarter_total
+    FROM RULES_FREQUENCY_TABLE
+    CROSS JOIN current_month_info
+    GROUP BY UID_PRULES
+) AS summary
 
