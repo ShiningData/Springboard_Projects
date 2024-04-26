@@ -1,9 +1,25 @@
-Thank you for reaching out. I have compiled the training/testing data, notebooks covering the data ingestion, processing, engineering, and modeling pipeline into a single repository. This repository has been zipped and is now available on our SharePoint.
+Here's a refined version of your pull request note:
 
-You can access all these resources through the following SharePoint link: [SharePoint Link]. Additionally, you'll find the model pipeline slide and performance metrics slide within the same repository for a comprehensive overview.
+---
 
-As the point of contact for this task, I’m at your disposal to walk you through the resources and the model itself. Please feel free to schedule a meeting as per your convenience; my calendar is up to date. I’m confident that a discussion will help clarify any queries you have regarding the model refit and operation with synthetic data.
+*Title: Enhance Bank Name Mapping for Money Movements Analysis*
 
-Looking forward to our collaboration.
+*Overview:*
+This update introduces a refined mapping of financial institution names through a combination of functions and dictionaries, optimizing the bank name feature within our Money Movements and payment trends analysis. The objective is to streamline our routing number to bank names mapping process, ensuring repeatability and accuracy.
 
+*Modifications:*
+- Implemented bank_name_map_slurm, a SLURM job to facilitate monthly updates. Adjustments can be made to align with evolving data requirements.
+- Developed bank_name_map_func, which pre-processes financial institution names for consistency.
+- Introduced bank_name_map_dict, employing a dictionary to standardize financial institution names to a unique, formatted identifier for each entity.
+- Crafted bank_name_map_main, utilizing the function and dictionary to process ACH and wire transaction tables, establish a usa_ca_flag, and generate the definitive table for lab utilization.
 
+*File Updates:*
+- *README*: Documentation has been updated to reflect new functionality.
+- *SLURM*: Enhanced, if applicable to incorporate the updated job scheduling mechanism.
+- *Lab Tables*: Revised to integrate the updated bank mapping logic.
+
+The changes aim to bolster data processing efficiency and improve the fidelity of financial analysis. Your review and input are highly appreciated to ensure the integration aligns with our collective goals.
+
+---
+
+Remember to provide just enough detail to inform the reviewers about the changes, why they were made, and the impact they will have. Including a checklist for PR reviews is a good practice, as it helps reviewers focus on important verification steps.
