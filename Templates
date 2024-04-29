@@ -1,1 +1,46 @@
+from pyspark.sql import SparkSession
+
+# Create SparkSession
+spark = SparkSession.builder \
+    .appName("Rules Frequency Analysis") \
+    .getOrCreate()
+
+# Assume you have already loaded your table into a DataFrame named "RULES_FREQUENCY_TABLE"
+
+# Register the DataFrame as a temporary view
+RULES_FREQUENCY_TABLE.createOrReplaceTempView("rules_frequency")
+
+# Define the SQL query
+sql_query = """
+SELECT 
+    UID_PRULES,
+    CASE EXECUTION_MONTH
+        WHEN 1 THEN 'Jan'
+        WHEN 2 THEN 'Feb'
+        WHEN 3 THEN 'Mar'
+        WHEN 4 THEN 'Apr'
+        WHEN 5 THEN 'May'
+        WHEN 6 THEN 'Jun'
+        WHEN 7 THEN 'Jul'
+        WHEN 8 THEN 'Aug'
+        WHEN 9 THEN 'Sep'
+        WHEN 10 THEN 'Oct'
+        WHEN 11 THEN 'Nov'
+        WHEN 12 THEN 'Dec'
+    END AS MONTH_NAME,
+    CONCAT(EXECUTION_MONTH, '_', EXECUTION_YEAR) AS YEAR_MONTH,
+    NUM_EXECUTIONS
+FROM 
+    rules_frequency
+WHERE
+    (EXECUTION_YEAR = 2023 AND EXECUTION_MONTH >= 2)
+    OR
+    (EXECUTION_YEAR = 2024 AND EXECUTION_MONTH <= 1)
+"""
+
+# Execute the SQL query
+result_df = spark.sql(sql_query)
+
+# Show the result DataFrame
+result_df.show()
 
