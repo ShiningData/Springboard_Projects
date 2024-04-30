@@ -1,72 +1,109 @@
-User
-Conduct sensitivity analysisi on interest rate change on deposit balance via Dynamic Time Series Modeling approach in python as stated below:
-Model the time series relationship between interest rate changes and deposit balances using techniques like ARIMA (AutoRegressive Integrated Moving Average) or SARIMA (Seasonal ARIMA).
-Analyze how deposit balances respond to interest rate shocks over time and estimate the long-term and short-term sensitivity of deposit balances to interest rate changes.
-Libraries such as statsmodels and pmdarima offer implementations of ARIMA and SARIMA models in Python.
+conduct sensitivity analysis via Bayesian Sensitivity Analysis by Applying Bayesian methods to quantify uncertainty and assess the sensitivity of deposit balances to interest rate changes:
+Use Bayesian regression models to estimate posterior distributions of parameters and conduct sensitivity analysis by sampling from these distributions.
+Use both Packages PyMC3 and Stan  tools for Bayesian modeling and sensitivity analysis in Python separately. 
 
-To conduct sensitivity analysis on the impact of interest rate changes on deposit balances using Dynamic Time Series Modeling in Python, you can use techniques such as ARIMA (AutoRegressive Integrated Moving Average) or SARIMA (Seasonal ARIMA). Here's how you can do it using the statsmodels library:
+Sure, let's conduct sensitivity analysis via Bayesian Sensitivity Analysis using both PyMC3 and Stan in Python.
 
-1. **Load Data**: Load the dataset containing the time series of deposit balances and interest rate changes.
+### Bayesian Sensitivity Analysis with PyMC3:
 
-2. **Prepare Data**: Prepare the data by converting it into a time series format and handling any missing values or irregularities.
+PyMC3 is a Python package for Bayesian statistical modeling and probabilistic machine learning. Here's how you can use PyMC3 for Bayesian Sensitivity Analysis:
 
-3. **Model Time Series Relationship**: Use ARIMA or SARIMA models to model the time series relationship between interest rate changes and deposit balances.
+1. **Install PyMC3**: If you haven't already installed PyMC3, you can do so via pip:
 
-4. **Estimate Model Parameters**: Estimate the parameters of the ARIMA or SARIMA model using the dataset.
-
-5. **Forecast Deposit Balances**: Use the fitted model to forecast deposit balances for different interest rate scenarios.
-
-6. **Analyze Sensitivity**: Analyze the forecasted deposit balances to understand how deposit balances respond to interest rate shocks over time and estimate the long-term and short-term sensitivity.
-
-Here's an example of how you can conduct sensitivity analysis using Dynamic Time Series Modeling in Python with the statsmodels library:
-
-```python
-import pandas as pd
-import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-
-# Load dataset (assuming you have a CSV file with time series data)
-data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
-
-# Prepare data
-deposit_balances = data['Deposit_Balance']
-interest_rates = data['Interest_Rate']
-
-# Model Time Series Relationship
-# Example: Using SARIMA model
-model = SARIMAX(deposit_balances, exog=interest_rates, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
-result = model.fit()
-
-# Forecast Deposit Balances for Different Interest Rate Scenarios
-# Example: Forecasting for the next 12 periods with an interest rate increase of 0.25%
-forecast_scenario = interest_rates.copy()
-forecast_scenario.iloc[-1] += 0.0025  # Increase interest rate by 0.25% for the next period
-forecast = result.get_forecast(steps=12, exog=forecast_scenario)
-
-# Plot Forecasted Deposit Balances
-plt.figure(figsize=(10, 6))
-plt.plot(deposit_balances.index, deposit_balances, label='Actual Deposit Balances')
-plt.plot(forecast.index, forecast.predicted_mean, label='Forecasted Deposit Balances')
-plt.xlabel('Date')
-plt.ylabel('Deposit Balance')
-plt.title('Forecasted Deposit Balances with Interest Rate Increase')
-plt.legend()
-plt.show()
-
-# Analyze Sensitivity
-# Example: Calculate the difference between forecasted deposit balances with and without interest rate increase
-deposit_balance_difference = forecast.predicted_mean - result.fittedvalues
-print("Difference in Forecasted Deposit Balances with Interest Rate Increase:")
-print(deposit_balance_difference)
+```bash
+pip install pymc3
 ```
 
-In this example:
-- We load the dataset containing the time series of deposit balances and interest rate changes.
-- We prepare the data by converting it into a time series format and handling any missing values or irregularities.
-- We model the time series relationship between interest rate changes and deposit balances using the SARIMA model.
-- We forecast deposit balances for different interest rate scenarios, such as an interest rate increase of 0.25% for the next period.
-- We plot the forecasted deposit balances to visualize the impact of interest rate changes.
-- We analyze the sensitivity by calculating the difference in forecasted deposit balances with and without interest rate increases.
+2. **Define Bayesian Model**: Define a Bayesian regression model to estimate the relationship between interest rate changes and deposit balances.
 
-You can adjust the model parameters, forecast horizon, and interest rate scenarios according to your specific requirements for sensitivity analysis.
+3. **Specify Priors**: Specify prior distributions for the model parameters.
+
+4. **Sample from Posterior**: Sample from the posterior distribution of the model parameters using Markov Chain Monte Carlo (MCMC) methods.
+
+5. **Analyze Sensitivity**: Analyze the posterior samples to understand the uncertainty and sensitivity of deposit balances to interest rate changes.
+
+Here's a basic example of how you can conduct sensitivity analysis using PyMC3:
+
+```python
+import pymc3 as pm
+import numpy as np
+
+# Define data (assuming you have arrays of interest rate changes and deposit balances)
+interest_rate_changes = np.array([0.02, -0.01, 0.03, -0.02, 0.01])
+deposit_balances = np.array([1000, 980, 1010, 990, 1005])
+
+# Define Bayesian regression model
+with pm.Model() as model:
+    # Priors for model parameters
+    alpha = pm.Normal('alpha', mu=0, sigma=10)
+    beta = pm.Normal('beta', mu=0, sigma=10)
+    
+    # Model equation
+    mu = alpha + beta * interest_rate_changes
+    
+    # Likelihood
+    likelihood = pm.Normal('likelihood', mu=mu, sigma=10, observed=deposit_balances)
+    
+    # Sample from posterior
+    trace = pm.sample(1000, tune=1000)
+
+# Analyze sensitivity
+pm.traceplot(trace)
+plt.show()
+```
+
+### Bayesian Sensitivity Analysis with Stan:
+
+Stan is a probabilistic programming language for Bayesian inference. Here's how you can use Stan for Bayesian Sensitivity Analysis:
+
+1. **Install PyStan**: If you haven't already installed PyStan, you can do so via pip:
+
+```bash
+pip install pystan
+```
+
+2. **Define Stan Model**: Define a Stan model to estimate the relationship between interest rate changes and deposit balances.
+
+3. **Specify Priors**: Specify prior distributions for the model parameters in the Stan model.
+
+4. **Compile Stan Model**: Compile the Stan model.
+
+5. **Sample from Posterior**: Sample from the posterior distribution of the model parameters using Markov Chain Monte Carlo (MCMC) methods with PyStan.
+
+6. **Analyze Sensitivity**: Analyze the posterior samples to understand the uncertainty and sensitivity of deposit balances to interest rate changes.
+
+Here's a basic example of how you can conduct sensitivity analysis using Stan:
+
+```python
+import pystan
+
+# Define Stan model
+stan_code = """
+data {
+    int<lower=0> N;  // Number of observations
+    vector[N] x;     // Interest rate changes
+    vector[N] y;     // Deposit balances
+}
+parameters {
+    real alpha;      // Intercept
+    real beta;       // Slope
+    real<lower=0> sigma;  // Error scale
+}
+model {
+    y ~ normal(alpha + beta * x, sigma);
+}
+"""
+# Compile Stan model
+stan_model = pystan.StanModel(model_code=stan_code)
+
+# Prepare data
+data = {'N': len(interest_rate_changes), 'x': interest_rate_changes, 'y': deposit_balances}
+
+# Sample from posterior
+fit = stan_model.sampling(data=data, iter=1000, chains=4)
+
+# Analyze sensitivity
+print(fit)
+```
+
+In both cases, you can analyze the posterior samples to understand the uncertainty and sensitivity of deposit balances to interest rate changes. You can examine summary statistics, posterior distributions, traceplots, and other diagnostics to assess sensitivity.
