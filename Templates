@@ -1,61 +1,72 @@
-To conduct a sensitivity analysis for interest rate changes on deposit balances in Python by Partial Dependency Plots as stated below using python:
-Visualize the relationship between interest rate changes and deposit balances while marginalizing over other variables.
-Partial dependency plots illustrate how deposit balances change as interest rates vary, holding other variables constant at their mean or median values.
-Tools like scikit-learn or the PDPbox library in Python can generate partial dependency plots.
+User
+Conduct sensitivity analysisi on interest rate change on deposit balance via Dynamic Time Series Modeling approach in python as stated below:
+Model the time series relationship between interest rate changes and deposit balances using techniques like ARIMA (AutoRegressive Integrated Moving Average) or SARIMA (Seasonal ARIMA).
+Analyze how deposit balances respond to interest rate shocks over time and estimate the long-term and short-term sensitivity of deposit balances to interest rate changes.
+Libraries such as statsmodels and pmdarima offer implementations of ARIMA and SARIMA models in Python.
 
-To conduct sensitivity analysis for interest rate changes on deposit balances using Partial Dependency Plots (PDP) in Python, you can use the PDPbox library along with scikit-learn for modeling. Here's how you can do it:
+To conduct sensitivity analysis on the impact of interest rate changes on deposit balances using Dynamic Time Series Modeling in Python, you can use techniques such as ARIMA (AutoRegressive Integrated Moving Average) or SARIMA (Seasonal ARIMA). Here's how you can do it using the statsmodels library:
 
-1. **Load Data**: Load the dataset containing deposit balance and other relevant variables such as customer demographics.
+1. **Load Data**: Load the dataset containing the time series of deposit balances and interest rate changes.
 
-2. **Prepare Data**: Prepare the data by handling missing values, encoding categorical variables, and splitting it into features (including interest rate changes) and target variable (deposit balances).
+2. **Prepare Data**: Prepare the data by converting it into a time series format and handling any missing values or irregularities.
 
-3. **Fit a Model**: Fit a machine learning model to the data. For this example, you can use a regression model like Random Forest or Gradient Boosting.
+3. **Model Time Series Relationship**: Use ARIMA or SARIMA models to model the time series relationship between interest rate changes and deposit balances.
 
-4. **Generate Partial Dependency Plots**: Use the PDPbox library to generate partial dependency plots for the interest rate variable while marginalizing over other variables.
+4. **Estimate Model Parameters**: Estimate the parameters of the ARIMA or SARIMA model using the dataset.
 
-5. **Visualize Results**: Visualize the partial dependency plots to understand how deposit balances change as interest rates vary, while holding other variables constant at their mean or median values.
+5. **Forecast Deposit Balances**: Use the fitted model to forecast deposit balances for different interest rate scenarios.
 
-Here's an example of how you can conduct sensitivity analysis using Partial Dependency Plots in Python:
+6. **Analyze Sensitivity**: Analyze the forecasted deposit balances to understand how deposit balances respond to interest rate shocks over time and estimate the long-term and short-term sensitivity.
+
+Here's an example of how you can conduct sensitivity analysis using Dynamic Time Series Modeling in Python with the statsmodels library:
 
 ```python
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from pdpbox import pdp, info_plots
 import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-# Load dataset (assuming you have a CSV file with deposit balance and other variables)
-data = pd.read_csv('deposit_data.csv')
+# Load dataset (assuming you have a CSV file with time series data)
+data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
 
-# Handle missing values and encode categorical variables (if needed)
+# Prepare data
+deposit_balances = data['Deposit_Balance']
+interest_rates = data['Interest_Rate']
 
-# Split data into features (X) and target variable (y)
-X = data.drop(columns=['Deposit_Balance'])  # Features
-y = data['Deposit_Balance']  # Target variable
+# Model Time Series Relationship
+# Example: Using SARIMA model
+model = SARIMAX(deposit_balances, exog=interest_rates, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+result = model.fit()
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Forecast Deposit Balances for Different Interest Rate Scenarios
+# Example: Forecasting for the next 12 periods with an interest rate increase of 0.25%
+forecast_scenario = interest_rates.copy()
+forecast_scenario.iloc[-1] += 0.0025  # Increase interest rate by 0.25% for the next period
+forecast = result.get_forecast(steps=12, exog=forecast_scenario)
 
-# Fit a machine learning model (e.g., Random Forest) to the training data
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-
-# Generate Partial Dependency Plots for interest rate variable
-interest_rate_pdp = pdp.pdp_isolate(model=model, dataset=X_test, model_features=X.columns, feature='Interest_Rate')
-
-# Visualize Partial Dependency Plot for interest rate variable
-pdp.pdp_plot(interest_rate_pdp, 'Interest Rate')
-plt.xlabel('Interest Rate')
-plt.ylabel('Partial Dependency')
-plt.title('Partial Dependency Plot for Interest Rate on Deposit Balance')
+# Plot Forecasted Deposit Balances
+plt.figure(figsize=(10, 6))
+plt.plot(deposit_balances.index, deposit_balances, label='Actual Deposit Balances')
+plt.plot(forecast.index, forecast.predicted_mean, label='Forecasted Deposit Balances')
+plt.xlabel('Date')
+plt.ylabel('Deposit Balance')
+plt.title('Forecasted Deposit Balances with Interest Rate Increase')
+plt.legend()
 plt.show()
+
+# Analyze Sensitivity
+# Example: Calculate the difference between forecasted deposit balances with and without interest rate increase
+deposit_balance_difference = forecast.predicted_mean - result.fittedvalues
+print("Difference in Forecasted Deposit Balances with Interest Rate Increase:")
+print(deposit_balance_difference)
 ```
 
 In this example:
-- We load the dataset containing deposit balance and other relevant variables.
-- We split the data into features (X) and target variable (y).
-- We fit a Random Forest regression model to the training data.
-- We use the PDPbox library to generate a partial dependency plot for the interest rate variable, while marginalizing over other variables.
-- We visualize the partial dependency plot to understand how deposit balances change as interest rates vary, holding other variables constant at their mean or median values.
+- We load the dataset containing the time series of deposit balances and interest rate changes.
+- We prepare the data by converting it into a time series format and handling any missing values or irregularities.
+- We model the time series relationship between interest rate changes and deposit balances using the SARIMA model.
+- We forecast deposit balances for different interest rate scenarios, such as an interest rate increase of 0.25% for the next period.
+- We plot the forecasted deposit balances to visualize the impact of interest rate changes.
+- We analyze the sensitivity by calculating the difference in forecasted deposit balances with and without interest rate increases.
 
-You can repeat this process for other variables of interest to conduct a comprehensive sensitivity analysis.
+You can adjust the model parameters, forecast horizon, and interest rate scenarios according to your specific requirements for sensitivity analysis.
