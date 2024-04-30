@@ -1,49 +1,34 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat, lit
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr, spearmanr
 
-# Create SparkSession
-spark = SparkSession.builder \
-    .appName("Rules Frequency Analysis") \
-    .getOrCreate()
+# Load dataset (assuming you have a CSV file with deposit balance and interest rate data)
+data = pd.read_csv('deposit_data.csv')
 
-# Assume you have already loaded your table into a DataFrame named "RULES_FREQUENCY_TABLE"
+# Step 3: Correlation Analysis - Pearson Correlation Coefficient
+# Calculate Pearson correlation coefficient
+pearson_corr, _ = pearsonr(data['Interest_Rate'], data['Deposit_Balance'])
+print("Pearson correlation coefficient:", pearson_corr)
 
-# Register the DataFrame as a temporary view
-RULES_FREQUENCY_TABLE.createOrReplaceTempView("rules_frequency")
+# Visualize the relationship using a scatter plot
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x='Interest_Rate', y='Deposit_Balance', data=data)
+plt.xlabel('Interest Rate')
+plt.ylabel('Deposit Balance')
+plt.title('Scatter Plot - Interest Rate vs. Deposit Balance (Pearson)')
+plt.show()
 
-# Define the SQL query
-sql_query = """
-SELECT 
-    UID_PRULES,
-    CONCAT(
-        CASE EXECUTION_MONTH
-            WHEN 1 THEN 'Jan'
-            WHEN 2 THEN 'Feb'
-            WHEN 3 THEN 'Mar'
-            WHEN 4 THEN 'Apr'
-            WHEN 5 THEN 'May'
-            WHEN 6 THEN 'Jun'
-            WHEN 7 THEN 'Jul'
-            WHEN 8 THEN 'Aug'
-            WHEN 9 THEN 'Sep'
-            WHEN 10 THEN 'Oct'
-            WHEN 11 THEN 'Nov'
-            WHEN 12 THEN 'Dec'
-        END,
-        '_',
-        EXECUTION_YEAR
-    ) AS MONTH_YEAR,
-    NUM_EXECUTIONS
-FROM 
-    rules_frequency
-WHERE
-    (EXECUTION_YEAR = YEAR(CURRENT_DATE()) AND EXECUTION_MONTH >= MONTH(CURRENT_DATE()))
-    OR
-    (EXECUTION_YEAR = YEAR(CURRENT_DATE()) + 1 AND EXECUTION_MONTH <= MONTH(CURRENT_DATE()))
-"""
+# Step 3: Correlation Analysis - Spearman Rank Correlation Coefficient
+# Calculate Spearman rank correlation coefficient
+spearman_corr, _ = spearmanr(data['Interest_Rate'], data['Deposit_Balance'])
+print("Spearman rank correlation coefficient:", spearman_corr)
 
-# Execute the SQL query
-result_df = spark.sql(sql_query)
-
-# Show the result DataFrame
-result_df.show()
+# Visualize the relationship using a scatter plot
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x='Interest_Rate', y='Deposit_Balance', data=data)
+plt.xlabel('Interest Rate')
+plt.ylabel('Deposit Balance')
+plt.title('Scatter Plot - Interest Rate vs. Deposit Balance (Spearman)')
+plt.show()
