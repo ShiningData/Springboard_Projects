@@ -1,80 +1,77 @@
-Conduct sensitivity analysis via Scenario Analysis in python:
-Define various scenarios representing different interest rate changes (e.g., increase by 0.25%, decrease by 0.25%, no change).
-Apply each scenario to your dataset and observe how deposit balances vary under each scenario.
+Conduct Sensitivity analysis on interest rate changes impact on deposit balance by using monte carlo simulation in python as stated below:
 
+Generate random interest rate changes based on historical volatility or assumed distributions.
+Simulate the impact of these random interest rate changes on deposit balances using a large number of iterations.
+Analyze the distribution of deposit balance outcomes to understand the range of potential impacts.
+Libraries such as NumPy and scipy can assist in generating random numbers and performing simulations.
+
+1. **Load Data**: Load the dataset containing deposit balance and interest rate data. Make sure the dataset is in a format that can be easily read by pandas, such as a CSV file.
+
+```python
 import pandas as pd
 
 # Load dataset (assuming you have a CSV file with deposit balance and interest rate data)
 data = pd.read_csv('deposit_data.csv')
+```
 
-# Define scenarios representing different interest rate changes
-scenarios = {
-    'No Change': 0,            # No change in interest rate
-    'Increase by 0.25%': 0.0025,  # Increase by 0.25%
-    'Decrease by 0.25%': -0.0025  # Decrease by 0.25%
-}
+2. **Calculate Parameters**: Calculate the mean and standard deviation of interest rates from the historical data. These parameters will be used to generate random interest rate changes in the Monte Carlo simulation.
 
-# Create a copy of the original dataset for each scenario
-scenario_data = {scenario: data.copy() for scenario in scenarios}
+```python
+# Calculate mean and standard deviation of interest rates
+interest_rate_mean = data['Interest_Rate'].mean()
+interest_rate_std = data['Interest_Rate'].std()
+```
 
-# Apply each scenario to the dataset and observe how deposit balances vary
-for scenario, rate_change in scenarios.items():
-    # Apply interest rate change to the 'Interest_Rate' column
-    scenario_data[scenario]['Interest_Rate'] += rate_change * scenario_data[scenario]['Interest_Rate']
-    # Calculate new deposit balances based on adjusted interest rates
-    scenario_data[scenario]['New_Deposit_Balance'] = scenario_data[scenario]['Deposit_Balance'] * \
-                                                      (1 + scenario_data[scenario]['Interest_Rate'])
+3. **Perform Monte Carlo Simulation**: Generate random interest rate changes based on a normal distribution with the calculated mean and standard deviation. For each iteration of the simulation, calculate new deposit balances based on the simulated interest rates.
 
-# Print deposit balances under each scenario
-for scenario, scenario_df in scenario_data.items():
-    print(f"Scenario: {scenario}")
-    print(scenario_df[['Deposit_Balance', 'New_Deposit_Balance']])
-    print("\n")
+```python
+import numpy as np
 
+# Define number of Monte Carlo simulations
+num_simulations = 1000
 
-Here's how you can conduct sensitivity analysis via scenario analysis in Python using pandas:
+# Perform Monte Carlo simulation
+simulation_results = []
 
-python
-Copy code
-import pandas as pd
+for _ in range(num_simulations):
+    # Generate random interest rate changes from a normal distribution
+    interest_rate_changes = np.random.normal(loc=interest_rate_mean, scale=interest_rate_std, size=len(data))
+    # Calculate new deposit balances based on simulated interest rates
+    simulated_deposit_balances = data['Deposit_Balance'] * (1 + interest_rate_changes)
+    # Store simulated deposit balances for this iteration
+    simulation_results.append(simulated_deposit_balances)
+```
 
-# Load dataset (assuming you have a CSV file with deposit balance and interest rate data)
-data = pd.read_csv('deposit_data.csv')
+4. **Convert Results to DataFrame**: Convert the simulation results to a DataFrame for easier analysis. Each row of the DataFrame represents one iteration of the simulation, and each column represents a deposit balance at a specific point in time.
 
-# Define scenarios representing different interest rate changes
-scenarios = {
-    'No Change': 0,            # No change in interest rate
-    'Increase by 0.25%': 0.0025,  # Increase by 0.25%
-    'Decrease by 0.25%': -0.0025  # Decrease by 0.25%
-}
+```python
+# Convert simulation results to DataFrame
+simulation_results_df = pd.DataFrame(simulation_results, columns=data.index)
+```
 
-# Create a copy of the original dataset for each scenario
-scenario_data = {scenario: data.copy() for scenario in scenarios}
+5. **Analyzing Simulation Results**: Calculate summary statistics (e.g., mean, standard deviation, quantiles) of the simulated deposit balances to understand the distribution of potential outcomes.
 
-# Apply each scenario to the dataset and observe how deposit balances vary
-for scenario, rate_change in scenarios.items():
-    # Apply interest rate change to the 'Interest_Rate' column
-    scenario_data[scenario]['Interest_Rate'] += rate_change * scenario_data[scenario]['Interest_Rate']
-    # Calculate new deposit balances based on adjusted interest rates
-    scenario_data[scenario]['New_Deposit_Balance'] = scenario_data[scenario]['Deposit_Balance'] * \
-                                                      (1 + scenario_data[scenario]['Interest_Rate'])
+```python
+# Calculate summary statistics of simulated deposit balances
+simulation_statistics = simulation_results_df.describe(percentiles=[0.05, 0.95])
 
-# Print deposit balances under each scenario
-for scenario, scenario_df in scenario_data.items():
-    print(f"Scenario: {scenario}")
-    print(scenario_df[['Deposit_Balance', 'New_Deposit_Balance']])
-    print("\n")
-In this script:
+# Print summary statistics
+print("Summary Statistics of Simulated Deposit Balances:")
+print(simulation_statistics)
+```
 
-We load the dataset containing deposit balance and interest rate data.
-We define scenarios representing different interest rate changes, including no change, increase by 0.25%, and decrease by 0.25%.
-We create a copy of the original dataset for each scenario.
-We apply each scenario to the dataset by adjusting the interest rates accordingly.
-We calculate the new deposit balances based on the adjusted interest rates.
-Finally, we print the deposit balances under each scenario to observe how they vary.
-This scenario analysis allows us to assess how changes in interest rates affect deposit balances under different scenarios, providing insights into the sensitivity of deposit balances to interest rate changes.
+6. **Visualize Simulation Results**: Visualize the distribution of simulated deposit balances using a histogram to gain insights into the range of potential impacts.
 
+```python
+import matplotlib.pyplot as plt
 
+# Visualize distribution of simulated deposit balances
+plt.figure(figsize=(10, 6))
+plt.hist(simulation_results_df.values.flatten(), bins=30, alpha=0.5)
+plt.xlabel('Simulated Deposit Balance')
+plt.ylabel('Frequency')
+plt.title('Distribution of Simulated Deposit Balances')
+plt.show()
+```
 
-
-
+By following these steps, you can conduct a Monte Carlo simulation to assess the sensitivity of deposit balances to interest rate changes and gain insights into the potential range of outcomes.
