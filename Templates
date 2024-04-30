@@ -1,57 +1,61 @@
-Conduct sensitivity analysis for the interest rate change on deposit balance as stated below:Response Surface Methodology (RSM):
-Fit a response surface model to the relationship between interest rate changes and deposit balances.
-Use the fitted model to predict deposit balances for different interest rate scenarios and assess the sensitivity of the model's predictions.
-Python libraries such as scikit-learn or statsmodels can be used for fitting response surface models.
+To conduct a sensitivity analysis for interest rate changes on deposit balances in Python by Partial Dependency Plots as stated below using python:
+Visualize the relationship between interest rate changes and deposit balances while marginalizing over other variables.
+Partial dependency plots illustrate how deposit balances change as interest rates vary, holding other variables constant at their mean or median values.
+Tools like scikit-learn or the PDPbox library in Python can generate partial dependency plots.
 
-To conduct sensitivity analysis for the impact of interest rate changes on deposit balances using Response Surface Methodology (RSM), you can fit a response surface model to the relationship between interest rate changes and deposit balances. Here's how you can do it using scikit-learn:
+To conduct sensitivity analysis for interest rate changes on deposit balances using Partial Dependency Plots (PDP) in Python, you can use the PDPbox library along with scikit-learn for modeling. Here's how you can do it:
 
-1. **Load Data**: Load the dataset containing deposit balance and interest rate data.
+1. **Load Data**: Load the dataset containing deposit balance and other relevant variables such as customer demographics.
 
-2. **Prepare Data**: Prepare the data by splitting it into features (interest rate changes) and target variable (deposit balances).
+2. **Prepare Data**: Prepare the data by handling missing values, encoding categorical variables, and splitting it into features (including interest rate changes) and target variable (deposit balances).
 
-3. **Fit Response Surface Model**: Use scikit-learn or statsmodels to fit a response surface model to the relationship between interest rate changes and deposit balances.
+3. **Fit a Model**: Fit a machine learning model to the data. For this example, you can use a regression model like Random Forest or Gradient Boosting.
 
-4. **Predict Deposit Balances**: Use the fitted model to predict deposit balances for different interest rate scenarios.
+4. **Generate Partial Dependency Plots**: Use the PDPbox library to generate partial dependency plots for the interest rate variable while marginalizing over other variables.
 
-5. **Analyze Sensitivity**: Analyze the predicted deposit balances for different interest rate scenarios to assess the sensitivity of the model's predictions.
+5. **Visualize Results**: Visualize the partial dependency plots to understand how deposit balances change as interest rates vary, while holding other variables constant at their mean or median values.
 
-Here's an example of how you can conduct sensitivity analysis using Response Surface Methodology in Python with scikit-learn:
+Here's an example of how you can conduct sensitivity analysis using Partial Dependency Plots in Python:
 
 ```python
 import pandas as pd
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
-import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from pdpbox import pdp, info_plots
+import matplotlib.pyplot as plt
 
-# Load dataset (assuming you have a CSV file with deposit balance and interest rate data)
+# Load dataset (assuming you have a CSV file with deposit balance and other variables)
 data = pd.read_csv('deposit_data.csv')
 
-# Prepare data
-X = data[['Interest_Rate']]  # Features (interest rate changes)
-y = data['Deposit_Balance']  # Target variable (deposit balances)
+# Handle missing values and encode categorical variables (if needed)
 
-# Fit Response Surface Model
-poly = PolynomialFeatures(degree=2)  # Use polynomial features up to degree 2
-X_poly = poly.fit_transform(X)  # Transform features to polynomial features
-model = LinearRegression().fit(X_poly, y)  # Fit linear regression model
+# Split data into features (X) and target variable (y)
+X = data.drop(columns=['Deposit_Balance'])  # Features
+y = data['Deposit_Balance']  # Target variable
 
-# Predict Deposit Balances for Different Interest Rate Scenarios
-# Define interest rate scenarios (e.g., increase by 0.25%, decrease by 0.25%, no change)
-interest_rate_scenarios = np.array([[0.0025], [-0.0025], [0]])  # Example scenarios
-X_poly_scenarios = poly.transform(interest_rate_scenarios)  # Transform scenarios to polynomial features
-predicted_deposit_balances = model.predict(X_poly_scenarios)  # Predict deposit balances
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Analyze Sensitivity
-print("Predicted Deposit Balances for Different Interest Rate Scenarios:")
-for i, scenario in enumerate(interest_rate_scenarios):
-    print(f"Scenario {i+1}: Interest Rate Change = {scenario[0] * 100}%")
-    print(f"Predicted Deposit Balance: {predicted_deposit_balances[i]}")
-    print()
+# Fit a machine learning model (e.g., Random Forest) to the training data
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Generate Partial Dependency Plots for interest rate variable
+interest_rate_pdp = pdp.pdp_isolate(model=model, dataset=X_test, model_features=X.columns, feature='Interest_Rate')
+
+# Visualize Partial Dependency Plot for interest rate variable
+pdp.pdp_plot(interest_rate_pdp, 'Interest Rate')
+plt.xlabel('Interest Rate')
+plt.ylabel('Partial Dependency')
+plt.title('Partial Dependency Plot for Interest Rate on Deposit Balance')
+plt.show()
 ```
 
 In this example:
-- We load the dataset containing deposit balance and interest rate data.
-- We split the data into features (interest rate changes) and target variable (deposit balances).
-- We fit a response surface model to the relationship between interest rate changes and deposit balances using polynomial regression.
-- We use the fitted model to predict deposit balances for different interest rate scenarios (e.g., increase by 0.25%, decrease by 0.25%, no change).
-- We analyze the predicted deposit balances for different interest rate scenarios to assess the sensitivity of the model's predictions.
+- We load the dataset containing deposit balance and other relevant variables.
+- We split the data into features (X) and target variable (y).
+- We fit a Random Forest regression model to the training data.
+- We use the PDPbox library to generate a partial dependency plot for the interest rate variable, while marginalizing over other variables.
+- We visualize the partial dependency plot to understand how deposit balances change as interest rates vary, holding other variables constant at their mean or median values.
+
+You can repeat this process for other variables of interest to conduct a comprehensive sensitivity analysis.
