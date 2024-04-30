@@ -1,34 +1,56 @@
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats import pearsonr, spearmanr
+The Pearson correlation coefficient, denoted by \( r \), measures the strength and direction of the linear relationship between two continuous variables. It ranges from -1 to 1, where:
 
-# Load dataset (assuming you have a CSV file with deposit balance and interest rate data)
-data = pd.read_csv('deposit_data.csv')
+- \( r = 1 \): Perfect positive linear relationship
+- \( r = -1 \): Perfect negative linear relationship
+- \( r = 0 \): No linear relationship
 
-# Step 3: Correlation Analysis - Pearson Correlation Coefficient
-# Calculate Pearson correlation coefficient
-pearson_corr, _ = pearsonr(data['Interest_Rate'], data['Deposit_Balance'])
-print("Pearson correlation coefficient:", pearson_corr)
+Here's how to interpret the Pearson correlation coefficient:
 
-# Visualize the relationship using a scatter plot
-plt.figure(figsize=(8, 6))
-sns.scatterplot(x='Interest_Rate', y='Deposit_Balance', data=data)
-plt.xlabel('Interest Rate')
-plt.ylabel('Deposit Balance')
-plt.title('Scatter Plot - Interest Rate vs. Deposit Balance (Pearson)')
-plt.show()
+1. **Strength of the Relationship**:
+   - The closer the absolute value of \( r \) is to 1, the stronger the linear relationship between the variables. For example, \( r = 0.8 \) indicates a stronger linear relationship compared to \( r = 0.2 \).
+   - If \( r = 0 \), there's no linear relationship between the variables.
 
-# Step 3: Correlation Analysis - Spearman Rank Correlation Coefficient
-# Calculate Spearman rank correlation coefficient
-spearman_corr, _ = spearmanr(data['Interest_Rate'], data['Deposit_Balance'])
-print("Spearman rank correlation coefficient:", spearman_corr)
+2. **Direction of the Relationship**:
+   - If \( r > 0 \), it indicates a positive linear relationship, meaning that as one variable increases, the other variable tends to increase as well.
+   - If \( r < 0 \), it indicates a negative linear relationship, meaning that as one variable increases, the other variable tends to decrease.
 
-# Visualize the relationship using a scatter plot
-plt.figure(figsize=(8, 6))
-sns.scatterplot(x='Interest_Rate', y='Deposit_Balance', data=data)
-plt.xlabel('Interest Rate')
-plt.ylabel('Deposit Balance')
-plt.title('Scatter Plot - Interest Rate vs. Deposit Balance (Spearman)')
-plt.show()
+3. **Limitations**:
+   - The Pearson correlation coefficient only measures linear relationships. It may not capture non-linear relationships between variables.
+   - It is sensitive to outliers, influential points, and non-normality of data. Therefore, it's essential to inspect the data and consider other measures if these issues are present.
+
+4. **Example**:
+   - For instance, if the Pearson correlation coefficient between interest rates and deposit balances is \( r = 0.7 \), it indicates a strong positive linear relationship. This means that as interest rates increase, deposit balances tend to increase as well, and vice versa.
+
+5. **Correlation Matrix**:
+   - You can use a correlation matrix to examine the pairwise correlations between multiple variables simultaneously. This matrix displays the Pearson correlation coefficients between each pair of variables.
+
+In summary, the Pearson correlation coefficient provides valuable insights into the linear relationship between variables, helping you understand how changes in one variable correspond to changes in another variable. However, it's essential to interpret it in conjunction with other analyses and consider its limitations.
+
+SPEARMAN 
+
+The Spearman rank correlation coefficient, denoted by \( \rho \) (rho), is a non-parametric measure of the strength and direction of the monotonic relationship between two variables. Unlike the Pearson correlation coefficient, Spearman correlation does not assume that the relationship between variables is linear. Instead, it measures how well the relationship between variables can be described using a monotonic function.
+
+Here's how to interpret the Spearman rank correlation coefficient:
+
+1. **Strength of the Relationship**:
+   - Like the Pearson correlation coefficient, the Spearman correlation coefficient ranges from -1 to 1.
+   - The closer the absolute value of \( \rho \) is to 1, the stronger the monotonic relationship between the variables.
+   - A value of \( \rho = 1 \) indicates a perfect positive monotonic relationship, while \( \rho = -1 \) indicates a perfect negative monotonic relationship.
+
+2. **Direction of the Relationship**:
+   - If \( \rho > 0 \), it indicates a positive monotonic relationship. This means that as the values of one variable increase, the values of the other variable tend to increase as well.
+   - If \( \rho < 0 \), it indicates a negative monotonic relationship. This means that as the values of one variable increase, the values of the other variable tend to decrease.
+
+3. **Ranking Interpretation**:
+   - The Spearman correlation coefficient is based on the ranks of the data rather than the raw data values. It assesses whether the variables tend to increase or decrease together in terms of their ranks.
+   - It is less sensitive to outliers compared to the Pearson correlation coefficient since it focuses on the ordinal relationship between ranks.
+
+4. **Example**:
+   - For example, if the Spearman correlation coefficient between interest rates and deposit balances is \( \rho = 0.6 \), it indicates a strong positive monotonic relationship. This means that as interest rates increase, deposit balances tend to increase as well, and vice versa, in terms of their ranks.
+
+5. **Limitations**:
+   - Spearman correlation only assesses the monotonic relationship between variables and may not capture other types of associations, such as non-monotonic relationships.
+   - It is still sensitive to tied ranks, although less so than other non-parametric measures.
+
+In summary, the Spearman rank correlation coefficient provides insights into the monotonic relationship between variables, making it suitable for analyzing data where the relationship may not be linear. It is robust to outliers and can complement the interpretation provided by the Pearson correlation coefficient.
+
