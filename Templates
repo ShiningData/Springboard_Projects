@@ -1,109 +1,58 @@
-conduct sensitivity analysis via Bayesian Sensitivity Analysis by Applying Bayesian methods to quantify uncertainty and assess the sensitivity of deposit balances to interest rate changes:
-Use Bayesian regression models to estimate posterior distributions of parameters and conduct sensitivity analysis by sampling from these distributions.
-Use both Packages PyMC3 and Stan  tools for Bayesian modeling and sensitivity analysis in Python separately. 
+Conduct sensitivity analysis via Conduct Simulated Annealing approach in python as stated below:
+Implement simulated annealing algorithms to optimize model parameters and assess the sensitivity of deposit balances to interest rate changes.
+Use simulated annealing to find optimal parameter values that minimize or maximize the objective function representing deposit balances.
+Python libraries such as scipy provide functions for simulated annealing optimization.
 
-Sure, let's conduct sensitivity analysis via Bayesian Sensitivity Analysis using both PyMC3 and Stan in Python.
+Simulated Annealing is a probabilistic optimization algorithm inspired by annealing in metallurgy. It's used to find the global optimum of a function. Here's how you can conduct sensitivity analysis using Simulated Annealing in Python with scipy:
 
-### Bayesian Sensitivity Analysis with PyMC3:
+1. **Define Objective Function**: Define an objective function that represents the relationship between model parameters and deposit balances.
 
-PyMC3 is a Python package for Bayesian statistical modeling and probabilistic machine learning. Here's how you can use PyMC3 for Bayesian Sensitivity Analysis:
+2. **Implement Simulated Annealing**: Use the `scipy.optimize.anneal` function to perform simulated annealing and find the optimal parameter values that minimize or maximize the objective function.
 
-1. **Install PyMC3**: If you haven't already installed PyMC3, you can do so via pip:
+3. **Analyze Sensitivity**: Analyze the optimal parameter values and corresponding deposit balances to understand the sensitivity of deposit balances to interest rate changes.
 
-```bash
-pip install pymc3
-```
-
-2. **Define Bayesian Model**: Define a Bayesian regression model to estimate the relationship between interest rate changes and deposit balances.
-
-3. **Specify Priors**: Specify prior distributions for the model parameters.
-
-4. **Sample from Posterior**: Sample from the posterior distribution of the model parameters using Markov Chain Monte Carlo (MCMC) methods.
-
-5. **Analyze Sensitivity**: Analyze the posterior samples to understand the uncertainty and sensitivity of deposit balances to interest rate changes.
-
-Here's a basic example of how you can conduct sensitivity analysis using PyMC3:
+Here's an example of how you can conduct sensitivity analysis using Simulated Annealing in Python:
 
 ```python
-import pymc3 as pm
+from scipy.optimize import anneal
 import numpy as np
 
-# Define data (assuming you have arrays of interest rate changes and deposit balances)
-interest_rate_changes = np.array([0.02, -0.01, 0.03, -0.02, 0.01])
-deposit_balances = np.array([1000, 980, 1010, 990, 1005])
+# Define objective function
+def objective_function(parameters, *args):
+    # Parameters: array of model parameters
+    # args: additional arguments (e.g., data)
+    
+    # Extract data
+    interest_rate_changes, deposit_balances = args
+    
+    # Calculate deposit balances using the model with given parameters
+    # Example: deposit_balance = parameters[0] * interest_rate_changes + parameters[1]
+    deposit_balance = parameters[0] * interest_rate_changes + parameters[1]
+    
+    # Calculate error (e.g., sum of squared differences between predicted and actual deposit balances)
+    error = np.sum((deposit_balance - deposit_balances) ** 2)
+    
+    return error
 
-# Define Bayesian regression model
-with pm.Model() as model:
-    # Priors for model parameters
-    alpha = pm.Normal('alpha', mu=0, sigma=10)
-    beta = pm.Normal('beta', mu=0, sigma=10)
-    
-    # Model equation
-    mu = alpha + beta * interest_rate_changes
-    
-    # Likelihood
-    likelihood = pm.Normal('likelihood', mu=mu, sigma=10, observed=deposit_balances)
-    
-    # Sample from posterior
-    trace = pm.sample(1000, tune=1000)
+# Generate synthetic data (for demonstration purposes)
+np.random.seed(42)
+interest_rate_changes = np.random.uniform(-0.05, 0.05, size=100)
+true_params = [1000, 1]  # True parameters for generating synthetic data
+deposit_balances = true_params[0] * interest_rate_changes + true_params[1] + np.random.normal(0, 10, size=100)
+
+# Set initial parameter values (could be randomly chosen)
+initial_params = [500, 0]
+
+# Perform simulated annealing to find optimal parameter values
+optimal_params, min_error = anneal(objective_function, initial_params, args=(interest_rate_changes, deposit_balances))
 
 # Analyze sensitivity
-pm.traceplot(trace)
-plt.show()
+print("Optimal Parameters:", optimal_params)
+print("Minimum Error:", min_error)
 ```
 
-### Bayesian Sensitivity Analysis with Stan:
-
-Stan is a probabilistic programming language for Bayesian inference. Here's how you can use Stan for Bayesian Sensitivity Analysis:
-
-1. **Install PyStan**: If you haven't already installed PyStan, you can do so via pip:
-
-```bash
-pip install pystan
-```
-
-2. **Define Stan Model**: Define a Stan model to estimate the relationship between interest rate changes and deposit balances.
-
-3. **Specify Priors**: Specify prior distributions for the model parameters in the Stan model.
-
-4. **Compile Stan Model**: Compile the Stan model.
-
-5. **Sample from Posterior**: Sample from the posterior distribution of the model parameters using Markov Chain Monte Carlo (MCMC) methods with PyStan.
-
-6. **Analyze Sensitivity**: Analyze the posterior samples to understand the uncertainty and sensitivity of deposit balances to interest rate changes.
-
-Here's a basic example of how you can conduct sensitivity analysis using Stan:
-
-```python
-import pystan
-
-# Define Stan model
-stan_code = """
-data {
-    int<lower=0> N;  // Number of observations
-    vector[N] x;     // Interest rate changes
-    vector[N] y;     // Deposit balances
-}
-parameters {
-    real alpha;      // Intercept
-    real beta;       // Slope
-    real<lower=0> sigma;  // Error scale
-}
-model {
-    y ~ normal(alpha + beta * x, sigma);
-}
-"""
-# Compile Stan model
-stan_model = pystan.StanModel(model_code=stan_code)
-
-# Prepare data
-data = {'N': len(interest_rate_changes), 'x': interest_rate_changes, 'y': deposit_balances}
-
-# Sample from posterior
-fit = stan_model.sampling(data=data, iter=1000, chains=4)
-
-# Analyze sensitivity
-print(fit)
-```
-
-In both cases, you can analyze the posterior samples to understand the uncertainty and sensitivity of deposit balances to interest rate changes. You can examine summary statistics, posterior distributions, traceplots, and other diagnostics to assess sensitivity.
+In this example:
+- We define an objective function that calculates the error between predicted and actual deposit balances based on model parameters and input data (interest rate changes).
+- We generate synthetic data for demonstration purposes.
+- We set initial parameter values and use simulated annealing (`scipy.optimize.anneal`) to find the optimal parameter values that minimize the error.
+- We analyze the optimal parameter values and corresponding error to understand the sensitivity of deposit balances to interest rate changes.
