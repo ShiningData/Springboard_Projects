@@ -1,66 +1,57 @@
-Conduct sensitivity analysis for the interest rate change on deposit balance by applying Sensitivity Indices approach in python as stated below:
-Calculate sensitivity indices such as first-order, second-order, and total-order indices using methods like Sobol' indices.
-These indices quantify the relative importance of interest rate changes compared to other factors influencing deposit balances.
-Implementations of sensitivity indices calculations can be found in packages like SALib (Sensitivity Analysis Library) in Python.
+Conduct sensitivity analysis for the interest rate change on deposit balance as stated below:Response Surface Methodology (RSM):
+Fit a response surface model to the relationship between interest rate changes and deposit balances.
+Use the fitted model to predict deposit balances for different interest rate scenarios and assess the sensitivity of the model's predictions.
+Python libraries such as scikit-learn or statsmodels can be used for fitting response surface models.
 
-To conduct sensitivity analysis for the impact of interest rate changes on deposit balances using sensitivity indices like Sobol' indices, you can use the SALib (Sensitivity Analysis Library) package in Python. Here's how you can do it:
+To conduct sensitivity analysis for the impact of interest rate changes on deposit balances using Response Surface Methodology (RSM), you can fit a response surface model to the relationship between interest rate changes and deposit balances. Here's how you can do it using scikit-learn:
 
-1. **Install SALib**: If you haven't already installed SALib, you can do so via pip:
+1. **Load Data**: Load the dataset containing deposit balance and interest rate data.
 
-```bash
-pip install SALib
-```
+2. **Prepare Data**: Prepare the data by splitting it into features (interest rate changes) and target variable (deposit balances).
 
-2. **Define Model Function**: Define a function that represents the model you want to analyze. This function should take input parameters (including the interest rate) and output the corresponding deposit balance.
+3. **Fit Response Surface Model**: Use scikit-learn or statsmodels to fit a response surface model to the relationship between interest rate changes and deposit balances.
 
-3. **Define Parameter Ranges**: Define the ranges of values for each input parameter, including the interest rate.
+4. **Predict Deposit Balances**: Use the fitted model to predict deposit balances for different interest rate scenarios.
 
-4. **Perform Sensitivity Analysis**: Use SALib to perform sensitivity analysis and calculate sensitivity indices such as first-order, second-order, and total-order indices.
+5. **Analyze Sensitivity**: Analyze the predicted deposit balances for different interest rate scenarios to assess the sensitivity of the model's predictions.
 
-5. **Interpret Results**: Analyze the sensitivity indices to understand the relative importance of interest rate changes compared to other factors influencing deposit balances.
-
-Here's a basic example of how you can perform sensitivity analysis using SALib:
+Here's an example of how you can conduct sensitivity analysis using Response Surface Methodology in Python with scikit-learn:
 
 ```python
-from SALib.sample import saltelli
-from SALib.analyze import sobol
-from SALib.test_functions import Ishigami
+import pandas as pd
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+import numpy as np
 
-# Define the model function
-def model_function(x):
-    # Example model function (replace with your own)
-    # x[0] represents the interest rate
-    interest_rate = x[0]
-    # Calculate deposit balance (replace with your own calculation)
-    deposit_balance = 1000 * (1 + interest_rate)
-    return deposit_balance
+# Load dataset (assuming you have a CSV file with deposit balance and interest rate data)
+data = pd.read_csv('deposit_data.csv')
 
-# Define parameter ranges (assuming interest rate varies from -0.05 to 0.05)
-parameter_ranges = {
-    'num_vars': 1,
-    'names': ['Interest Rate'],
-    'bounds': [[-0.05, 0.05]]
-}
+# Prepare data
+X = data[['Interest_Rate']]  # Features (interest rate changes)
+y = data['Deposit_Balance']  # Target variable (deposit balances)
 
-# Generate samples using Sobol' sequence
-param_values = saltelli.sample(parameter_ranges, 1000)
+# Fit Response Surface Model
+poly = PolynomialFeatures(degree=2)  # Use polynomial features up to degree 2
+X_poly = poly.fit_transform(X)  # Transform features to polynomial features
+model = LinearRegression().fit(X_poly, y)  # Fit linear regression model
 
-# Evaluate the model at each sample point
-model_outputs = [model_function(x) for x in param_values]
+# Predict Deposit Balances for Different Interest Rate Scenarios
+# Define interest rate scenarios (e.g., increase by 0.25%, decrease by 0.25%, no change)
+interest_rate_scenarios = np.array([[0.0025], [-0.0025], [0]])  # Example scenarios
+X_poly_scenarios = poly.transform(interest_rate_scenarios)  # Transform scenarios to polynomial features
+predicted_deposit_balances = model.predict(X_poly_scenarios)  # Predict deposit balances
 
-# Perform sensitivity analysis using Sobol' indices
-sobol_indices = sobol.analyze(parameter_ranges, np.array(model_outputs))
-
-# Print sensitivity indices
-print("First-order indices:", sobol_indices['S1'])
-print("Second-order indices:", sobol_indices['S2'])
-print("Total-order indices:", sobol_indices['ST'])
+# Analyze Sensitivity
+print("Predicted Deposit Balances for Different Interest Rate Scenarios:")
+for i, scenario in enumerate(interest_rate_scenarios):
+    print(f"Scenario {i+1}: Interest Rate Change = {scenario[0] * 100}%")
+    print(f"Predicted Deposit Balance: {predicted_deposit_balances[i]}")
+    print()
 ```
 
 In this example:
-- We define a simple model function (`model_function`) that calculates deposit balance based on the interest rate.
-- We define the parameter ranges for sensitivity analysis, including the range of values for the interest rate.
-- We generate samples using the Sobol' sequence method provided by SALib.
-- We evaluate the model at each sample point to obtain model outputs.
-- We use SALib to perform sensitivity analysis and calculate Sobol' indices, including first-order, second-order, and total-order indices.
-- Finally, we print the sensitivity indices to analyze the relative importance of the interest rate compared to other factors influencing deposit balances.
+- We load the dataset containing deposit balance and interest rate data.
+- We split the data into features (interest rate changes) and target variable (deposit balances).
+- We fit a response surface model to the relationship between interest rate changes and deposit balances using polynomial regression.
+- We use the fitted model to predict deposit balances for different interest rate scenarios (e.g., increase by 0.25%, decrease by 0.25%, no change).
+- We analyze the predicted deposit balances for different interest rate scenarios to assess the sensitivity of the model's predictions.
