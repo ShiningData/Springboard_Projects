@@ -1,46 +1,19 @@
-Conduct sensitivity analysis on  interest rate change on deposit balance via Granger Causality Analysis in python as stated below: 
-Granger Causality Analysis:
-Conduct Granger causality tests to investigate the causal relationship between interest rate changes and deposit balances over time.
-Analyze whether past changes in interest rates predict future changes in deposit balances, and vice versa.
-The statsmodels package in Python provides functions for Granger causality testing.
+When interpreting the results of the Granger Causality Test, you'll typically focus on the statistical significance levels and F-statistics for each lag. Here's how you can interpret them:
 
-To conduct sensitivity analysis on the impact of interest rate changes on deposit balance using Granger Causality Analysis in Python, you can use the `statsmodels` package. Here's how you can do it:
+### Significance Levels:
+- The significance levels (often denoted as p-values) indicate the probability of observing the test statistic (F-statistic) as extreme as or more extreme than what is observed in the data, assuming that the null hypothesis is true.
+- A significance level less than a chosen threshold (commonly 0.05 or 0.01) suggests that you reject the null hypothesis in favor of the alternative hypothesis, indicating evidence of Granger causality.
+- Conversely, a significance level greater than the chosen threshold suggests that you fail to reject the null hypothesis, indicating no evidence of Granger causality.
+- It's essential to consider the chosen significance threshold and adjust it for multiple comparisons if necessary.
 
-1. **Install Required Libraries**: If you haven't already installed `statsmodels`, you can do so via pip:
+### F-Statistics:
+- The F-statistic is a measure of the overall significance of the Granger causality test. It assesses whether there is a statistically significant relationship between the lagged values of the potential causal variable (e.g., interest rate changes) and the current values of the dependent variable (e.g., deposit balances), after accounting for the other variables in the model.
+- Higher values of the F-statistic indicate stronger evidence against the null hypothesis of no causality.
+- The F-statistic is typically compared to critical values from the F-distribution to determine statistical significance.
 
-```bash
-pip install statsmodels
-```
+### Interpretation:
+- If the p-value associated with the F-statistic is less than the chosen significance level (e.g., 0.05), you have evidence to reject the null hypothesis of no Granger causality. In this case, you would conclude that there is Granger causality from the potential causal variable to the dependent variable.
+- Conversely, if the p-value is greater than the chosen significance level, you fail to reject the null hypothesis, indicating no evidence of Granger causality.
+- It's essential to interpret the results cautiously, considering factors such as model specification, sample size, and potential confounding variables.
 
-2. **Prepare Data**: Prepare your time series data for Granger causality testing, ensuring that you have both interest rate changes and deposit balances over time.
-
-3. **Perform Granger Causality Test**: Use the `Granger causality test` function from the `statsmodels` package to test the causal relationship between interest rate changes and deposit balances over time.
-
-4. **Analyze Sensitivity**: Analyze the results of the Granger causality test to understand whether past changes in interest rates predict future changes in deposit balances, and vice versa.
-
-Here's a basic example of how you can conduct sensitivity analysis using Granger Causality Analysis in Python with the `statsmodels` package:
-
-```python
-import pandas as pd
-from statsmodels.tsa.stattools import grangercausalitytests
-
-# Load dataset (assuming you have a DataFrame with time series data)
-data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
-
-# Extract interest rate changes and deposit balances
-interest_rate_changes = data['Interest_Rate']
-deposit_balances = data['Deposit_Balance']
-
-# Perform Granger Causality Test
-max_lag = 3  # Maximum lag to consider
-test_results = grangercausalitytests(data[['Deposit_Balance', 'Interest_Rate']], max_lag, verbose=True)
-
-# Analyze Sensitivity
-# Inspect the test results to understand the causal relationship between interest rate changes and deposit balances
-```
-
-In this example:
-- We load the time series data containing interest rate changes and deposit balances over time.
-- We extract interest rate changes and deposit balances from the dataset.
-- We perform the Granger Causality Test using the `grangercausalitytests` function from `statsmodels`, considering up to a maximum lag of 3.
-- We analyze the test results to understand whether past changes in interest rates predict future changes in deposit balances, and vice versa. The results will include statistical significance levels and F-statistics for each lag, indicating the presence of causality.
+In summary, you interpret the Granger Causality Test results by assessing the significance levels and F-statistics. Statistical significance indicates evidence for or against Granger causality, while the F-statistic measures the overall strength of the relationship between variables.
