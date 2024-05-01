@@ -1,10 +1,4 @@
-Conduct sensitivity analysis on interest rates on deposit balance via econometric time series models approach as stated below:
-Econometric Time Series Models:
-Utilize econometric time series models such as Vector Autoregression (VAR) or Vector Error Correction Model (VECM) to analyze the dynamic relationship between interest rates and deposit balances.
-Estimate impulse response functions to quantify the short-term and long-term effects of interest rate shocks on deposit balances.
-Python packages like statsmodels offer implementations of VAR and VECM models.
-
-To conduct sensitivity analysis on the impact of interest rates on deposit balance using econometric time series models like Vector Autoregression (VAR) or Vector Error Correction Model (VECM) in Python, you can use the `statsmodels` package. Here's how you can do it:
+To conduct sensitivity analysis with Vector Error Correction Model (VECM) in Python using the `statsmodels` package, you can follow a similar approach to the VAR model. Here's how you can do it:
 
 1. **Install Required Libraries**: If you haven't already installed `statsmodels`, you can do so via pip:
 
@@ -14,15 +8,15 @@ pip install statsmodels
 
 2. **Prepare Data**: Prepare your time series data for analysis, ensuring that you have both interest rates and deposit balances over time.
 
-3. **Estimate VAR or VECM Model**: Estimate a VAR or VECM model using the `VAR` or `VECM` class from `statsmodels`.
+3. **Estimate VECM Model**: Estimate a VECM model using the `VECM` class from `statsmodels`.
 
 4. **Analyze Impulse Response Functions**: Use the estimated model to analyze impulse response functions, which quantify the short-term and long-term effects of interest rate shocks on deposit balances.
 
-Here's a basic example of how you can conduct sensitivity analysis using econometric time series models in Python with the `statsmodels` package:
+Here's an example of how you can conduct sensitivity analysis with VECM in Python using the `statsmodels` package:
 
 ```python
 import pandas as pd
-from statsmodels.tsa.api import VAR
+from statsmodels.tsa.api import VECM
 
 # Load dataset (assuming you have a DataFrame with time series data)
 data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
@@ -30,19 +24,15 @@ data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date
 # Prepare data
 # Ensure that 'Interest_Rate' and 'Deposit_Balance' columns are available in the DataFrame
 
-# Estimate VAR model
-model = VAR(data)
+# Estimate VECM model
+model = VECM(data, k_ar_diff=2)  # Specify the number of lags for differencing
 
-# Choose lag order using information criteria or manual selection
-# Example using Akaike Information Criterion (AIC) for lag order selection
-lag_order = model.select_order(maxlags=4, ic='aic')
-
-# Fit VAR model with selected lag order
-var_results = model.fit(lag_order)
+# Fit VECM model
+vecm_results = model.fit()
 
 # Analyze Impulse Response Functions
 # Example: Compute impulse response functions for a specific period (e.g., 10 periods)
-irf = var_results.irf(periods=10)
+irf = vecm_results.irf(periods=10)
 
 # Plot impulse response functions
 irf.plot(impulse='Interest_Rate', response='Deposit_Balance')
@@ -51,8 +41,7 @@ irf.plot(impulse='Interest_Rate', response='Deposit_Balance')
 In this example:
 - We load the time series data containing interest rates and deposit balances over time.
 - We prepare the data for analysis.
-- We estimate a VAR model using the `VAR` class from `statsmodels`.
-- We choose the lag order for the VAR model using information criteria (e.g., AIC).
-- We fit the VAR model with the selected lag order to the data.
-- We compute impulse response functions using the `irf` method of the fitted VAR model, which quantifies the dynamic relationship between interest rates and deposit balances.
+- We estimate a VECM model using the `VECM` class from `statsmodels`, specifying the number of lags for differencing.
+- We fit the VECM model to the data.
+- We compute impulse response functions using the `irf` method of the fitted VECM model, which quantifies the dynamic relationship between interest rates and deposit balances.
 - Finally, we plot the impulse response functions to visualize the short-term and long-term effects of interest rate shocks on deposit balances.
