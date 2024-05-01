@@ -1,47 +1,52 @@
-To conduct sensitivity analysis with Vector Error Correction Model (VECM) in Python using the `statsmodels` package, you can follow a similar approach to the VAR model. Here's how you can do it:
+Conduct sensitivity analysis on interest rate change on deposit balance via dynamic panel data analysis using python as stated below:
+Dynamic Panel Data Analysis:
+Apply dynamic panel data models to analyze the sensitivity of deposit balances to interest rate changes while accounting for individual heterogeneity and time dynamics.
+Control for unobserved individual effects and endogeneity issues using appropriate panel data techniques.
+The linearmodels package in Python provides functionalities for dynamic panel data analysis.
 
-1. **Install Required Libraries**: If you haven't already installed `statsmodels`, you can do so via pip:
+To conduct sensitivity analysis on the impact of interest rate changes on deposit balance using dynamic panel data analysis in Python, you can use the `linearmodels` package. Here's how you can do it:
+
+1. **Install Required Libraries**: If you haven't already installed `linearmodels`, you can do so via pip:
 
 ```bash
-pip install statsmodels
+pip install linearmodels
 ```
 
-2. **Prepare Data**: Prepare your time series data for analysis, ensuring that you have both interest rates and deposit balances over time.
+2. **Prepare Data**: Prepare your panel data for analysis, ensuring that you have data on both interest rate changes and deposit balances across multiple individuals and time periods.
 
-3. **Estimate VECM Model**: Estimate a VECM model using the `VECM` class from `statsmodels`.
+3. **Specify Model**: Specify the dynamic panel data model that captures the relationship between interest rate changes and deposit balances, while controlling for individual heterogeneity and time dynamics.
 
-4. **Analyze Impulse Response Functions**: Use the estimated model to analyze impulse response functions, which quantify the short-term and long-term effects of interest rate shocks on deposit balances.
+4. **Estimate Model**: Use the `PanelOLS` class from `linearmodels` to estimate the dynamic panel data model.
 
-Here's an example of how you can conduct sensitivity analysis with VECM in Python using the `statsmodels` package:
+5. **Analyze Results**: Analyze the results of the model estimation to understand the sensitivity of deposit balances to interest rate changes.
+
+Here's an example of how you can conduct sensitivity analysis using dynamic panel data analysis in Python with the `linearmodels` package:
 
 ```python
 import pandas as pd
-from statsmodels.tsa.api import VECM
+from linearmodels.panel import PanelOLS
 
-# Load dataset (assuming you have a DataFrame with time series data)
-data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
+# Load panel data (assuming you have a DataFrame with panel data)
+panel_data = pd.read_csv('panel_data.csv')
 
-# Prepare data
-# Ensure that 'Interest_Rate' and 'Deposit_Balance' columns are available in the DataFrame
+# Specify model formula
+formula = 'Deposit_Balance ~ 1 + Interest_Rate + lag(Deposit_Balance, 1) + EntityEffects + TimeEffects'
 
-# Estimate VECM model
-model = VECM(data, k_ar_diff=2)  # Specify the number of lags for differencing
+# Estimate dynamic panel data model
+model = PanelOLS.from_formula(formula, data=panel_data)
 
-# Fit VECM model
-vecm_results = model.fit()
+# Fit the model
+results = model.fit()
 
-# Analyze Impulse Response Functions
-# Example: Compute impulse response functions for a specific period (e.g., 10 periods)
-irf = vecm_results.irf(periods=10)
+# Print model summary
+print(results)
 
-# Plot impulse response functions
-irf.plot(impulse='Interest_Rate', response='Deposit_Balance')
+# Analyze sensitivity of interest rate coefficient and other model parameters
 ```
 
 In this example:
-- We load the time series data containing interest rates and deposit balances over time.
-- We prepare the data for analysis.
-- We estimate a VECM model using the `VECM` class from `statsmodels`, specifying the number of lags for differencing.
-- We fit the VECM model to the data.
-- We compute impulse response functions using the `irf` method of the fitted VECM model, which quantifies the dynamic relationship between interest rates and deposit balances.
-- Finally, we plot the impulse response functions to visualize the short-term and long-term effects of interest rate shocks on deposit balances.
+- We load the panel data containing interest rate changes, deposit balances, and other relevant variables across multiple individuals and time periods.
+- We specify the dynamic panel data model formula using the `from_formula` method, which includes the dependent variable (`Deposit_Balance`), the independent variables (`Interest_Rate` and lagged `Deposit_Balance`), and controls for individual and time effects.
+- We estimate the dynamic panel data model using the `PanelOLS` class from `linearmodels`.
+- We fit the model to the data and obtain the results.
+- Finally, we analyze the sensitivity of the coefficients (e.g., the coefficient on `Interest_Rate`) and other model parameters to understand the relationship between interest rate changes and deposit balances while accounting for individual heterogeneity and time dynamics.
