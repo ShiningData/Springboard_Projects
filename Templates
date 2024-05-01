@@ -1,52 +1,84 @@
-Conduct sensitivity analysis on interest rate change on deposit balance via dynamic panel data analysis using python as stated below:
-Dynamic Panel Data Analysis:
-Apply dynamic panel data models to analyze the sensitivity of deposit balances to interest rate changes while accounting for individual heterogeneity and time dynamics.
-Control for unobserved individual effects and endogeneity issues using appropriate panel data techniques.
-The linearmodels package in Python provides functionalities for dynamic panel data analysis.
+Conduct sensitivity analysis on interest rate change on deposit balance via agent-based modeling (ABM) in python as stated below:
+Agent-Based Modeling (ABM):
+Implement agent-based models to simulate the behavior of individual bank customers in response to interest rate changes.
+Analyze emergent patterns and aggregate outcomes to understand the system-level sensitivity of deposit balances to interest rate fluctuations.
+Python libraries like Mesa offer frameworks for building agent-based models.
 
-To conduct sensitivity analysis on the impact of interest rate changes on deposit balance using dynamic panel data analysis in Python, you can use the `linearmodels` package. Here's how you can do it:
+To conduct sensitivity analysis on the impact of interest rate changes on deposit balance using Agent-Based Modeling (ABM) in Python, you can use the `Mesa` library. Here's how you can do it:
 
-1. **Install Required Libraries**: If you haven't already installed `linearmodels`, you can do so via pip:
+1. **Install Required Libraries**: If you haven't already installed `Mesa`, you can do so via pip:
 
 ```bash
-pip install linearmodels
+pip install mesa
 ```
 
-2. **Prepare Data**: Prepare your panel data for analysis, ensuring that you have data on both interest rate changes and deposit balances across multiple individuals and time periods.
+2. **Implement Agent-Based Model**: Define an agent-based model to simulate the behavior of individual bank customers in response to interest rate changes. Each agent represents a bank customer and has attributes and behaviors that govern their decision-making process regarding deposit balances.
 
-3. **Specify Model**: Specify the dynamic panel data model that captures the relationship between interest rate changes and deposit balances, while controlling for individual heterogeneity and time dynamics.
+3. **Simulate Interest Rate Changes**: Implement mechanisms to simulate interest rate changes within the agent-based model. This could involve defining rules for how interest rates change over time or incorporating external factors that influence interest rates.
 
-4. **Estimate Model**: Use the `PanelOLS` class from `linearmodels` to estimate the dynamic panel data model.
+4. **Analyze Aggregate Outcomes**: Run multiple simulations of the agent-based model with varying interest rate scenarios and analyze the aggregate outcomes, such as total deposit balances across all agents, to understand the system-level sensitivity of deposit balances to interest rate fluctuations.
 
-5. **Analyze Results**: Analyze the results of the model estimation to understand the sensitivity of deposit balances to interest rate changes.
-
-Here's an example of how you can conduct sensitivity analysis using dynamic panel data analysis in Python with the `linearmodels` package:
+Here's a basic example of how you can conduct sensitivity analysis using Agent-Based Modeling in Python with the `Mesa` library:
 
 ```python
-import pandas as pd
-from linearmodels.panel import PanelOLS
+from mesa import Agent, Model
+from mesa.time import RandomActivation
+from mesa.space import MultiGrid
+from mesa.datacollection import DataCollector
+import random
 
-# Load panel data (assuming you have a DataFrame with panel data)
-panel_data = pd.read_csv('panel_data.csv')
+# Define Agent class
+class BankCustomer(Agent):
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
+        self.deposit_balance = random.uniform(1000, 2000)  # Initial deposit balance
 
-# Specify model formula
-formula = 'Deposit_Balance ~ 1 + Interest_Rate + lag(Deposit_Balance, 1) + EntityEffects + TimeEffects'
+    def step(self):
+        # Define agent behavior in response to interest rate changes
+        # Example: Agent decides whether to adjust deposit balance based on interest rate
+        if self.model.interest_rate > 0.05:
+            self.deposit_balance += random.uniform(0, 100)
+        elif self.model.interest_rate < 0.02:
+            self.deposit_balance -= random.uniform(0, 100)
 
-# Estimate dynamic panel data model
-model = PanelOLS.from_formula(formula, data=panel_data)
+# Define Model class
+class BankModel(Model):
+    def __init__(self, N, interest_rate):
+        self.num_agents = N
+        self.interest_rate = interest_rate
+        self.schedule = RandomActivation(self)
+        self.grid = MultiGrid(1, N, True)
 
-# Fit the model
-results = model.fit()
+        # Create agents
+        for i in range(self.num_agents):
+            a = BankCustomer(i, self)
+            self.schedule.add(a)
+            x = 0
+            y = i
+            self.grid.place_agent(a, (x, y))
 
-# Print model summary
-print(results)
+        # Data collector to track aggregate outcomes
+        self.datacollector = DataCollector(
+            agent_reporters={"Deposit_Balance": lambda a: a.deposit_balance})
 
-# Analyze sensitivity of interest rate coefficient and other model parameters
+    def step(self):
+        self.datacollector.collect(self)
+        self.schedule.step()
+
+# Run simulations with different interest rate scenarios
+for interest_rate in [0.02, 0.03, 0.04, 0.05]:
+    model = BankModel(1000, interest_rate)
+    for i in range(100):
+        model.step()
+
+    # Analyze aggregate outcomes
+    # Example: Calculate mean deposit balance across all agents
+    all_agent_balances = model.datacollector.get_agent_vars_dataframe()
+    mean_deposit_balance = all_agent_balances.mean()
+    print(f"Mean Deposit Balance with Interest Rate {interest_rate}: {mean_deposit_balance}")
 ```
 
 In this example:
-- We load the panel data containing interest rate changes, deposit balances, and other relevant variables across multiple individuals and time periods.
-- We specify the dynamic panel data model formula using the `from_formula` method, which includes the dependent variable (`Deposit_Balance`), the independent variables (`Interest_Rate` and lagged `Deposit_Balance`), and controls for individual and time effects.
-- We estimate the dynamic panel data model using the `PanelOLS` class from `linearmodels`.
-- We fit the model to the data and obtain the results.
-- Finally, we analyze the sensitivity of the coefficients (e.g., the coefficient on `Interest_Rate`) and other model parameters to understand the relationship between interest rate changes and deposit balances while accounting for individual heterogeneity and time dynamics.
+- We define an Agent class (`BankCustomer`) to represent individual bank customers. Each agent has an initial deposit balance and a behavior that may adjust the balance in response to interest rate changes.
+- We define a Model class (`BankModel`) that creates a specified number of agents and simulates their behavior over time.
+- We run multiple simulations with different interest rate scenarios and analyze aggregate outcomes, such as mean deposit balance across all agents, to understand the sensitivity of deposit balances to interest rate fluctuations.
