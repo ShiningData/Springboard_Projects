@@ -1,58 +1,70 @@
-Conduct sensitivity analysis via Conduct Simulated Annealing approach in python as stated below:
-Implement simulated annealing algorithms to optimize model parameters and assess the sensitivity of deposit balances to interest rate changes.
-Use simulated annealing to find optimal parameter values that minimize or maximize the objective function representing deposit balances.
-Python libraries such as scipy provide functions for simulated annealing optimization.
+Conduct sensitivity analysis on interest rate changes impact on deposit balance via Bootstrap Sampling techniques as stated below in python:
+Use bootstrap resampling to estimate the variability of sensitivity analysis results and assess the robustness of your findings.
+Generate multiple bootstrap samples from your dataset, perform sensitivity analysis on each sample, and examine the distribution of sensitivity metrics.
+The bootstrapped package in Python provides functionalities for bootstrap resampling.
 
-Simulated Annealing is a probabilistic optimization algorithm inspired by annealing in metallurgy. It's used to find the global optimum of a function. Here's how you can conduct sensitivity analysis using Simulated Annealing in Python with scipy:
+Certainly! Here's how you can conduct sensitivity analysis on the impact of interest rate changes on deposit balance using Bootstrap Sampling techniques in Python with the `bootstrapped` package:
 
-1. **Define Objective Function**: Define an objective function that represents the relationship between model parameters and deposit balances.
+1. **Install the bootstrapped Package**: If you haven't already installed the bootstrapped package, you can do so via pip:
 
-2. **Implement Simulated Annealing**: Use the `scipy.optimize.anneal` function to perform simulated annealing and find the optimal parameter values that minimize or maximize the objective function.
+```bash
+pip install bootstrapped
+```
 
-3. **Analyze Sensitivity**: Analyze the optimal parameter values and corresponding deposit balances to understand the sensitivity of deposit balances to interest rate changes.
+2. **Define Sensitivity Analysis Function**: Define a function to perform sensitivity analysis on interest rate changes and deposit balance. This function will estimate sensitivity metrics from a given sample.
 
-Here's an example of how you can conduct sensitivity analysis using Simulated Annealing in Python:
+3. **Bootstrap Resampling**: Use bootstrapped resampling to generate multiple bootstrap samples from the dataset.
+
+4. **Perform Sensitivity Analysis on Bootstrap Samples**: For each bootstrap sample, apply the sensitivity analysis function to estimate sensitivity metrics.
+
+5. **Examine the Distribution of Sensitivity Metrics**: Analyze the distribution of sensitivity metrics obtained from bootstrap samples to understand the variability and robustness of the findings.
+
+Here's an example of how you can conduct sensitivity analysis using Bootstrap Sampling techniques in Python with the bootstrapped package:
 
 ```python
-from scipy.optimize import anneal
 import numpy as np
+import pandas as pd
+from bootstrapped.bootstrap import bootstrap
+from bootstrapped.stats_functions import mean, std_dev
 
-# Define objective function
-def objective_function(parameters, *args):
-    # Parameters: array of model parameters
-    # args: additional arguments (e.g., data)
-    
-    # Extract data
-    interest_rate_changes, deposit_balances = args
-    
-    # Calculate deposit balances using the model with given parameters
-    # Example: deposit_balance = parameters[0] * interest_rate_changes + parameters[1]
-    deposit_balance = parameters[0] * interest_rate_changes + parameters[1]
-    
-    # Calculate error (e.g., sum of squared differences between predicted and actual deposit balances)
-    error = np.sum((deposit_balance - deposit_balances) ** 2)
-    
-    return error
+# Define Sensitivity Analysis Function
+def sensitivity_analysis(interest_rate_changes, deposit_balances):
+    # Perform sensitivity analysis (replace with your analysis)
+    # Example: Calculate correlation coefficient between interest rate changes and deposit balances
+    correlation_coefficient = np.corrcoef(interest_rate_changes, deposit_balances)[0, 1]
+    return correlation_coefficient
 
-# Generate synthetic data (for demonstration purposes)
-np.random.seed(42)
-interest_rate_changes = np.random.uniform(-0.05, 0.05, size=100)
-true_params = [1000, 1]  # True parameters for generating synthetic data
-deposit_balances = true_params[0] * interest_rate_changes + true_params[1] + np.random.normal(0, 10, size=100)
+# Load Dataset (assuming you have a DataFrame with deposit balance and interest rate data)
+data = pd.read_csv('deposit_data.csv')
 
-# Set initial parameter values (could be randomly chosen)
-initial_params = [500, 0]
+# Extract Interest Rate Changes and Deposit Balances
+interest_rate_changes = data['Interest_Rate'].values
+deposit_balances = data['Deposit_Balance'].values
 
-# Perform simulated annealing to find optimal parameter values
-optimal_params, min_error = anneal(objective_function, initial_params, args=(interest_rate_changes, deposit_balances))
+# Define Number of Bootstrap Samples
+num_bootstrap_samples = 1000
 
-# Analyze sensitivity
-print("Optimal Parameters:", optimal_params)
-print("Minimum Error:", min_error)
+# Perform Bootstrap Resampling and Sensitivity Analysis
+bootstrap_results = bootstrap(
+    interest_rate_changes, 
+    deposit_balances, 
+    num_iterations=num_bootstrap_samples, 
+    stat_func=sensitivity_analysis
+)
+
+# Extract Sensitivity Metrics from Bootstrap Results
+sensitivity_metrics = bootstrap_results.apply(mean, axis=0)  # Mean of sensitivity metrics
+sensitivity_metrics_std = bootstrap_results.apply(std_dev, axis=0)  # Standard deviation of sensitivity metrics
+
+# Analyze the Distribution of Sensitivity Metrics
+print("Mean Sensitivity Metrics:", sensitivity_metrics)
+print("Standard Deviation of Sensitivity Metrics:", sensitivity_metrics_std)
 ```
 
 In this example:
-- We define an objective function that calculates the error between predicted and actual deposit balances based on model parameters and input data (interest rate changes).
-- We generate synthetic data for demonstration purposes.
-- We set initial parameter values and use simulated annealing (`scipy.optimize.anneal`) to find the optimal parameter values that minimize the error.
-- We analyze the optimal parameter values and corresponding error to understand the sensitivity of deposit balances to interest rate changes.
+- We define a sensitivity analysis function (`sensitivity_analysis`) to calculate sensitivity metrics for interest rate changes and deposit balances. You can replace this function with your own sensitivity analysis.
+- We load the dataset containing deposit balance and interest rate data.
+- We extract interest rate changes and deposit balances from the dataset.
+- We use bootstrapped resampling to generate multiple bootstrap samples from the dataset.
+- For each bootstrap sample, we apply the sensitivity analysis function to estimate sensitivity metrics.
+- Finally, we analyze the distribution of sensitivity metrics obtained from bootstrap samples to understand the variability and robustness of the findings.
