@@ -1,19 +1,58 @@
-When interpreting the results of the Granger Causality Test, you'll typically focus on the statistical significance levels and F-statistics for each lag. Here's how you can interpret them:
+Conduct sensitivity analysis on interest rates on deposit balance via econometric time series models approach as stated below:
+Econometric Time Series Models:
+Utilize econometric time series models such as Vector Autoregression (VAR) or Vector Error Correction Model (VECM) to analyze the dynamic relationship between interest rates and deposit balances.
+Estimate impulse response functions to quantify the short-term and long-term effects of interest rate shocks on deposit balances.
+Python packages like statsmodels offer implementations of VAR and VECM models.
 
-### Significance Levels:
-- The significance levels (often denoted as p-values) indicate the probability of observing the test statistic (F-statistic) as extreme as or more extreme than what is observed in the data, assuming that the null hypothesis is true.
-- A significance level less than a chosen threshold (commonly 0.05 or 0.01) suggests that you reject the null hypothesis in favor of the alternative hypothesis, indicating evidence of Granger causality.
-- Conversely, a significance level greater than the chosen threshold suggests that you fail to reject the null hypothesis, indicating no evidence of Granger causality.
-- It's essential to consider the chosen significance threshold and adjust it for multiple comparisons if necessary.
+To conduct sensitivity analysis on the impact of interest rates on deposit balance using econometric time series models like Vector Autoregression (VAR) or Vector Error Correction Model (VECM) in Python, you can use the `statsmodels` package. Here's how you can do it:
 
-### F-Statistics:
-- The F-statistic is a measure of the overall significance of the Granger causality test. It assesses whether there is a statistically significant relationship between the lagged values of the potential causal variable (e.g., interest rate changes) and the current values of the dependent variable (e.g., deposit balances), after accounting for the other variables in the model.
-- Higher values of the F-statistic indicate stronger evidence against the null hypothesis of no causality.
-- The F-statistic is typically compared to critical values from the F-distribution to determine statistical significance.
+1. **Install Required Libraries**: If you haven't already installed `statsmodels`, you can do so via pip:
 
-### Interpretation:
-- If the p-value associated with the F-statistic is less than the chosen significance level (e.g., 0.05), you have evidence to reject the null hypothesis of no Granger causality. In this case, you would conclude that there is Granger causality from the potential causal variable to the dependent variable.
-- Conversely, if the p-value is greater than the chosen significance level, you fail to reject the null hypothesis, indicating no evidence of Granger causality.
-- It's essential to interpret the results cautiously, considering factors such as model specification, sample size, and potential confounding variables.
+```bash
+pip install statsmodels
+```
 
-In summary, you interpret the Granger Causality Test results by assessing the significance levels and F-statistics. Statistical significance indicates evidence for or against Granger causality, while the F-statistic measures the overall strength of the relationship between variables.
+2. **Prepare Data**: Prepare your time series data for analysis, ensuring that you have both interest rates and deposit balances over time.
+
+3. **Estimate VAR or VECM Model**: Estimate a VAR or VECM model using the `VAR` or `VECM` class from `statsmodels`.
+
+4. **Analyze Impulse Response Functions**: Use the estimated model to analyze impulse response functions, which quantify the short-term and long-term effects of interest rate shocks on deposit balances.
+
+Here's a basic example of how you can conduct sensitivity analysis using econometric time series models in Python with the `statsmodels` package:
+
+```python
+import pandas as pd
+from statsmodels.tsa.api import VAR
+
+# Load dataset (assuming you have a DataFrame with time series data)
+data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
+
+# Prepare data
+# Ensure that 'Interest_Rate' and 'Deposit_Balance' columns are available in the DataFrame
+
+# Estimate VAR model
+model = VAR(data)
+
+# Choose lag order using information criteria or manual selection
+# Example using Akaike Information Criterion (AIC) for lag order selection
+lag_order = model.select_order(maxlags=4, ic='aic')
+
+# Fit VAR model with selected lag order
+var_results = model.fit(lag_order)
+
+# Analyze Impulse Response Functions
+# Example: Compute impulse response functions for a specific period (e.g., 10 periods)
+irf = var_results.irf(periods=10)
+
+# Plot impulse response functions
+irf.plot(impulse='Interest_Rate', response='Deposit_Balance')
+```
+
+In this example:
+- We load the time series data containing interest rates and deposit balances over time.
+- We prepare the data for analysis.
+- We estimate a VAR model using the `VAR` class from `statsmodels`.
+- We choose the lag order for the VAR model using information criteria (e.g., AIC).
+- We fit the VAR model with the selected lag order to the data.
+- We compute impulse response functions using the `irf` method of the fitted VAR model, which quantifies the dynamic relationship between interest rates and deposit balances.
+- Finally, we plot the impulse response functions to visualize the short-term and long-term effects of interest rate shocks on deposit balances.
