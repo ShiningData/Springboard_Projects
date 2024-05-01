@@ -4,3 +4,63 @@ Counterfactual Analysis:
 Conduct counterfactual analysis to estimate what deposit balances would have been under alternative interest rate scenarios.
 Use econometric or machine learning models to simulate the hypothetical outcomes of deposit balances under different interest rate conditions.
 Compare the actual deposit balances with the counterfactual outcomes to assess the sensitivity of deposit balances to interest rate changes.
+
+To conduct sensitivity analysis for the impact of interest rate changes on deposit balance via Counterfactual Analysis in Python, you can follow these general steps:
+
+1. **Prepare Data**: Prepare your dataset, including historical data on deposit balances, interest rates, and any other relevant variables.
+
+2. **Define Counterfactual Scenarios**: Define alternative interest rate scenarios for the counterfactual analysis. These scenarios could involve increasing, decreasing, or keeping the interest rates constant at different levels.
+
+3. **Build Models**: Depending on the complexity of your analysis, you can choose to use either econometric models (such as VAR or ARIMA) or machine learning models (such as regression or neural networks) to simulate the hypothetical outcomes of deposit balances under different interest rate conditions.
+
+4. **Simulate Counterfactual Outcomes**: Use the models built in the previous step to simulate the deposit balances under the defined counterfactual scenarios. For each scenario, predict the deposit balances based on historical data and the alternative interest rate conditions.
+
+5. **Compare Actual and Counterfactual Outcomes**: Compare the actual deposit balances with the counterfactual outcomes obtained from the simulations. Analyze the differences to assess the sensitivity of deposit balances to interest rate changes.
+
+Here's a simplified example of how you can conduct sensitivity analysis using Counterfactual Analysis in Python:
+
+```python
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+# Step 1: Prepare Data
+# Assuming you have a DataFrame with historical data on deposit balances and interest rates
+data = pd.read_csv('historical_data.csv')
+
+# Step 2: Define Counterfactual Scenarios
+# Define alternative interest rate scenarios (e.g., increase by 0.25%, decrease by 0.25%, no change)
+
+# Step 3: Build Models
+# For simplicity, let's use a linear regression model
+model = LinearRegression()
+
+# Step 4: Simulate Counterfactual Outcomes
+counterfactual_results = {}
+for scenario in ['increase', 'decrease', 'no_change']:
+    # Define alternative interest rate scenario
+    if scenario == 'increase':
+        data['Interest_Rate_Scenario'] = data['Interest_Rate'] + 0.0025
+    elif scenario == 'decrease':
+        data['Interest_Rate_Scenario'] = data['Interest_Rate'] - 0.0025
+    else:
+        data['Interest_Rate_Scenario'] = data['Interest_Rate']
+
+    # Fit the model and predict deposit balances under the counterfactual scenario
+    X = data[['Interest_Rate_Scenario']]
+    y = data['Deposit_Balance']
+    model.fit(X, y)
+    counterfactual_results[scenario] = model.predict(X)
+
+# Step 5: Compare Actual and Counterfactual Outcomes
+# Compare actual deposit balances with the counterfactual outcomes for each scenario
+for scenario, predicted_balances in counterfactual_results.items():
+    actual_balances = data['Deposit_Balance']
+    difference = predicted_balances - actual_balances
+    print(f"Difference for {scenario} scenario:", difference.mean())
+```
+
+In this example:
+- We prepare the historical dataset containing deposit balances and interest rates.
+- We define alternative interest rate scenarios.
+- We build a simple linear regression model to simulate the deposit balances under each counterfactual scenario.
+- We compare the actual deposit balances with the counterfactual outcomes obtained from the simulations to assess the sensitivity of deposit balances to interest rate changes.
