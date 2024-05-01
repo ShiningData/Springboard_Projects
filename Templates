@@ -1,70 +1,46 @@
-Conduct sensitivity analysis on interest rate changes impact on deposit balance via Bootstrap Sampling techniques as stated below in python:
-Use bootstrap resampling to estimate the variability of sensitivity analysis results and assess the robustness of your findings.
-Generate multiple bootstrap samples from your dataset, perform sensitivity analysis on each sample, and examine the distribution of sensitivity metrics.
-The bootstrapped package in Python provides functionalities for bootstrap resampling.
+Conduct sensitivity analysis on  interest rate change on deposit balance via Granger Causality Analysis in python as stated below: 
+Granger Causality Analysis:
+Conduct Granger causality tests to investigate the causal relationship between interest rate changes and deposit balances over time.
+Analyze whether past changes in interest rates predict future changes in deposit balances, and vice versa.
+The statsmodels package in Python provides functions for Granger causality testing.
 
-Certainly! Here's how you can conduct sensitivity analysis on the impact of interest rate changes on deposit balance using Bootstrap Sampling techniques in Python with the `bootstrapped` package:
+To conduct sensitivity analysis on the impact of interest rate changes on deposit balance using Granger Causality Analysis in Python, you can use the `statsmodels` package. Here's how you can do it:
 
-1. **Install the bootstrapped Package**: If you haven't already installed the bootstrapped package, you can do so via pip:
+1. **Install Required Libraries**: If you haven't already installed `statsmodels`, you can do so via pip:
 
 ```bash
-pip install bootstrapped
+pip install statsmodels
 ```
 
-2. **Define Sensitivity Analysis Function**: Define a function to perform sensitivity analysis on interest rate changes and deposit balance. This function will estimate sensitivity metrics from a given sample.
+2. **Prepare Data**: Prepare your time series data for Granger causality testing, ensuring that you have both interest rate changes and deposit balances over time.
 
-3. **Bootstrap Resampling**: Use bootstrapped resampling to generate multiple bootstrap samples from the dataset.
+3. **Perform Granger Causality Test**: Use the `Granger causality test` function from the `statsmodels` package to test the causal relationship between interest rate changes and deposit balances over time.
 
-4. **Perform Sensitivity Analysis on Bootstrap Samples**: For each bootstrap sample, apply the sensitivity analysis function to estimate sensitivity metrics.
+4. **Analyze Sensitivity**: Analyze the results of the Granger causality test to understand whether past changes in interest rates predict future changes in deposit balances, and vice versa.
 
-5. **Examine the Distribution of Sensitivity Metrics**: Analyze the distribution of sensitivity metrics obtained from bootstrap samples to understand the variability and robustness of the findings.
-
-Here's an example of how you can conduct sensitivity analysis using Bootstrap Sampling techniques in Python with the bootstrapped package:
+Here's a basic example of how you can conduct sensitivity analysis using Granger Causality Analysis in Python with the `statsmodels` package:
 
 ```python
-import numpy as np
 import pandas as pd
-from bootstrapped.bootstrap import bootstrap
-from bootstrapped.stats_functions import mean, std_dev
+from statsmodels.tsa.stattools import grangercausalitytests
 
-# Define Sensitivity Analysis Function
-def sensitivity_analysis(interest_rate_changes, deposit_balances):
-    # Perform sensitivity analysis (replace with your analysis)
-    # Example: Calculate correlation coefficient between interest rate changes and deposit balances
-    correlation_coefficient = np.corrcoef(interest_rate_changes, deposit_balances)[0, 1]
-    return correlation_coefficient
+# Load dataset (assuming you have a DataFrame with time series data)
+data = pd.read_csv('time_series_data.csv', parse_dates=['Date'], index_col='Date')
 
-# Load Dataset (assuming you have a DataFrame with deposit balance and interest rate data)
-data = pd.read_csv('deposit_data.csv')
+# Extract interest rate changes and deposit balances
+interest_rate_changes = data['Interest_Rate']
+deposit_balances = data['Deposit_Balance']
 
-# Extract Interest Rate Changes and Deposit Balances
-interest_rate_changes = data['Interest_Rate'].values
-deposit_balances = data['Deposit_Balance'].values
+# Perform Granger Causality Test
+max_lag = 3  # Maximum lag to consider
+test_results = grangercausalitytests(data[['Deposit_Balance', 'Interest_Rate']], max_lag, verbose=True)
 
-# Define Number of Bootstrap Samples
-num_bootstrap_samples = 1000
-
-# Perform Bootstrap Resampling and Sensitivity Analysis
-bootstrap_results = bootstrap(
-    interest_rate_changes, 
-    deposit_balances, 
-    num_iterations=num_bootstrap_samples, 
-    stat_func=sensitivity_analysis
-)
-
-# Extract Sensitivity Metrics from Bootstrap Results
-sensitivity_metrics = bootstrap_results.apply(mean, axis=0)  # Mean of sensitivity metrics
-sensitivity_metrics_std = bootstrap_results.apply(std_dev, axis=0)  # Standard deviation of sensitivity metrics
-
-# Analyze the Distribution of Sensitivity Metrics
-print("Mean Sensitivity Metrics:", sensitivity_metrics)
-print("Standard Deviation of Sensitivity Metrics:", sensitivity_metrics_std)
+# Analyze Sensitivity
+# Inspect the test results to understand the causal relationship between interest rate changes and deposit balances
 ```
 
 In this example:
-- We define a sensitivity analysis function (`sensitivity_analysis`) to calculate sensitivity metrics for interest rate changes and deposit balances. You can replace this function with your own sensitivity analysis.
-- We load the dataset containing deposit balance and interest rate data.
+- We load the time series data containing interest rate changes and deposit balances over time.
 - We extract interest rate changes and deposit balances from the dataset.
-- We use bootstrapped resampling to generate multiple bootstrap samples from the dataset.
-- For each bootstrap sample, we apply the sensitivity analysis function to estimate sensitivity metrics.
-- Finally, we analyze the distribution of sensitivity metrics obtained from bootstrap samples to understand the variability and robustness of the findings.
+- We perform the Granger Causality Test using the `grangercausalitytests` function from `statsmodels`, considering up to a maximum lag of 3.
+- We analyze the test results to understand whether past changes in interest rates predict future changes in deposit balances, and vice versa. The results will include statistical significance levels and F-statistics for each lag, indicating the presence of causality.
