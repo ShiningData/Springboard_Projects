@@ -1,84 +1,66 @@
-Conduct sensitivity analysis on interest rate change on deposit balance via agent-based modeling (ABM) in python as stated below:
-Agent-Based Modeling (ABM):
-Implement agent-based models to simulate the behavior of individual bank customers in response to interest rate changes.
-Analyze emergent patterns and aggregate outcomes to understand the system-level sensitivity of deposit balances to interest rate fluctuations.
-Python libraries like Mesa offer frameworks for building agent-based models.
+Conduct sensitivity analysis for the interest rate changes on deposit balance using Fuzzy Logic Modeling in python as stated below:
+Fuzzy Logic Modeling:
+Employ fuzzy logic modeling to capture the imprecise and uncertain nature of the relationship between interest rate changes and deposit balances.
+Define fuzzy rules and membership functions to represent the sensitivity of deposit balances to different levels of interest rate changes.
+The scikit-fuzzy package in Python offers tools for fuzzy logic modeling.
 
-To conduct sensitivity analysis on the impact of interest rate changes on deposit balance using Agent-Based Modeling (ABM) in Python, you can use the `Mesa` library. Here's how you can do it:
+To conduct sensitivity analysis for the impact of interest rate changes on deposit balance using Fuzzy Logic Modeling in Python, you can utilize the `scikit-fuzzy` package. Here's a general approach to perform this analysis:
 
-1. **Install Required Libraries**: If you haven't already installed `Mesa`, you can do so via pip:
+1. **Install Required Libraries**: If you haven't already installed `scikit-fuzzy`, you can do so via pip:
 
 ```bash
-pip install mesa
+pip install scikit-fuzzy
 ```
 
-2. **Implement Agent-Based Model**: Define an agent-based model to simulate the behavior of individual bank customers in response to interest rate changes. Each agent represents a bank customer and has attributes and behaviors that govern their decision-making process regarding deposit balances.
+2. **Define Membership Functions**: Define membership functions for both the interest rate changes and the deposit balances. These functions will represent the fuzzy sets that characterize the sensitivity of deposit balances to different levels of interest rate changes.
 
-3. **Simulate Interest Rate Changes**: Implement mechanisms to simulate interest rate changes within the agent-based model. This could involve defining rules for how interest rates change over time or incorporating external factors that influence interest rates.
+3. **Define Fuzzy Rules**: Define a set of fuzzy rules that encode the relationship between interest rate changes and deposit balances. These rules will guide the fuzzy inference process.
 
-4. **Analyze Aggregate Outcomes**: Run multiple simulations of the agent-based model with varying interest rate scenarios and analyze the aggregate outcomes, such as total deposit balances across all agents, to understand the system-level sensitivity of deposit balances to interest rate fluctuations.
+4. **Perform Fuzzy Inference**: Use the defined membership functions and fuzzy rules to perform fuzzy inference, which will determine the degree to which each rule applies given the current state of the system.
 
-Here's a basic example of how you can conduct sensitivity analysis using Agent-Based Modeling in Python with the `Mesa` library:
+5. **Analyze Sensitivity**: Analyze the results of the fuzzy inference to understand the sensitivity of deposit balances to different levels of interest rate changes.
+
+Here's a simplified example of how you can conduct sensitivity analysis using Fuzzy Logic Modeling in Python with the `scikit-fuzzy` package:
 
 ```python
-from mesa import Agent, Model
-from mesa.time import RandomActivation
-from mesa.space import MultiGrid
-from mesa.datacollection import DataCollector
-import random
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
 
-# Define Agent class
-class BankCustomer(Agent):
-    def __init__(self, unique_id, model):
-        super().__init__(unique_id, model)
-        self.deposit_balance = random.uniform(1000, 2000)  # Initial deposit balance
+# Define input variables (interest rate changes) and output variable (deposit balance)
+interest_rate_changes = ctrl.Antecedent(np.arange(-0.1, 0.1, 0.01), 'interest_rate_changes')
+deposit_balance = ctrl.Consequent(np.arange(0, 5000, 1), 'deposit_balance')
 
-    def step(self):
-        # Define agent behavior in response to interest rate changes
-        # Example: Agent decides whether to adjust deposit balance based on interest rate
-        if self.model.interest_rate > 0.05:
-            self.deposit_balance += random.uniform(0, 100)
-        elif self.model.interest_rate < 0.02:
-            self.deposit_balance -= random.uniform(0, 100)
+# Define membership functions for input and output variables
+interest_rate_changes['low'] = fuzz.trimf(interest_rate_changes.universe, [-0.1, -0.05, 0])
+interest_rate_changes['medium'] = fuzz.trimf(interest_rate_changes.universe, [-0.05, 0, 0.05])
+interest_rate_changes['high'] = fuzz.trimf(interest_rate_changes.universe, [0, 0.05, 0.1])
 
-# Define Model class
-class BankModel(Model):
-    def __init__(self, N, interest_rate):
-        self.num_agents = N
-        self.interest_rate = interest_rate
-        self.schedule = RandomActivation(self)
-        self.grid = MultiGrid(1, N, True)
+deposit_balance['low'] = fuzz.trimf(deposit_balance.universe, [0, 1000, 2000])
+deposit_balance['medium'] = fuzz.trimf(deposit_balance.universe, [1000, 2000, 3000])
+deposit_balance['high'] = fuzz.trimf(deposit_balance.universe, [2000, 3000, 5000])
 
-        # Create agents
-        for i in range(self.num_agents):
-            a = BankCustomer(i, self)
-            self.schedule.add(a)
-            x = 0
-            y = i
-            self.grid.place_agent(a, (x, y))
+# Define fuzzy rules
+rule1 = ctrl.Rule(interest_rate_changes['low'], deposit_balance['low'])
+rule2 = ctrl.Rule(interest_rate_changes['medium'], deposit_balance['medium'])
+rule3 = ctrl.Rule(interest_rate_changes['high'], deposit_balance['high'])
 
-        # Data collector to track aggregate outcomes
-        self.datacollector = DataCollector(
-            agent_reporters={"Deposit_Balance": lambda a: a.deposit_balance})
+# Create fuzzy control system
+deposit_balance_ctrl = ctrl.ControlSystem([rule1, rule2, rule3])
+deposit_balance_sim = ctrl.ControlSystemSimulation(deposit_balance_ctrl)
 
-    def step(self):
-        self.datacollector.collect(self)
-        self.schedule.step()
+# Set interest rate changes value and compute deposit balance
+interest_rate_change_value = 0.03  # Example interest rate change value
+deposit_balance_sim.input['interest_rate_changes'] = interest_rate_change_value
+deposit_balance_sim.compute()
 
-# Run simulations with different interest rate scenarios
-for interest_rate in [0.02, 0.03, 0.04, 0.05]:
-    model = BankModel(1000, interest_rate)
-    for i in range(100):
-        model.step()
-
-    # Analyze aggregate outcomes
-    # Example: Calculate mean deposit balance across all agents
-    all_agent_balances = model.datacollector.get_agent_vars_dataframe()
-    mean_deposit_balance = all_agent_balances.mean()
-    print(f"Mean Deposit Balance with Interest Rate {interest_rate}: {mean_deposit_balance}")
+# Analyze sensitivity
+print("Deposit Balance for Interest Rate Change of", interest_rate_change_value, ":",
+      deposit_balance_sim.output['deposit_balance'])
 ```
 
 In this example:
-- We define an Agent class (`BankCustomer`) to represent individual bank customers. Each agent has an initial deposit balance and a behavior that may adjust the balance in response to interest rate changes.
-- We define a Model class (`BankModel`) that creates a specified number of agents and simulates their behavior over time.
-- We run multiple simulations with different interest rate scenarios and analyze aggregate outcomes, such as mean deposit balance across all agents, to understand the sensitivity of deposit balances to interest rate fluctuations.
+- We define input (interest rate changes) and output (deposit balance) variables with corresponding membership functions.
+- We define fuzzy rules that specify the relationship between interest rate changes and deposit balances.
+- We create a fuzzy control system and perform a simulation to compute the deposit balance for a given interest rate change value.
+- We analyze the sensitivity of the deposit balance to the interest rate changes by examining the computed deposit balance output.
