@@ -1,49 +1,25 @@
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
+import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Load the data
-data = pd.read_csv("your_data.csv")  # Replace "your_data.csv" with the actual file path
+# Assuming you already have the clustered data with cluster labels assigned
+# Load the clustered data
+clustered_data = pd.read_csv("clustered_data.csv")  # Replace "clustered_data.csv" with the actual file path
 
-# Drop unnecessary columns for clustering
-X = data.drop(['time_key', 'customer_id', 'lob', 'segment', 'trancode'], axis=1)
+# Define the columns for the snake plot (excluding non-numeric and cluster columns)
+snake_plot_cols = ['revenue', 'volume', 'price_realization', 'discount']
 
-# Standardize the features
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+# Melt the data to create the snake plot format
+melted_data = pd.melt(clustered_data, id_vars=['cluster'], value_vars=snake_plot_cols, var_name='Variable', value_name='Value')
 
-# Determine the optimal number of clusters using the Elbow method
-wcss = []
-for i in range(1, 11):
-    kmeans = KMeans(n_clusters=i, init='k-means++', random_state=42)
-    kmeans.fit(X_scaled)
-    wcss.append(kmeans.inertia_)
-
-# Plot the Elbow method
-plt.plot(range(1, 11), wcss)
-plt.title('Elbow Method')
-plt.xlabel('Number of clusters')
-plt.ylabel('WCSS')
+# Plot the snake plot
+plt.figure(figsize=(10, 6))
+sns.lineplot(x='Variable', y='Value', hue='cluster', data=melted_data, marker='o', palette='viridis')
+plt.title('Snake Plot')
+plt.xlabel('Variable')
+plt.ylabel('Value')
+plt.xticks(rotation=45)
+plt.legend(title='Cluster')
+plt.grid(True)
+plt.tight_layout()
 plt.show()
-
-# Based on the Elbow method, choose the optimal number of clusters and fit the KMeans model
-n_clusters = 4  # You can choose the number of clusters based on the Elbow plot
-kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
-kmeans.fit(X_scaled)
-
-# Add cluster labels to the original dataframe
-data['cluster'] = kmeans.labels_
-
-# Print the cluster centers
-cluster_centers = scaler.inverse_transform(kmeans.cluster_centers_)
-cluster_centers_df = pd.DataFrame(cluster_centers, columns=X.columns)
-print("Cluster Centers:")
-print(cluster_centers_df)
-
-# Analyze the clusters
-cluster_counts = data['cluster'].value_counts()
-print("\nCluster Counts:")
-print(cluster_counts)
-
-# You can further analyze the clusters to understand the characteristics of each group
