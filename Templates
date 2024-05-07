@@ -1,25 +1,36 @@
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
+import numpy as np
+from mlxtend.frequent_patterns import apriori, association_rules
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.cluster import KMeans
 
-# Assuming you already have the clustered data with cluster labels assigned
-# Load the clustered data
-clustered_data = pd.read_csv("clustered_data.csv")  # Replace "clustered_data.csv" with the actual file path
+# Load data
+data = pd.read_csv('your_dataset.csv')
 
-# Define the columns for the snake plot (excluding non-numeric and cluster columns)
-snake_plot_cols = ['revenue', 'volume', 'price_realization', 'discount']
+# Preliminary data inspection
+print(data.head())
+print(data.describe())
 
-# Melt the data to create the snake plot format
-melted_data = pd.melt(clustered_data, id_vars=['cluster'], value_vars=snake_plot_cols, var_name='Variable', value_name='Value')
+# Frequency of each transaction code
+transaction_counts = data['transaction_code'].value_counts()
+print(transaction_counts)
 
-# Plot the snake plot
-plt.figure(figsize=(10, 6))
-sns.lineplot(x='Variable', y='Value', hue='cluster', data=melted_data, marker='o', palette='viridis')
-plt.title('Snake Plot')
-plt.xlabel('Variable')
-plt.ylabel('Value')
-plt.xticks(rotation=45)
-plt.legend(title='Cluster')
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+# Data preparation for sequence analysis
+# Encoding transaction codes as one-hot for association analysis
+data['transaction_code'] = data['transaction_code'].astype(str)
+ohe = OneHotEncoder()
+transaction_encoded = ohe.fit_transform(data[['transaction_code']])
+transaction_encoded_df = pd.DataFrame(transaction_encoded.toarray(), columns=ohe.categories_[0])
+
+# Apriori algorithm to find frequent item sets
+frequent_itemsets = apriori(transaction_encoded_df, min_support=0.01, use_colnames=True)
+print(frequent_itemsets)
+
+# Generate association rules
+rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.1)
+print(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+
+# Optionally, cluster accounts based on transaction behavior
+km = KMeans(n_clusters=5)
+data['cluster'] = km.fit_predict(transaction_encoded_df)
+print(data[['account id', 'cluster']].head())
