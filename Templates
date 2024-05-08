@@ -1,36 +1,21 @@
 import pandas as pd
-import numpy as np
-from mlxtend.frequent_patterns import apriori, association_rules
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.cluster import KMeans
 
-# Load data
-data = pd.read_csv('your_dataset.csv')
+# Define the data
+data = {
+    "FED_CHANGE_DATE": [
+        "2022-03-16", "2022-05-04", "2022-06-15",
+        "2022-07-27", "2022-09-21", "2022-11-02",
+        "2022-12-14", "2023-02-01", "2023-03-22",
+        "2023-05-03", "2023-06-14", "2023-07-26"
+    ],
+    "INTEREST_RATE_CHANGE": [
+        0.25, 0.25, 0.25, 0.75, 0.75, 0.75,
+        0.25, 0.25, 0.25, 0.25, 0.25, 0.00
+    ]
+}
 
-# Preliminary data inspection
-print(data.head())
-print(data.describe())
+# Create the DataFrame
+fed_df = pd.DataFrame(data)
 
-# Frequency of each transaction code
-transaction_counts = data['transaction_code'].value_counts()
-print(transaction_counts)
-
-# Data preparation for sequence analysis
-# Encoding transaction codes as one-hot for association analysis
-data['transaction_code'] = data['transaction_code'].astype(str)
-ohe = OneHotEncoder()
-transaction_encoded = ohe.fit_transform(data[['transaction_code']])
-transaction_encoded_df = pd.DataFrame(transaction_encoded.toarray(), columns=ohe.categories_[0])
-
-# Apriori algorithm to find frequent item sets
-frequent_itemsets = apriori(transaction_encoded_df, min_support=0.01, use_colnames=True)
-print(frequent_itemsets)
-
-# Generate association rules
-rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.1)
-print(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
-
-# Optionally, cluster accounts based on transaction behavior
-km = KMeans(n_clusters=5)
-data['cluster'] = km.fit_predict(transaction_encoded_df)
-print(data[['account id', 'cluster']].head())
+# Display the DataFrame
+print(fed_df)
