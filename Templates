@@ -1,21 +1,42 @@
 import pandas as pd
+from collections import Counter
 
-# Define the data
+# Example data
 data = {
-    "FED_CHANGE_DATE": [
-        "2022-03-16", "2022-05-04", "2022-06-15",
-        "2022-07-27", "2022-09-21", "2022-11-02",
-        "2022-12-14", "2023-02-01", "2023-03-22",
-        "2023-05-03", "2023-06-14", "2023-07-26"
-    ],
-    "INTEREST_RATE_CHANGE": [
-        0.25, 0.25, 0.25, 0.75, 0.75, 0.75,
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.00
-    ]
+    'ACCID': [1, 1, 2, 2, 1, 3],
+    'TIMEKEY': ['2021-01-01', '2021-01-01', '2021-01-02', '2021-01-02', '2021-01-03', '2021-01-01'],
+    'TRANCODE': ['T01', 'T02', 'T03', 'T04', 'T02', 'T05']
 }
+df = pd.DataFrame(data)
 
-# Create the DataFrame
-fed_df = pd.DataFrame(data)
+# Group by 'ACCID' and 'TIMEKEY', then aggregate 'TRANCODE' into lists
+df_grouped = df.groupby(['ACCID', 'TIMEKEY'])['TRANCODE'].agg(list).reset_index()
 
-# Display the DataFrame
-print(fed_df)
+# Define a function to count pairs
+def count_pairs(tran_list):
+    # Count occurrences of each possible pair
+    count = Counter()
+    for i in range(len(tran_list) - 1):
+        # Consider the current and the next element as a pair
+        pair = (tran_list[i], tran_list[i+1])
+        count[pair] += 1
+    return count
+
+# Apply the function to each list in the DataFrame
+df_grouped['PAIR_COUNT'] = df_grouped['TRANCODE'].apply(count_pairs)
+
+# To create a matrix representation, we first extract all unique transcodes
+all_transcodes = set()
+df_grouped['TRANCODE'].apply(all_transcodes.update)
+all_transcodes = sorted(all_transcodes)
+
+# Initialize the matrix with zeros
+matrix_df = pd.DataFrame(0, index=all_transcodes, columns=all_transcodes)
+
+# Fill the matrix with pair counts
+for index, row in df_grouped.iterrows():
+    for pair, count in row['PAIR_COUNT'].items():
+        matrix_df.at[pair[0], pair[1]] += count
+
+# Displaying the matrix
+print(matrix_df)
