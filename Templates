@@ -1,8 +1,8 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 # Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
 data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
@@ -11,22 +11,24 @@ data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLU
 scaler = StandardScaler()
 data_scaled = scaler.fit_transform(data_pivot)
 
-# Clustering
-k = 20  # Number of clusters
-kmeans = KMeans(n_clusters=k, random_state=42)
-cluster_labels = kmeans.fit_predict(data_scaled)
+# Applying PCA
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(data_scaled)
 
-# Assigning cluster labels to each TRAN_CD
-data_pivot['Cluster'] = cluster_labels
-clustered_data = data_pivot.groupby('Cluster').mean().T
+# Applying t-SNE
+tsne = TSNE(n_components=2, learning_rate='auto', init='random')
+tsne_result = tsne.fit_transform(data_scaled)
 
-# Sorting the transaction codes by cluster for better visualization
-sorted_clustered_data = clustered_data.sort_values(by=clustered_data.columns.tolist())
+# Plotting the results
+fig, ax = plt.subplots(1, 2, figsize=(16, 8))
 
-# Creating the heatmap
-plt.figure(figsize=(12, 8))
-sns.heatmap(sorted_clustered_data, cmap='viridis')
-plt.title('Heatmap of TRAN_CDs Clustered by RLTN_PWR_ID Usage Patterns')
-plt.xlabel('Cluster Number')
-plt.ylabel('TRAN_CD')
-plt.show()
+# PCA Plot
+ax[0].scatter(pca_result[:, 0], pca_result[:, 1])
+ax[0].set_title('PCA Results')
+ax[0].set_xlabel('PCA 1')
+ax[0].set_ylabel('PCA 2')
+
+# t-SNE Plot
+ax[1].scatter(tsne_result[:, 0], tsne_result[:, 1])
+ax[1].set_title('t-SNE Results')
+ax[1].set
