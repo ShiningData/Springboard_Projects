@@ -1,56 +1,52 @@
 import pandas as pd
 from itertools import combinations
-from collections import defaultdict, Counter
-from sklearn.cluster import AgglomerativeClustering
+from collections import defaultdict
 import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 # Example data
 data = {
-    'RLTN_PWR_ID': [1, 1, 1, 2, 2, 3, 3, 3, 3, 3],
-    'TRAN_CD': ['A', 'B', 'C', 'A', 'D', 'C', 'D', 'E', 'F', 'G'],
-    'VOLUME': [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+    'RLTN_PWR_ID': [1, 1, 2, 2, 3, 3, 3, 3],
+    'TRAN_CD': ['A', 'B', 'A', 'D', 'C', 'D', 'E', 'F'],
+    'VOLUME': [100, 150, 200, 250, 300, 350, 400, 450]
 }
+
 df = pd.DataFrame(data)
 
-# Step 1: Calculate frequency of each combination of TRAN_CD per RLTN_PWR_ID
-def get_combinations(row):
-    return list(combinations(row['TRAN_CD'], 2))
+# Create a co-occurrence matrix for transaction codes
+trans_codes = sorted(set(df['TRAN_CD']))
+index = {code: idx for idx, code in enumerate(trans_codes)}
+matrix = np.zeros((len(trans_codes), len(trans_codes)))
 
-df_grouped = df.groupby('RLTN_PWR_ID')['TRAN_CD'].agg(list).reset_index()
-df_grouped['TRAN_CD'] = df_grouped['TRAN_CD'].apply(lambda x: list(set(x)))  # Remove duplicates
-combinations_df = df_grouped.explode('TRAN_CD').groupby('TRAN_CD').size().reset_index(name='Frequency')
+# Populate the matrix based on co-occurrence within the same RLTN_PWR_ID
+for _, group in df.groupby('RLTN_PWR_ID'):
+    indices = [index[code] for code in group['TRAN_CD'].unique()]
+    for i in indices:
+        for j in indices:
+            if i != j:
+                matrix[i][j] += 1
 
-# Create an adjacency matrix for clustering
-unique_trans_cd = combinations_df['TRAN_CD'].unique()
-matrix_size = len(unique_trans_cd)
-adjacency_matrix = np.zeros((matrix_size, matrix_size))
+# Standardize the matrix for clustering
+scaler = StandardScaler()
+matrix_norm = scaler.fit_transform(matrix)
 
-for i, trans_cd_i in enumerate(unique_trans_cd):
-    for j, trans_cd_j in enumerate(unique_trans_cd):
-        if i != j:
-            adjacency_matrix[i, j] = df_grouped.apply(lambda x: (trans_cd_i in x['TRAN_CD']) and (trans_cd_j in x['TRAN_CD']), axis=1).sum()
+# Apply K-Means clustering
+kmeans = KMeans(n_clusters=3, random_state=0).fit(matrix_norm)
+clusters = defaultdict(list)
 
-# Step 2: Cluster transaction codes based on their co-occurrence
-clustering = AgglomerativeClustering(n_clusters=None, affinity='precomputed', linkage='complete', distance_threshold=1)
-labels = clustering.fit_predict(1 - adjacency_matrix / adjacency_matrix.max())
+for code, label in zip(trans_codes, kmeans.labels_):
+    clusters[label].append(code)
 
-# Map labels to transaction codes
-cluster_dict = defaultdict(list)
-for label, trans_cd in zip(labels, unique_trans_cd):
-    cluster_dict[label].append(trans_cd)
+# Analyze combinations within clusters
+results = []
+for label, codes in clusters.items():
+    for size in range(2, len(codes)+1):
+        for combo in combinations(codes, size):
+            # Calculate how frequently this combination appears together across all RLTN_PWR_ID
+            combo_count = sum(all(c in set(group['TRAN_CD']) for c in combo) for _, group in df.groupby('RLTN_PWR_ID'))
+            results.append({'Cluster': label, 'Combination': combo, 'Frequency': combo_count})
 
-# Step 3: Create a summary DataFrame from clusters
-cluster_summary = []
-for cluster, trans_cds in cluster_dict.items():
-    cluster_combinations = list(combinations(trans_cds, 2)) if len(trans_cds) > 1 else [(trans_cds[0],)]
-    for combo in cluster_combinations:
-        # Compute frequency and customer metrics for each combination
-        combo_freq = df_grouped.apply(lambda x: all(c in x['TRAN_CD'] for c in combo), axis=1).sum()
-        unique_customers = df[df['TRAN_CD'].isin(combo)]['RLTN_PWR_ID'].nunique()
-        total_customers = df[df['TRAN_CD'].isin(combo)]['RLTN_PWR_ID'].count()
-        cluster_summary.append({'Combination': combo, 'Frequency': combo_freq, 'Unique Customers': unique_customers, 'Total Customers': total_customers})
-
-cluster_summary_df = pd.DataFrame(cluster_summary)
-
-# Print the DataFrame
-print(cluster_summary_df)
+# Convert results to a DataFrame
+results_df = pd.DataFrame(results)
+print(results_df)
