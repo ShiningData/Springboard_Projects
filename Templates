@@ -1,51 +1,9 @@
-import pandas as pd
-from itertools import combinations
-from collections import defaultdict
+I hope this message finds you well and that you’re having a pleasant Friday. Due to a scheduling conflict, I need to cancel today’s meeting and propose a change to our bi-weekly meeting times.
 
-# Simulated data
-data = {
-    'ACCID': [1, 1, 2, 2, 1, 3, 3, 3, 3],
-    'TIMEKEY': ['2021-01-01', '2021-01-01', '2021-01-02', '2021-01-02', '2021-01-01', '2021-01-01', '2021-01-01', '2021-01-01', '2021-01-01'],
-    'TRANCODE': ['T01', 'T02', 'T03', 'T04', 'T02', 'T05', 'T05', 'T06', 'T07']
-}
+Moving forward, I would like to reschedule our bi-weekly meetings to Fridays from 10:30 AM to 11:00 AM, if this fits everyone’s schedule. Please let me know if this new timing works for you or if there are any conflicts. If this time isn’t suitable, feel free to suggest alternatives based on your availability.
 
-df = pd.DataFrame(data)
+If there are any topics or updates you would like to discuss today despite the cancellation, please feel free to schedule a time directly on my calendar.
 
-# Group by 'ACCID' and 'TIMEKEY', then aggregate 'TRANCODE' into sets
-df_grouped = df.groupby(['ACCID', 'TIMEKEY'])['TRANCODE'].agg(set).reset_index()
+Thank you for your understanding and cooperation.
 
-# Mapping of each transaction code to its respective set of ACCIDs
-transcode_to_accids = defaultdict(set)
-
-# Update mapping for each row in the grouped DataFrame
-for _, row in df_grouped.iterrows():
-    for transcode in row['TRANCODE']:
-        transcode_to_accids[transcode].add(row['ACCID'])
-
-# Function to count combinations and track ACCIDs for each combination
-def count_combinations(trans_list, accid):
-    results = defaultdict(list)
-    for length in range(2, 5):  # Pairs, triples, and quadruples
-        for combo in combinations(trans_list, length):
-            results[combo].append(accid)
-    return results
-
-# Aggregate combination counts across all groups, tracking ACCIDs
-combination_accids = defaultdict(list)
-for _, row in df_grouped.iterrows():
-    for combo, accids in count_combinations(row['TRANCODE'], row['ACCID']).items():
-        combination_accids[combo].extend(accids)
-
-# Convert the defaultdict to a DataFrame
-combination_df = pd.DataFrame([(k, v) for k, v in combination_accids.items()], columns=['Combination', 'ACCIDs'])
-combination_df['Frequency'] = combination_df['ACCIDs'].apply(len)  # Total frequency of combination
-combination_df['Unique ACCIDs'] = combination_df['ACCIDs'].apply(lambda x: len(set(x)))  # Unique ACCIDs count
-combination_df['Combination Type'] = combination_df['Combination'].apply(len)  # Combination length (2, 3, or 4)
-
-# Add a new column to show the total number of unique customers using any element in the combination
-combination_df['Total Unique Customers'] = combination_df['Combination'].apply(
-    lambda x: len(set.union(*(transcode_to_accids[tc] for tc in x)))
-)
-
-# Display the DataFrame
-print(combination_df)
+Best regards,
