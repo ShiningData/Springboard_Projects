@@ -1,34 +1,56 @@
 import pandas as pd
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
+from itertools import combinations
+from collections import defaultdict, Counter
+from sklearn.cluster import AgglomerativeClustering
+import numpy as np
 
-# Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
-data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
+# Example data
+data = {
+    'RLTN_PWR_ID': [1, 1, 1, 2, 2, 3, 3, 3, 3, 3],
+    'TRAN_CD': ['A', 'B', 'C', 'A', 'D', 'C', 'D', 'E', 'F', 'G'],
+    'VOLUME': [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+}
+df = pd.DataFrame(data)
 
-# Standardizing the data
-scaler = StandardScaler()
-data_scaled = scaler.fit_transform(data_pivot)
+# Step 1: Calculate frequency of each combination of TRAN_CD per RLTN_PWR_ID
+def get_combinations(row):
+    return list(combinations(row['TRAN_CD'], 2))
 
-# Applying PCA
-pca = PCA(n_components=2)
-pca_result = pca.fit_transform(data_scaled)
+df_grouped = df.groupby('RLTN_PWR_ID')['TRAN_CD'].agg(list).reset_index()
+df_grouped['TRAN_CD'] = df_grouped['TRAN_CD'].apply(lambda x: list(set(x)))  # Remove duplicates
+combinations_df = df_grouped.explode('TRAN_CD').groupby('TRAN_CD').size().reset_index(name='Frequency')
 
-# Applying t-SNE
-tsne = TSNE(n_components=2, learning_rate='auto', init='random')
-tsne_result = tsne.fit_transform(data_scaled)
+# Create an adjacency matrix for clustering
+unique_trans_cd = combinations_df['TRAN_CD'].unique()
+matrix_size = len(unique_trans_cd)
+adjacency_matrix = np.zeros((matrix_size, matrix_size))
 
-# Plotting the results
-fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+for i, trans_cd_i in enumerate(unique_trans_cd):
+    for j, trans_cd_j in enumerate(unique_trans_cd):
+        if i != j:
+            adjacency_matrix[i, j] = df_grouped.apply(lambda x: (trans_cd_i in x['TRAN_CD']) and (trans_cd_j in x['TRAN_CD']), axis=1).sum()
 
-# PCA Plot
-ax[0].scatter(pca_result[:, 0], pca_result[:, 1])
-ax[0].set_title('PCA Results')
-ax[0].set_xlabel('PCA 1')
-ax[0].set_ylabel('PCA 2')
+# Step 2: Cluster transaction codes based on their co-occurrence
+clustering = AgglomerativeClustering(n_clusters=None, affinity='precomputed', linkage='complete', distance_threshold=1)
+labels = clustering.fit_predict(1 - adjacency_matrix / adjacency_matrix.max())
 
-# t-SNE Plot
-ax[1].scatter(tsne_result[:, 0], tsne_result[:, 1])
-ax[1].set_title('t-SNE Results')
-ax[1].set
+# Map labels to transaction codes
+cluster_dict = defaultdict(list)
+for label, trans_cd in zip(labels, unique_trans_cd):
+    cluster_dict[label].append(trans_cd)
+
+# Step 3: Create a summary DataFrame from clusters
+cluster_summary = []
+for cluster, trans_cds in cluster_dict.items():
+    cluster_combinations = list(combinations(trans_cds, 2)) if len(trans_cds) > 1 else [(trans_cds[0],)]
+    for combo in cluster_combinations:
+        # Compute frequency and customer metrics for each combination
+        combo_freq = df_grouped.apply(lambda x: all(c in x['TRAN_CD'] for c in combo), axis=1).sum()
+        unique_customers = df[df['TRAN_CD'].isin(combo)]['RLTN_PWR_ID'].nunique()
+        total_customers = df[df['TRAN_CD'].isin(combo)]['RLTN_PWR_ID'].count()
+        cluster_summary.append({'Combination': combo, 'Frequency': combo_freq, 'Unique Customers': unique_customers, 'Total Customers': total_customers})
+
+cluster_summary_df = pd.DataFrame(cluster_summary)
+
+# Print the DataFrame
+print(cluster_summary_df)
