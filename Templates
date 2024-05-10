@@ -11,26 +11,28 @@ data = {
 
 df = pd.DataFrame(data)
 
-# Group by 'ACCID' and 'TIMEKEY', then aggregate 'TRANCODE' into lists
+# Group by 'ACCID' and 'TIMEKEY', then aggregate 'TRANCODE' into sets
 df_grouped = df.groupby(['ACCID', 'TIMEKEY'])['TRANCODE'].agg(set).reset_index()
 
-# Function to count all combinations of 2, 3, and 4 elements
-def count_combinations(trans_list):
-    results = Counter()
-    for length in range(2, 5):  # Length 2 (pairs), 3 (triples), and 4 (quadruples)
+# Function to count combinations and track ACCIDs for each combination
+def count_combinations(trans_list, accid):
+    results = defaultdict(list)
+    for length in range(2, 5):  # Pairs, triples, and quadruples
         for combo in combinations(trans_list, length):
-            results[combo] += 1
+            results[combo].append(accid)
     return results
 
-# Aggregate combination counts across all groups
-all_combinations = Counter()
-df_grouped['TRANCODE'].apply(lambda x: all_combinations.update(count_combinations(x)))
+# Aggregate combination counts across all groups, tracking ACCIDs
+combination_accids = defaultdict(list)
+for _, row in df_grouped.iterrows():
+    for combo, accids in count_combinations(row['TRANCODE'], row['ACCID']).items():
+        combination_accids[combo].extend(accids)
 
-# Convert the counter to a DataFrame for easier analysis and display
-combination_df = pd.DataFrame(list(all_combinations.items()), columns=['Combination', 'Frequency'])
+# Convert the defaultdict to a DataFrame
+combination_df = pd.DataFrame([(k, v) for k, v in combination_accids.items()], columns=['Combination', 'ACCIDs'])
+combination_df['Frequency'] = combination_df['ACCIDs'].apply(len)  # Total frequency of combination
+combination_df['Unique ACCIDs'] = combination_df['ACCIDs'].apply(lambda x: len(set(x)))  # Unique ACCIDs count
+combination_df['Combination Type'] = combination_df['Combination'].apply(len)  # Combination length (2, 3, or 4)
 
-# Filter out combinations that occur only once across all groups
-combination_df = combination_df[combination_df['Frequency'] > 1]
-
-# Display the DataFrame with combination counts
+# Display the DataFrame
 print(combination_df)
