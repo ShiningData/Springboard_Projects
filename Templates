@@ -1,37 +1,36 @@
 import pandas as pd
 from itertools import combinations
-from collections import Counter
+from collections import Counter, defaultdict
 
-# Example DataFrame
+# Simulated data
 data = {
-    'ACCID': [1, 1, 1, 1, 1, 2, 2, 2, 3, 3],
-    'TIMEKEY': ['2021-01-01', '2021-01-01', '2021-01-01', '2021-01-01', '2021-01-01', '2021-01-02', '2021-01-02', '2021-01-02', '2021-01-03', '2021-01-03'],
-    'TRANCODE': ['T01', 'T02', 'T01', 'T02', 'T03', 'T01', 'T03', 'T04', 'T05', 'T06']
+    'ACCID': [1, 1, 2, 2, 1, 3, 3, 3, 3],
+    'TIMEKEY': ['2021-01-01', '2021-01-01', '2021-01-02', '2021-01-02', '2021-01-01', '2021-01-01', '2021-01-01', '2021-01-01', '2021-01-01'],
+    'TRANCODE': ['T01', 'T02', 'T03', 'T04', 'T02', 'T05', 'T05', 'T06', 'T07']
 }
 
 df = pd.DataFrame(data)
 
-# Group by 'ACCID' and 'TIMEKEY', then aggregate 'TRANCODE' into sets to ensure uniqueness
-df_grouped = df.groupby(['ACCID', 'TIMEKEY'])['TRANCODE'].agg(lambda x: list(set(x))).reset_index()
+# Group by 'ACCID' and 'TIMEKEY', then aggregate 'TRANCODE' into lists
+df_grouped = df.groupby(['ACCID', 'TIMEKEY'])['TRANCODE'].agg(set).reset_index()
 
-# Define a function to count combinations of 2, 3, and 4 elements that are seen more than once
+# Function to count all combinations of 2, 3, and 4 elements
 def count_combinations(trans_list):
-    if len(trans_list) < 2:
-        return {}  # Return empty if not enough elements to form a pair
-    results = {}
-    trans_count = Counter(trans_list)
-    # Filter transaction codes that appear more than once
-    frequent_items = [item for item, count in trans_count.items() if count > 1]
-    # Get all combinations of frequent items from pairs to min(length, 4)
-    max_length = min(len(frequent_items), 4)
-    for length in range(2, max_length + 1):
-        # Generate combinations of the appropriate length
-        comb_count = Counter(combinations(frequent_items, length))
-        results[f'{length}-combinations'] = dict(comb_count)
+    results = Counter()
+    for length in range(2, 5):  # Length 2 (pairs), 3 (triples), and 4 (quadruples)
+        for combo in combinations(trans_list, length):
+            results[combo] += 1
     return results
 
-# Apply the function to each list in the DataFrame
-df_grouped['COMBINATIONS'] = df_grouped['TRANCODE'].apply(count_combinations)
+# Aggregate combination counts across all groups
+all_combinations = Counter()
+df_grouped['TRANCODE'].apply(lambda x: all_combinations.update(count_combinations(x)))
+
+# Convert the counter to a DataFrame for easier analysis and display
+combination_df = pd.DataFrame(list(all_combinations.items()), columns=['Combination', 'Frequency'])
+
+# Filter out combinations that occur only once across all groups
+combination_df = combination_df[combination_df['Frequency'] > 1]
 
 # Display the DataFrame with combination counts
-print(df_grouped)
+print(combination_df)
