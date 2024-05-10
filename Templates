@@ -1,6 +1,5 @@
 import pandas as pd
 from itertools import combinations
-from collections import defaultdict
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
@@ -38,13 +37,17 @@ clusters = defaultdict(list)
 for code, label in zip(trans_codes, kmeans.labels_):
     clusters[label].append(code)
 
-# Analyze combinations within clusters
+# Analyze combinations within clusters using efficient set operations
 results = []
+# Create a mapping from RLTN_PWR_ID to sets of TRAN_CD
+rltn_pw_id_to_trans_cd = df.groupby('RLTN_PWR_ID')['TRAN_CD'].agg(set)
+
 for label, codes in clusters.items():
     for size in range(2, len(codes)+1):
         for combo in combinations(codes, size):
-            # Calculate how frequently this combination appears together across all RLTN_PWR_ID
-            combo_count = sum(all(c in set(group['TRAN_CD']) for c in combo) for _, group in df.groupby('RLTN_PWR_ID'))
+            # Efficiently calculate the frequency of this combination appearing together
+            combo_set = set(combo)
+            combo_count = sum(combo_set.issubset(trans_set) for trans_set in rltn_pw_id_to_trans_cd)
             results.append({'Cluster': label, 'Combination': combo, 'Frequency': combo_count})
 
 # Convert results to a DataFrame
