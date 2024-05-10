@@ -1,9 +1,32 @@
-I hope this message finds you well and that you’re having a pleasant Friday. Due to a scheduling conflict, I need to cancel today’s meeting and propose a change to our bi-weekly meeting times.
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
-Moving forward, I would like to reschedule our bi-weekly meetings to Fridays from 10:30 AM to 11:00 AM, if this fits everyone’s schedule. Please let me know if this new timing works for you or if there are any conflicts. If this time isn’t suitable, feel free to suggest alternatives based on your availability.
+# Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
+data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
 
-If there are any topics or updates you would like to discuss today despite the cancellation, please feel free to schedule a time directly on my calendar.
+# Standardizing the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data_pivot)
 
-Thank you for your understanding and cooperation.
+# Clustering
+k = 20  # Number of clusters
+kmeans = KMeans(n_clusters=k, random_state=42)
+cluster_labels = kmeans.fit_predict(data_scaled)
 
-Best regards,
+# Assigning cluster labels to each TRAN_CD
+data_pivot['Cluster'] = cluster_labels
+clustered_data = data_pivot.groupby('Cluster').mean().T
+
+# Sorting the transaction codes by cluster for better visualization
+sorted_clustered_data = clustered_data.sort_values(by=clustered_data.columns.tolist())
+
+# Creating the heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(sorted_clustered_data, cmap='viridis')
+plt.title('Heatmap of TRAN_CDs Clustered by RLTN_PWR_ID Usage Patterns')
+plt.xlabel('Cluster Number')
+plt.ylabel('TRAN_CD')
+plt.show()
