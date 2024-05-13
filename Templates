@@ -1,5 +1,7 @@
 import pandas as pd
-import igraph as ig
+import networkx as nx
+from networkx.algorithms.community import greedy_modularity_communities
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
 # Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
@@ -8,36 +10,35 @@ data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLU
 # Standardizing the data
 scaler = StandardScaler()
 data_scaled = scaler.fit_transform(data_pivot)
-data_corr = pd.DataFrame(data=data_scaled, columns=data_pivot.columns).corr()
+data_corr = pd.DataFrame(data_scaled, columns=data_pivot.columns).corr()
 
-# Initialize an empty graph
-g = ig.Graph()
+# Create the graph
+G = nx.Graph()
 
-# Add vertices
-vertices = data_corr.columns.tolist()
-g.add_vertices(vertices)
+# Add nodes
+for col in data_corr.columns:
+    G.add_node(col)
 
-# Prepare edge list with weights
-edges, weights = [], []
-threshold = 0.5  # Set a threshold for significant correlations
-for i in range(data_corr.shape[0]):
-    for j in range(i + 1, data_corr.shape[1]):
+# Add edges based on correlation threshold
+threshold = 0.5
+for i in range(len(data_corr)):
+    for j in range(i + 1, len(data_corr)):
         if abs(data_corr.iloc[i, j]) > threshold:
-            edges.append((vertices[i], vertices[j]))
-            weights.append(float(data_corr.iloc[i, j]))
+            G.add_edge(data_corr.columns[i], data_corr.columns[j], weight=data_corr.iloc[i, j])
 
-# Add edges
-g.add_edges(edges)
+# Community Detection using modularity maximization
+communities = list(greedy_modularity_communities(G, weight='weight'))
+community_dict = {node: cid for cid, community in enumerate(communities) for node in community}
 
-# Check if the number of edges and weights are matching
-assert len(g.es) == len(weights), "Mismatch in the number of edges and weights"
+# Assigning colors for visualization based on community
+colors = [community_dict[node] for node in G.nodes]
 
-# Set weights to edges
-g.es['weight'] = weights
-
-# Verify edges and weights
-if not all(weight is not None for weight in g.es['weight']):
-    raise ValueError("Some weights were not set properly.")
-
-# Output to check
-print("First five edge weights:", g.es['weight'][:5])
+# Draw the graph
+plt.figure(figsize=(12, 12))
+pos = nx.spring_layout(G)  # positions for all nodes
+nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=700, cmap=plt.cm.jet)
+nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
+nx.draw_networkx_labels(G, pos, font_size=12, font_family="sans-serif")
+plt.title('Network of TRAN_CD with Community Coloring')
+plt.axis('off')  # Turn off the axis
+plt.show()
