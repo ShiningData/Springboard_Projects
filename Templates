@@ -1,29 +1,43 @@
+import pandas as pd
 import igraph as ig
+from sklearn.preprocessing import StandardScaler
+
+# Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
+data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
+
+# Standardizing the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data_pivot)
+data_corr = pd.DataFrame(data=data_scaled, columns=data_pivot.columns).corr()
 
 # Initialize an empty graph
 g = ig.Graph()
 
-# Add vertices with names
-vertex_names = data_corr.columns.tolist()
-g.add_vertices(vertex_names)
+# Add vertices
+vertices = data_corr.columns.tolist()
+g.add_vertices(vertices)
 
-# Add edges using vertex names directly
-edges = []
+# Prepare edge list with weights
+edges, weights = [], []
 threshold = 0.5  # Set a threshold for significant correlations
-for i in range(len(data_corr)):
-    for j in range(i + 1, len(data_corr)):
+for i in range(data_corr.shape[0]):
+    for j in range(i + 1, data_corr.shape[1]):
         if abs(data_corr.iloc[i, j]) > threshold:
-            # Use the names of the vertices directly
-            edges.append((vertex_names[i], vertex_names[j]))
-
-# Add the edges
-g.add_edges(edges)
-
-# Assign weights to edges
-weights = []
-for i in range(len(data_corr)):
-    for j in range(i + 1, len(data_corr)):
-        if abs(data_corr.iloc[i, j]) > threshold:
+            edges.append((vertices[i], vertices[j]))
             weights.append(float(data_corr.iloc[i, j]))
 
+# Add edges
+g.add_edges(edges)
+
+# Check if the number of edges and weights are matching
+assert len(g.es) == len(weights), "Mismatch in the number of edges and weights"
+
+# Set weights to edges
 g.es['weight'] = weights
+
+# Verify edges and weights
+if not all(weight is not None for weight in g.es['weight']):
+    raise ValueError("Some weights were not set properly.")
+
+# Output to check
+print("First five edge weights:", g.es['weight'][:5])
