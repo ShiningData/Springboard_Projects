@@ -42,3 +42,75 @@ nx.draw_networkx_labels(G, pos, font_size=12, font_family="sans-serif")
 plt.title('Network of TRAN_CD with Community Coloring')
 plt.axis('off')  # Turn off the axis
 plt.show()
+
+-------------------------
+
+To create a tabular representation of the communities detected in your network of `TRAN_CD`s, and to better understand each community, you can compile data such as:
+
+1. **Community ID**: A unique identifier for each community.
+2. **Members**: The `TRAN_CD`s that are part of each community.
+3. **Size**: The number of `TRAN_CD`s in each community.
+4. **Average Correlation**: An average correlation coefficient within each community (optional, depending on your needs).
+
+Here's how you can create such a table using `pandas` in Python after having run the community detection with `networkx`:
+
+### Step 1: Gather Community Data
+
+First, after detecting the communities as shown previously, gather all the necessary information.
+
+### Full Python Script for Creating Tabular Data
+
+```python
+import pandas as pd
+import networkx as nx
+from networkx.algorithms.community import greedy_modularity_communities
+
+# Placeholder for the graph creation and community detection part
+# Assuming G is your already created graph and communities are detected
+
+communities = list(greedy_modularity_communities(G, weight='weight'))
+community_dict = {node: cid for cid, community in enumerate(communities) for node in community}
+
+# Create DataFrame for communities
+community_df = pd.DataFrame.from_dict(community_dict, orient='index', columns=['Community ID'])
+community_df['TRAN_CD'] = community_df.index
+
+# Calculating community sizes
+community_sizes = community_df['Community ID'].value_counts().rename('Size')
+
+# Merge sizes back to the original dataframe
+community_df = community_df.merge(community_sizes, left_on='Community ID', right_index=True)
+
+# Optional: Calculate the average correlation within each community
+def average_intra_community_correlation(community, corr_matrix):
+    # Filter the correlation matrix to only include members of the community
+    filtered_corr = corr_matrix.loc[community, community]
+    # Average the upper triangle of the matrix, excluding the diagonal
+    return filtered_corr.where(~np.triu(np.ones(filtered_corr.shape)).astype(bool)).stack().mean()
+
+# Add average correlations per community (if correlation matrix data_corr is available)
+community_df['Average Correlation'] = community_df['Community ID'].apply(
+    lambda x: average_intra_community_correlation(community_df[community_df['Community ID'] == x]['TRAN_CD'], data_corr)
+)
+
+# Viewing the community data
+print(community_df.sort_values(by='Community ID'))
+```
+
+### Explanation:
+
+- **Community Data Compilation**: The script first converts the community dictionary into a DataFrame. This DataFrame contains each `TRAN_CD` and its associated community ID.
+
+- **Size Calculation**: It calculates the size of each community by counting the frequency of each community ID and then merges this information back to the DataFrame.
+
+- **Average Correlation**: An optional calculation if you wish to understand how closely related the `TRAN_CD`s within each community are. This is computed by averaging the correlations of all pairs within each community using the original correlation matrix.
+
+### Visualization or Export:
+
+You can visualize this DataFrame directly in Python using libraries like `matplotlib` for bar charts of community sizes or export this DataFrame to a CSV file for further analysis in Excel or other software:
+
+```python
+community_df.to_csv('community_data.csv', index=False)
+```
+
+This table will provide a comprehensive view of each community, including its members and key statistics, aiding in the understanding and potential consolidation of `TRAN_CD`s based on their shared characteristics.
