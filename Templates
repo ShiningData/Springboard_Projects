@@ -1,6 +1,30 @@
-import igraph as ig
+Sure, I'll provide a complete end-to-end Python script that covers everything from data preprocessing to creating a graph, adding weights, and performing community detection using the `igraph` library. The script will also include checking the weights and visualizing the resulting communities in the graph.
 
-# Assuming data_corr is your correlation matrix
+### Complete Script:
+
+```python
+import pandas as pd
+import igraph as ig
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+
+# Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
+# Step 1: Data Preprocessing
+data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
+
+# Standardizing the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data_pivot)
+data_corr = pd.DataFrame(data=data_scaled, columns=data_pivot.columns).corr()
+
+# Step 2: Construct the Graph
+# Initialize an empty graph
+g = ig.Graph()
+
+# Add vertices
+g.add_vertices(data_corr.columns.tolist())
+
+# Add edges and weights
 edges, weights = [], []
 threshold = 0.5  # Set a threshold for significant correlations
 for i in range(len(data_corr)):
@@ -9,15 +33,37 @@ for i in range(len(data_corr)):
             edges.append((data_corr.columns[i], data_corr.columns[j]))
             weights.append(float(data_corr.iloc[i, j]))
 
-# Create an empty graph
-g = ig.Graph()
-
-# Add vertices
-g.add_vertices(data_corr.columns.tolist())
-
-# Add edges and weights
 g.add_edges(edges)
 g.es['weight'] = weights  # Explicitly setting weights
 
-# Now check the weights
-print(g.es['weight'][:5])
+# Check the weights to ensure they are set correctly
+print("First five edge weights:", g.es['weight'][:5])
+
+# Step 3: Community Detection
+communities = g.community_multilevel(weights='weight', return_levels=False)
+print("Number of communities detected:", len(communities))
+
+# Assign cluster labels
+node_to_cluster = dict(zip(g.vs['name'], communities.membership))
+for k, v in node_to_cluster.items():
+    print(f"Transaction Code {k} is in cluster {v}")
+
+# Step 4: Visualize the graph
+layout = g.layout('kk')  # Kamada-Kawai layout for visualization
+ig.plot(g, layout=layout, vertex_label=g.vs['name'], edge_width=[w * 2 for w in weights if w is not None],
+        vertex_color=[color_dict[x] for x in communities.membership], 
+        target='graph.png')  # Save the plot to a file
+plt.show()
+```
+
+### Explanation:
+
+1. **Data Preprocessing**: The script starts by creating a pivot table from the dataset, which is then standardized. A correlation matrix is computed to represent the relationships between `TRAN_CD`s.
+
+2. **Graph Construction**: An empty graph is initialized, vertices are added for each `TRAN_CD`, and then edges along with their weights are added based on the correlation values exceeding a certain threshold.
+
+3. **Community Detection**: The Louvain method is used to detect communities based on the edge weights. This step aims to identify clusters of transaction codes that exhibit similar patterns.
+
+4. **Visualization**: The graph is visualized using a force-directed layout (Kamada-Kawai), and vertices are colored based on their community membership. The plot is saved to a file.
+
+This script is comprehensive and includes all steps from data preparation to visualization, allowing for a thorough analysis of transaction code relationships and community detection to facilitate consolidation. Adjustments can be made to the threshold or community detection parameters as needed based on specific requirements or insights.
