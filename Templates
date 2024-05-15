@@ -1,13 +1,17 @@
-Certainly! To colorize the nodes based on their community membership in the network visualization, you can use community detection algorithms to assign communities and then use a distinct color for each community. We'll use the `community` module from the `networkx` library (often in conjunction with the `python-louvain` or similar library) to detect communities and apply different colors to each.
+To create a detailed tabular data summary of the graph, which includes community membership, `TRAN_CD`, community size, and Jaccard similarity, we will follow these steps:
 
-Here’s how to modify the script:
+1. **Community Detection**: As previously implemented, detect communities using the Louvain method.
+2. **Create a DataFrame**: Construct a DataFrame that aggregates the necessary information.
+3. **Calculate Community Size**: For each community, calculate the number of members.
+4. **Calculate Average Jaccard Similarity**: Compute the average Jaccard similarity within each community.
 
-### Updated Script with Community Coloring
+Here's how you can write the Python code to accomplish this:
+
+### Python Code for Summarizing the Graph in a DataFrame
 
 ```python
 import pandas as pd
 import networkx as nx
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import Binarizer
 import community as community_louvain
 
@@ -22,49 +26,55 @@ data_binary = pd.DataFrame(data_binary, columns=data_pivot.columns).astype(bool)
 # Create a graph
 G = nx.Graph()
 
-# Add nodes
-for col in data_binary.columns:
-    G.add_node(col)
-
-# Compute Jaccard Similarity and add weighted edges
-threshold = 0.1  # Adjust the threshold based on domain knowledge and exploratory analysis
+# Add nodes and compute Jaccard similarity to add weighted edges
+threshold = 0.1
 for i, col1 in enumerate(data_binary.columns):
     for j, col2 in enumerate(data_binary.columns):
-        if i < j:  # Ensure we only calculate once for each pair
+        if i < j:
             intersection = data_binary[col1] & data_binary[col2]
             union = data_binary[col1] | data_binary[col2]
             similarity = intersection.sum() / float(union.sum())
             if similarity > threshold:
                 G.add_edge(col1, col2, weight=similarity)
 
-# Detecting communities using the Louvain method
+# Detecting communities
 partition = community_louvain.best_partition(G, weight='weight')
-communities = set(partition.values())
-community_colors = {node: partition.get(node) for node in G.nodes()}
 
-# Draw the graph with community-based colors
-plt.figure(figsize=(12, 12))
-pos = nx.spring_layout(G)  # positions for all nodes
-edges = G.edges()
-weights = [G[u][v]['weight'] * 10 for u, v in edges]  # Scale weights for better visualization
+# Community Data Extraction
+community_data = {
+    "TRAN_CD": [],
+    "Community": [],
+    "Jaccard Similarity": []
+}
 
-# Define color map with a distinct color for each community
-color_map = plt.cm.get_cmap('viridis', max(partition.values()) + 1)
+for u, v, data in G.edges(data=True):
+    community_data["TRAN_CD"].append(f"{u}, {v}")
+    community_data["Community"].append(f"{partition[u]}, {partition[v]}")
+    community_data["Jaccard Similarity"].append(data['weight'])
 
-nx.draw_networkx_nodes(G, pos, node_size=700, cmap=color_map, node_color=list(partition.values()), alpha=0.6)
-nx.draw_networkx_edges(G, pos, edgelist=edges, width=weights, alpha=0.5, edge_color='gray')
-nx.draw_networkx_labels(G, pos, font_size=12, font_family="sans-serif")
-plt.title('Network of TRAN_CD with Jaccard Similarity Weights and Community Coloring')
-plt.axis('off')  # Turn off the axis
-plt.show()
+community_df = pd.DataFrame(community_data)
+
+# Calculate community sizes
+community_sizes = community_df['Community'].value_counts().rename_axis('Community').reset_index(name='Size')
+
+# Merge community sizes back to the DataFrame
+community_df = community_df.merge(community_sizes, on='Community', how='left')
+
+# Group by community to calculate average Jaccard Similarity
+community_df['Average Jaccard Similarity'] = community_df.groupby('Community')['Jaccard Similarity'].transform('mean')
+
+# Drop duplicate communities for the final summary
+final_community_df = community_df.drop_duplicates(subset=['Community']).reset_index(drop=True)
+
+# Display the DataFrame
+print(final_community_df[['Community', 'Size', 'Average Jaccard Similarity']])
 ```
 
-### Key Additions and Changes:
+### Explanation:
 
-1. **Community Detection**: Uses the Louvain method for community detection. This method is popular for its efficiency and effectiveness in detecting communities in large networks based on modularity optimization.
+1. **Community Detection**: Communities are detected using the Louvain method, assigning each `TRAN_CD` to a community.
+2. **Graph Edges**: The script computes Jaccard similarity between each pair of `TRAN_CD`s and creates edges for those pairs above a similarity threshold.
+3. **Community Data**: A DataFrame is created listing each pair of connected `TRAN_CD`s, their community assignment, and the Jaccard similarity for that edge.
+4. **Community Size and Average Similarity**: The DataFrame is enhanced to include the size of each community and the average Jaccard similarity within it.
 
-2. **Color Mapping**: Nodes are colored according to their community membership. The color map is dynamically generated based on the number of communities detected, ensuring each community has a distinct color.
-
-3. **Visualization Enhancements**: The graph now includes community-based coloring, which helps visually distinguish different communities within the network, making it easier to analyze the relationships and clustering of `TRAN_CD`s.
-
-This script provides a comprehensive visualization that highlights not only the relationships based on Jaccard Similarity but also the community structure within the network, aiding in the identification and analysis of groups of `TRAN_CD`s that exhibit similar behavior.
+This DataFrame provides a comprehensive summary of your network analysis, highlighting how `TRAN_CD`s are grouped, the connectivity within communities based on Jaccard similarity, and the size of these communities. This structured data format is excellent for further analysis or reporting.
