@@ -1,5 +1,73 @@
-Our universal classifier model platform represents a groundbreaking solution for PNC Bank, revolutionizing how we address critical business challenges with unparalleled efficiency and accuracy. Take, for instance, our approach to credit risk assessment—a cornerstone of our lending operations. Traditional methods often involve manual data preprocessing and model selection, resulting in lengthy turnaround times and suboptimal outcomes. With our platform, PNC can automate these processes, swiftly identifying high-risk applicants and minimizing the likelihood of default. Leveraging state-of-the-art autoML solutions like AutoGluon and PyCaret, our platform empowers PNC to deploy a diverse array of models tailored specifically to our needs, whether predicting loan defaults, detecting fraudulent transactions, or optimizing marketing strategies.
+To revise the approach for analyzing relationships between `TRAN_CD`s by using the Jaccard Similarity instead of correlation, and to visualize the graph with weighted edges, we'll need to make several changes to the code:
 
-Furthermore, our platform offers a level of customization that sets it apart, allowing PNC to fine-tune models according to our unique business objectives and risk tolerance levels. From selecting a subset of models to conducting hyperparameter tuning and leveraging ensemble techniques, we have the flexibility to optimize model accuracy and robustness to meet the ever-evolving demands of our industry. This adaptability ensures that PNC can remain agile and competitive in a rapidly changing landscape, driving sustainable growth while maintaining the highest standards of risk management and regulatory compliance.
+### Jaccard Similarity
+Jaccard Similarity is especially useful for binary or set-based data. In your case, we can consider whether a given `TRAN_CD` was used by a `RLTN_PWR_ID` or not, treating the occurrences as sets. This measure is a good fit for understanding overlap in usage between different transaction codes.
 
-Moreover, the seamless integration of our platform with FastAPI enables swift deployment of models into intuitive dashboards, providing PNC stakeholders across the organization with actionable insights in real-time. Whether it's loan officers assessing creditworthiness or fraud analysts scrutinizing suspicious activities, our platform equips PNC professionals with the tools they need to make informed decisions quickly and confidently. By harnessing the power of data science and machine learning, PNC can mitigate risks, optimize operations, and deliver superior customer experiences, solidifying our position as a leader in the financial services industry and driving value creation for our stakeholders.
+### Graph Visualization
+For visualizing the graph, edges will be displayed based on the weight, where the weight corresponds to the Jaccard Similarity.
+
+Here’s how to modify the script:
+
+### Full Python Script
+
+```python
+import pandas as pd
+import networkx as nx
+from sklearn.preprocessing import Binarizer
+import matplotlib.pyplot as plt
+
+# Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
+data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
+
+# Binarize the data to prepare for Jaccard Similarity
+binarizer = Binarizer(threshold=0)
+data_binary = binarizer.fit_transform(data_pivot)
+data_binary = pd.DataFrame(data_binary, columns=data_pivot.columns)
+
+# Compute Jaccard Similarity
+def jaccard_similarity(column1, column2):
+    intersection = column1 & column2
+    union = column1 | column2
+    return intersection.sum() / float(union.sum())
+
+# Create a graph
+G = nx.Graph()
+
+# Add nodes
+for col in data_binary.columns:
+    G.add_node(col)
+
+# Add weighted edges based on Jaccard Similarity
+threshold = 0.1  # Adjust the threshold based on domain knowledge and exploratory analysis
+for i, col1 in enumerate(data_binary.columns):
+    for j, col2 in enumerate(data_binary.columns):
+        if i < j:  # Ensure we only calculate once for each pair
+            similarity = jaccard_similarity(data_binary[col1], data_binary[col2])
+            if similarity > threshold:
+                G.add_edge(col1, col2, weight=similarity)
+
+# Draw the graph with weighted edges
+plt.figure(figsize=(12, 12))
+pos = nx.spring_layout(G)  # positions for all nodes
+edges = G.edges()
+weights = [G[u][v]['weight']*10 for u, v in edges]  # Scale weights for better visualization
+
+nx.draw_networkx_nodes(G, pos, node_size=700, node_color='skyblue', alpha=0.6)
+nx.draw_networkx_edges(G, pos, edgelist=edges, width=weights, alpha=0.5, edge_color='gray')
+nx.draw_networkx_labels(G, pos, font_size=12, font_family="sans-serif")
+plt.title('Network of TRAN_CD with Jaccard Similarity Weights')
+plt.axis('off')  # Turn off the axis
+plt.show()
+```
+
+### Explanation:
+
+1. **Data Binarization**: The `VOLUME` data is binarized (0s and 1s), where 1 indicates the presence of a transaction and 0 its absence. This is necessary for calculating Jaccard Similarity, which is defined as the size of the intersection divided by the size of the union of two sets.
+
+2. **Jaccard Similarity Calculation**: A function `jaccard_similarity` is defined to calculate the Jaccard index between two transaction codes. This function is used to evaluate the similarity between all pairs of transaction codes.
+
+3. **Graph Construction**: A graph is built where nodes represent `TRAN_CD`s and edges connect nodes with Jaccard Similarity above a certain threshold, weighted by their similarity.
+
+4. **Graph Visualization**: The graph is visualized using a spring layout with edges scaled by their Jaccard Similarity weights, which enhances the visual representation of stronger relationships (higher similarities).
+
+This script offers a method to visually and analytically explore how `TRAN_CD`s overlap in their usage across different `RLTN_PWR_ID`s, providing insights that could be crucial for consolidating transaction codes efficiently.
