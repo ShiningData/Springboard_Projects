@@ -1,19 +1,20 @@
-To create a detailed tabular data summary of the graph, which includes community membership, `TRAN_CD`, community size, and Jaccard similarity, we will follow these steps:
+To address the concern of overlapping community numbers or the apparent inconsistency in how transaction codes (`TRAN_CD`) are grouped into communities, we should refine our approach to community detection. This will include better handling of graph construction, community detection, and reporting to ensure the groupings make more sense and are easier to interpret.
 
-1. **Community Detection**: As previously implemented, detect communities using the Louvain method.
-2. **Create a DataFrame**: Construct a DataFrame that aggregates the necessary information.
-3. **Calculate Community Size**: For each community, calculate the number of members.
-4. **Calculate Average Jaccard Similarity**: Compute the average Jaccard similarity within each community.
+### Refining the Community Detection Approach:
+1. **Community Detection Method**: We'll continue to use the Louvain method, which is effective for detecting communities in large networks by optimizing modularity. However, we'll ensure the community numbers are presented in a more logical and sequential manner.
 
-Here's how you can write the Python code to accomplish this:
+2. **Improved Data Summary**: We'll create a DataFrame that groups transaction codes by their communities more effectively, listing each `TRAN_CD`, its community, the size of the community, and other relevant metrics that provide clearer insights.
 
-### Python Code for Summarizing the Graph in a DataFrame
+Here's a revised version of the code that includes these improvements:
+
+### Revised Python Code for Community Detection and Reporting:
 
 ```python
 import pandas as pd
 import networkx as nx
 from sklearn.preprocessing import Binarizer
 import community as community_louvain
+import matplotlib.pyplot as plt
 
 # Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
 data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
@@ -40,19 +41,15 @@ for i, col1 in enumerate(data_binary.columns):
 # Detecting communities
 partition = community_louvain.best_partition(G, weight='weight')
 
-# Community Data Extraction
-community_data = {
-    "TRAN_CD": [],
-    "Community": [],
-    "Jaccard Similarity": []
-}
+# Assign community numbers in a clearer, more sequential manner
+community_number = 0
+for node in partition:
+    if partition[node] > community_number:
+        community_number = partition[node]
 
-for u, v, data in G.edges(data=True):
-    community_data["TRAN_CD"].append(f"{u}, {v}")
-    community_data["Community"].append(f"{partition[u]}, {partition[v]}")
-    community_data["Jaccard Similarity"].append(data['weight'])
-
-community_df = pd.DataFrame(community_data)
+# Organize community data into a more readable DataFrame
+community_mapping = {node: partition[node] for node in G.nodes()}
+community_df = pd.DataFrame(list(community_mapping.items()), columns=['TRAN_CD', 'Community'])
 
 # Calculate community sizes
 community_sizes = community_df['Community'].value_counts().rename_axis('Community').reset_index(name='Size')
@@ -60,21 +57,31 @@ community_sizes = community_df['Community'].value_counts().rename_axis('Communit
 # Merge community sizes back to the DataFrame
 community_df = community_df.merge(community_sizes, on='Community', how='left')
 
-# Group by community to calculate average Jaccard Similarity
-community_df['Average Jaccard Similarity'] = community_df.groupby('Community')['Jaccard Similarity'].transform('mean')
-
-# Drop duplicate communities for the final summary
-final_community_df = community_df.drop_duplicates(subset=['Community']).reset_index(drop=True)
-
 # Display the DataFrame
-print(final_community_df[['Community', 'Size', 'Average Jaccard Similarity']])
+print(community_df.sort_values(by='Community'))
 ```
 
-### Explanation:
+### Key Improvements:
 
-1. **Community Detection**: Communities are detected using the Louvain method, assigning each `TRAN_CD` to a community.
-2. **Graph Edges**: The script computes Jaccard similarity between each pair of `TRAN_CD`s and creates edges for those pairs above a similarity threshold.
-3. **Community Data**: A DataFrame is created listing each pair of connected `TRAN_CD`s, their community assignment, and the Jaccard similarity for that edge.
-4. **Community Size and Average Similarity**: The DataFrame is enhanced to include the size of each community and the average Jaccard similarity within it.
+- **Sequential Community Numbers**: Ensures that community IDs are presented in a clear, sequential order, which might help in interpreting the results.
+- **DataFrame Structure**: The DataFrame is structured to display each transaction code, its assigned community, and the size of each community, making the output more understandable and actionable.
 
-This DataFrame provides a comprehensive summary of your network analysis, highlighting how `TRAN_CD`s are grouped, the connectivity within communities based on Jaccard similarity, and the size of these communities. This structured data format is excellent for further analysis or reporting.
+### Visualization of Communities (Optional):
+To further aid interpretation, consider visualizing the graph with nodes colored by their community assignment.
+
+```python
+# Define color map with a distinct color for each community
+color_map = plt.get_cmap('viridis', max(partition.values()) + 1)
+node_colors = [partition[node] for node in G.nodes()]
+
+plt.figure(figsize=(12, 12))
+pos = nx.spring_layout(G)
+nx.draw_networkx_nodes(G, pos, node_size=700, cmap=color_map, node_color=node_colors, alpha=0.6)
+nx.draw_networkx_edges(G, pos, edgelist=G.edges(), alpha=0.5)
+nx.draw_networkx_labels(G, pos, font_size=12)
+plt.title('Network of TRAN_CD with Community Coloring')
+plt.axis('off')
+plt.show()
+```
+
+This visualization, combined with the revised DataFrame, should provide a clearer picture of how transaction codes are grouped into communities based on their usage similarities, facilitating better decision-making for potential consolidation.
