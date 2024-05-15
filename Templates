@@ -1,13 +1,8 @@
-To address the concern of overlapping community numbers or the apparent inconsistency in how transaction codes (`TRAN_CD`) are grouped into communities, we should refine our approach to community detection. This will include better handling of graph construction, community detection, and reporting to ensure the groupings make more sense and are easier to interpret.
+To colorize each community in the table to match the colors used in the visual plot, we need to coordinate the colors assigned in the community visualization with those displayed in the table. We can do this by assigning a specific color to each community and then use these colors both in the plot and in the table (when displaying it, especially if it's in an interactive environment like a Jupyter Notebook using HTML display capabilities).
 
-### Refining the Community Detection Approach:
-1. **Community Detection Method**: We'll continue to use the Louvain method, which is effective for detecting communities in large networks by optimizing modularity. However, we'll ensure the community numbers are presented in a more logical and sequential manner.
+Here's how to adjust the Python code to integrate colorization of the communities in both the plot and the DataFrame presentation:
 
-2. **Improved Data Summary**: We'll create a DataFrame that groups transaction codes by their communities more effectively, listing each `TRAN_CD`, its community, the size of the community, and other relevant metrics that provide clearer insights.
-
-Here's a revised version of the code that includes these improvements:
-
-### Revised Python Code for Community Detection and Reporting:
+### Python Code with Community Color Coordination:
 
 ```python
 import pandas as pd
@@ -19,7 +14,7 @@ import matplotlib.pyplot as plt
 # Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
 data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
 
-# Binarize the data to prepare for Jaccard Similarity
+# Binarize the data
 binarizer = Binarizer(threshold=0)
 data_binary = binarizer.fit_transform(data_pivot)
 data_binary = pd.DataFrame(data_binary, columns=data_pivot.columns).astype(bool)
@@ -41,47 +36,60 @@ for i, col1 in enumerate(data_binary.columns):
 # Detecting communities
 partition = community_louvain.best_partition(G, weight='weight')
 
-# Assign community numbers in a clearer, more sequential manner
-community_number = 0
-for node in partition:
-    if partition[node] > community_number:
-        community_number = partition[node]
+# Color map for communities
+community_count = len(set(partition.values()))
+color_map = plt.get_cmap('viridis', community_count)
+community_colors = {community: color_map(i / community_count) for i, community in enumerate(set(partition.values()))}
 
-# Organize community data into a more readable DataFrame
-community_mapping = {node: partition[node] for node in G.nodes()}
-community_df = pd.DataFrame(list(community_mapping.items()), columns=['TRAN_CD', 'Community'])
+# Visualization
+plt.figure(figsize=(12, 12))
+pos = nx.spring_layout(G)
+for community, color in community_colors.items():
+    nx.draw_networkx_nodes(G, pos, nodelist=[n for n in partition if partition[n] == community],
+                           node_color=[color], node_size=100, label=f'Community {community}')
+nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.3)
+nx.draw_networkx_labels(G, pos, font_size=10)
+plt.title('Network of TRAN_CD with Community Coloring')
+plt.axis('off')
+plt.legend()
+plt.show()
 
-# Calculate community sizes
-community_sizes = community_df['Community'].value_counts().rename_axis('Community').reset_index(name='Size')
+# Create DataFrame with community data and colors
+community_data = {
+    "TRAN_CD": [],
+    "Community": [],
+    "Color": []
+}
 
-# Merge community sizes back to the DataFrame
-community_df = community_df.merge(community_sizes, on='Community', how='left')
+for node, comm in partition.items():
+    community_data["TRAN_CD"].append(node)
+    community_data["Community"].append(comm)
+    community_data["Color"].append(matplotlib.colors.rgb2hex(community_colors[comm]))
+
+community_df = pd.DataFrame(community_data)
 
 # Display the DataFrame
 print(community_df.sort_values(by='Community'))
 ```
 
-### Key Improvements:
+### Key Features in This Code:
 
-- **Sequential Community Numbers**: Ensures that community IDs are presented in a clear, sequential order, which might help in interpreting the results.
-- **DataFrame Structure**: The DataFrame is structured to display each transaction code, its assigned community, and the size of each community, making the output more understandable and actionable.
+1. **Community Detection**: Same as before, using the Louvain method.
+2. **Color Map**: A color map is defined using `matplotlib`'s color maps. Colors are assigned to each community based on their identifier.
+3. **Visualization**: The network is plotted with nodes colored according to their community. The legend identifies communities by color.
+4. **DataFrame with Colors**: The DataFrame now includes a color column, with colors corresponding to those used in the visualization. Colors are converted to hexadecimal format suitable for HTML displays.
 
-### Visualization of Communities (Optional):
-To further aid interpretation, consider visualizing the graph with nodes colored by their community assignment.
+### Displaying the DataFrame with Colors in HTML (Jupyter Notebook):
+If you're using a Jupyter Notebook, you can display the DataFrame with colors as follows:
 
 ```python
-# Define color map with a distinct color for each community
-color_map = plt.get_cmap('viridis', max(partition.values()) + 1)
-node_colors = [partition[node] for node in G.nodes()]
+from IPython.display import HTML
 
-plt.figure(figsize=(12, 12))
-pos = nx.spring_layout(G)
-nx.draw_networkx_nodes(G, pos, node_size=700, cmap=color_map, node_color=node_colors, alpha=0.6)
-nx.draw_networkx_edges(G, pos, edgelist=G.edges(), alpha=0.5)
-nx.draw_networkx_labels(G, pos, font_size=12)
-plt.title('Network of TRAN_CD with Community Coloring')
-plt.axis('off')
-plt.show()
+def colorize(val):
+    color = community_df.loc[community_df['TRAN_CD'] == val.name, 'Color'].values[0]
+    return f'background-color: {color}'
+
+community_df.style.applymap(colorize, subset=['TRAN_CD'])
 ```
 
-This visualization, combined with the revised DataFrame, should provide a clearer picture of how transaction codes are grouped into communities based on their usage similarities, facilitating better decision-making for potential consolidation.
+This snippet will display the DataFrame where each `TRAN_CD` cell is background-colored according to its community, matching the visualization's color scheme, thereby enhancing the ability to visually correlate the table data with the graph.
