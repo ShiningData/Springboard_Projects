@@ -1,95 +1,585 @@
-To colorize each community in the table to match the colors used in the visual plot, we need to coordinate the colors assigned in the community visualization with those displayed in the table. We can do this by assigning a specific color to each community and then use these colors both in the plot and in the table (when displaying it, especially if it's in an interactive environment like a Jupyter Notebook using HTML display capabilities).
+1. TREE BASED ALGORITHM TO PREDICT CHURN:
 
-Here's how to adjust the Python code to integrate colorization of the communities in both the plot and the DataFrame presentation:
+To construct the churn model, we will follow these steps:
 
-### Python Code with Community Color Coordination:
+1. Data Preparation: Aggregate and transform the data to create features for each customer. This involves calculating summary statistics, time-based features, and the target variable (churn).
+
+2. Feature Engineering: Extract meaningful features from the time series data, such as recent trends, averages, and variances for the different transaction types.
+
+3. Churn Labeling: Define the churn based on the given criteria and label each customer accordingly.
+
+4. Model Selection and Training: Choose an appropriate model, train it on the prepared data, and evaluate its performance. For this case, we can use a gradient boosting model like XGBoost or LightGBM, as they handle tabular data and can capture complex relationships.
+
+Here’s the step-by-step Python code to achieve this:
 
 ```python
 import pandas as pd
-import networkx as nx
-from sklearn.preprocessing import Binarizer
-import community as community_louvain
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+import xgboost as xgb
+
+# Assume data is loaded into a pandas DataFrame `df`
+# df = pd.read_csv('customer_data.csv')
+
+# Example DataFrame structure for illustration
+# df = pd.DataFrame({
+#     'customer_id': [...],
+#     'date': [...],
+#     'deposits': [...],
+#     'check_transactions': [...],
+#     'wire_transactions': [...],
+#     'ach_transactions': [...],
+#     'agent_customer_calls': [...],
+#     'product_use': [...],
+#     'revenue': [...]
+# })
+
+# Pivot the data to have customers as rows and dates as columns for each feature
+pivot_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use', 'revenue']
+customer_data = df.pivot_table(index='customer_id', columns='date', values=pivot_features)
+
+# Create a target variable for churn based on the revenue criteria
+def label_churn(revenue_series):
+    recent_3_months = revenue_series[-3:]
+    prior_3_months = revenue_series[-6:-3]
+    if prior_3_months.mean() == 0:  # Avoid division by zero
+        return 0
+    return 1 if recent_3_months.mean() < 0.75 * prior_3_months.mean() else 0
+
+# Apply the churn labeling function
+customer_data['churn'] = customer_data['revenue'].apply(label_churn, axis=1)
+
+# Feature Engineering: Create summary statistics for each feature
+features = []
+for feature in pivot_features[:-1]:  # Exclude 'revenue' as it's used for churn labeling
+    customer_data[f'{feature}_mean'] = customer_data[feature].apply(np.mean, axis=1)
+    customer_data[f'{feature}_std'] = customer_data[feature].apply(np.std, axis=1)
+    customer_data[f'{feature}_max'] = customer_data[feature].apply(np.max, axis=1)
+    customer_data[f'{feature}_min'] = customer_data[feature].apply(np.min, axis=1)
+    customer_data[f'{feature}_trend'] = customer_data[feature].apply(lambda x: np.polyfit(range(len(x)), x, 1)[0], axis=1)
+    features.extend([f'{feature}_mean', f'{feature}_std', f'{feature}_max', f'{feature}_min', f'{feature}_trend'])
+
+# Prepare the data for modeling
+X = customer_data[features]
+y = customer_data['churn']
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train an XGBoost model
+model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+model.fit(X_train, y_train)
+
+# Make predictions and evaluate the model
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+print(classification_report(y_test, y_pred))
+print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
+
+# Feature Importance
 import matplotlib.pyplot as plt
-
-# Assuming 'df' is your DataFrame with columns 'RLTN_PWR_ID', 'TRAN_CD', 'VOLUME'
-data_pivot = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', fill_value=0)
-
-# Binarize the data
-binarizer = Binarizer(threshold=0)
-data_binary = binarizer.fit_transform(data_pivot)
-data_binary = pd.DataFrame(data_binary, columns=data_pivot.columns).astype(bool)
-
-# Create a graph
-G = nx.Graph()
-
-# Add nodes and compute Jaccard similarity to add weighted edges
-threshold = 0.1
-for i, col1 in enumerate(data_binary.columns):
-    for j, col2 in enumerate(data_binary.columns):
-        if i < j:
-            intersection = data_binary[col1] & data_binary[col2]
-            union = data_binary[col1] | data_binary[col2]
-            similarity = intersection.sum() / float(union.sum())
-            if similarity > threshold:
-                G.add_edge(col1, col2, weight=similarity)
-
-# Detecting communities
-partition = community_louvain.best_partition(G, weight='weight')
-
-# Color map for communities
-community_count = len(set(partition.values()))
-color_map = plt.get_cmap('viridis', community_count)
-community_colors = {community: color_map(i / community_count) for i, community in enumerate(set(partition.values()))}
-
-# Visualization
-plt.figure(figsize=(12, 12))
-pos = nx.spring_layout(G)
-for community, color in community_colors.items():
-    nx.draw_networkx_nodes(G, pos, nodelist=[n for n in partition if partition[n] == community],
-                           node_color=[color], node_size=100, label=f'Community {community}')
-nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.3)
-nx.draw_networkx_labels(G, pos, font_size=10)
-plt.title('Network of TRAN_CD with Community Coloring')
-plt.axis('off')
-plt.legend()
+xgb.plot_importance(model)
 plt.show()
-
-# Create DataFrame with community data and colors
-community_data = {
-    "TRAN_CD": [],
-    "Community": [],
-    "Color": []
-}
-
-for node, comm in partition.items():
-    community_data["TRAN_CD"].append(node)
-    community_data["Community"].append(comm)
-    community_data["Color"].append(matplotlib.colors.rgb2hex(community_colors[comm]))
-
-community_df = pd.DataFrame(community_data)
-
-# Display the DataFrame
-print(community_df.sort_values(by='Community'))
 ```
 
-### Key Features in This Code:
+ Explanation:
 
-1. **Community Detection**: Same as before, using the Louvain method.
-2. **Color Map**: A color map is defined using `matplotlib`'s color maps. Colors are assigned to each community based on their identifier.
-3. **Visualization**: The network is plotted with nodes colored according to their community. The legend identifies communities by color.
-4. **DataFrame with Colors**: The DataFrame now includes a color column, with colors corresponding to those used in the visualization. Colors are converted to hexadecimal format suitable for HTML displays.
+1. Data Loading and Pivoting: Load the dataset and pivot it so that each customer has a row with multiple columns representing different dates for each feature.
 
-### Displaying the DataFrame with Colors in HTML (Jupyter Notebook):
-If you're using a Jupyter Notebook, you can display the DataFrame with colors as follows:
+2. Churn Labeling: Define the `label_churn` function to determine if a customer has churned based on the given revenue criteria. Apply this function to create the target variable.
+
+3. Feature Engineering: Calculate summary statistics (mean, std, max, min) and trend for each feature to use as input for the model.
+
+4. Model Training and Evaluation: Split the data into training and testing sets, train an XGBoost classifier, and evaluate its performance using classification metrics and ROC AUC score. Plot the feature importance to understand the impact of each feature.
+
+This approach ensures we capture the time series dynamics and other important aspects of customer behavior to build a robust churn prediction model.
+
+
+
+2. RFM PLUS XGBOOST TO PREDICT CUSTOMER CHURN:
+
+To construct a churn model using an RFM (Recency, Frequency, Monetary) approach combined with XGBoost, we will follow these steps:
+
+1. Data Preparation: Aggregate and transform the data to create RFM features for each customer.
+2. Feature Engineering: Create the RFM metrics and any additional features.
+3. Churn Labeling: Define the churn based on the given criteria and label each customer accordingly.
+4. Model Selection and Training: Train an XGBoost model using the RFM features and evaluate its performance.
+
+ Step-by-Step Construction
+
+1. Data Preparation:
+   - Load the data.
+   - Pivot the data to have customers as rows and dates as columns for each feature.
+
+2. Feature Engineering (RFM Metrics):
+   - Recency: Calculate the number of days since the last transaction.
+   - Frequency: Count the number of transactions in the past 24 months.
+   - Monetary: Calculate the total monetary value of transactions in the past 24 months.
+
+3. Churn Labeling:
+   - Define churn based on the given criteria: if the average revenue in the last 3 months is less than 75% of the average revenue in the previous 3 months.
+
+4. Model Selection and Training:
+   - Train an XGBoost model using the RFM features.
+   - Evaluate the model using appropriate metrics.
+
+Here's the Python code to implement this approach:
 
 ```python
-from IPython.display import HTML
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+import xgboost as xgb
 
-def colorize(val):
-    color = community_df.loc[community_df['TRAN_CD'] == val.name, 'Color'].values[0]
-    return f'background-color: {color}'
+# Assume data is loaded into a pandas DataFrame `df`
+# df = pd.read_csv('customer_data.csv')
 
-community_df.style.applymap(colorize, subset=['TRAN_CD'])
+# Example DataFrame structure for illustration
+# df = pd.DataFrame({
+#     'customer_id': [...],
+#     'date': [...],
+#     'deposits': [...],
+#     'check_transactions': [...],
+#     'wire_transactions': [...],
+#     'ach_transactions': [...],
+#     'agent_customer_calls': [...],
+#     'product_use': [...],
+#     'revenue': [...]
+# })
+
+# Pivot the data to have customers as rows and dates as columns for each feature
+pivot_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use', 'revenue']
+customer_data = df.pivot_table(index='customer_id', columns='date', values=pivot_features)
+
+# RFM Feature Engineering
+def calculate_recency(transaction_dates):
+    return (pd.to_datetime('today') - transaction_dates.max()).days
+
+def calculate_frequency(transaction_dates):
+    return transaction_dates.count()
+
+def calculate_monetary(values):
+    return values.sum()
+
+rfm_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use']
+for feature in rfm_features:
+    customer_data[f'{feature}_recency'] = customer_data[feature].apply(calculate_recency, axis=1)
+    customer_data[f'{feature}_frequency'] = customer_data[feature].apply(calculate_frequency, axis=1)
+    customer_data[f'{feature}_monetary'] = customer_data[feature].apply(calculate_monetary, axis=1)
+
+# Calculate RFM for revenue specifically
+customer_data['revenue_recency'] = customer_data['revenue'].apply(calculate_recency, axis=1)
+customer_data['revenue_frequency'] = customer_data['revenue'].apply(calculate_frequency, axis=1)
+customer_data['revenue_monetary'] = customer_data['revenue'].apply(calculate_monetary, axis=1)
+
+# Create a target variable for churn based on the revenue criteria
+def label_churn(revenue_series):
+    recent_3_months = revenue_series[-3:]
+    prior_3_months = revenue_series[-6:-3]
+    if prior_3_months.mean() == 0:  # Avoid division by zero
+        return 0
+    return 1 if recent_3_months.mean() < 0.75 * prior_3_months.mean() else 0
+
+# Apply the churn labeling function
+customer_data['churn'] = customer_data['revenue'].apply(label_churn, axis=1)
+
+# Prepare the data for modeling
+features = [col for col in customer_data.columns if col not in pivot_features + ['churn']]
+X = customer_data[features]
+y = customer_data['churn']
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train an XGBoost model
+model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+model.fit(X_train, y_train)
+
+# Make predictions and evaluate the model
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+print(classification_report(y_test, y_pred))
+print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
+
+# Feature Importance
+import matplotlib.pyplot as plt
+xgb.plot_importance(model)
+plt.show()
 ```
 
-This snippet will display the DataFrame where each `TRAN_CD` cell is background-colored according to its community, matching the visualization's color scheme, thereby enhancing the ability to visually correlate the table data with the graph.
+ Explanation:
+
+1. Data Preparation: Load and pivot the data to create a customer-level dataset with features over time.
+
+2. Feature Engineering (RFM):
+   - Recency: Calculate the days since the last transaction for each feature.
+   - Frequency: Count the number of transactions for each feature.
+   - Monetary: Sum the transaction values for each feature.
+
+3. Churn Labeling: Define the churn based on the provided revenue criteria.
+
+4. Model Selection and Training: Use the RFM features to train an XGBoost model and evaluate its performance using classification metrics and ROC AUC score. The feature importance plot helps understand which features contribute most to the model.
+
+This approach leverages the RFM metrics to capture customer behavior and uses a powerful machine learning model to predict churn.
+
+
+3. GRAPH ANALYSIS METRICS TO PREDICT CUSTOMER CHURN:
+
+To build a churn model using graph machine learning, we'll represent the customers and their interactions as a graph. We will use `igraph` to create and manipulate the graph and then extract features that can be used to train a machine learning model such as XGBoost.
+
+ Step-by-Step Construction
+
+1. Data Preparation:
+   - Load the data and create a graph representation.
+   - Nodes represent customers.
+   - Edges represent interactions or transactions between customers.
+
+2. Feature Engineering:
+   - Extract graph features such as centrality measures, clustering coefficients, and other structural properties.
+
+3. Churn Labeling:
+   - Define churn based on the given criteria and label each customer accordingly.
+
+4. Model Selection and Training:
+   - Train an XGBoost model using the graph features and evaluate its performance.
+
+Here’s the Python code to implement this approach:
+
+```python
+import pandas as pd
+import numpy as np
+from igraph import Graph
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+import xgboost as xgb
+
+# Assume data is loaded into a pandas DataFrame `df`
+# df = pd.read_csv('customer_data.csv')
+
+# Example DataFrame structure for illustration
+# df = pd.DataFrame({
+#     'customer_id': [...],
+#     'date': [...],
+#     'deposits': [...],
+#     'check_transactions': [...],
+#     'wire_transactions': [...],
+#     'ach_transactions': [...],
+#     'agent_customer_calls': [...],
+#     'product_use': [...],
+#     'revenue': [...]
+# })
+
+# For graph construction, we need a way to define edges. Assume we have a dataframe `interactions`
+# which contains the interactions between customers
+# interactions = pd.DataFrame({
+#     'customer_id_1': [...],
+#     'customer_id_2': [...],
+#     'interaction_weight': [...]
+# })
+
+# Create a graph from the interactions DataFrame
+g = Graph.DataFrame(interactions, directed=False)
+
+# Add customer attributes to the graph nodes
+for col in df.columns:
+    if col != 'customer_id':
+        g.vs[col] = df.set_index('customer_id')[col].to_dict()
+
+# Graph Feature Engineering
+def extract_graph_features(graph):
+    features = {}
+    features['degree'] = graph.degree()
+    features['betweenness'] = graph.betweenness()
+    features['closeness'] = graph.closeness()
+    features['pagerank'] = graph.pagerank()
+    features['transitivity'] = graph.transitivity_local_undirected()
+    return pd.DataFrame(features)
+
+graph_features = extract_graph_features(g)
+
+# Churn Labeling: Create a target variable for churn based on the revenue criteria
+def label_churn(revenue_series):
+    recent_3_months = revenue_series[-3:]
+    prior_3_months = revenue_series[-6:-3]
+    if prior_3_months.mean() == 0:  # Avoid division by zero
+        return 0
+    return 1 if recent_3_months.mean() < 0.75 * prior_3_months.mean() else 0
+
+df['churn'] = df['revenue'].apply(label_churn, axis=1)
+
+# Merge graph features with customer data
+customer_data = df.set_index('customer_id').join(graph_features)
+
+# Prepare the data for modeling
+features = [col for col in customer_data.columns if col not in ['churn', 'revenue']]
+X = customer_data[features]
+y = customer_data['churn']
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train an XGBoost model
+model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+model.fit(X_train, y_train)
+
+# Make predictions and evaluate the model
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+print(classification_report(y_test, y_pred))
+print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
+
+# Feature Importance
+import matplotlib.pyplot as plt
+xgb.plot_importance(model)
+plt.show()
+```
+
+ Explanation:
+
+1. Data Preparation: Load the dataset and create a graph using `igraph`, where nodes represent customers and edges represent interactions between them.
+
+2. Feature Engineering: Extract graph-based features such as degree, betweenness, closeness, PageRank, and local transitivity for each customer.
+
+3. Churn Labeling: Define churn based on the provided revenue criteria.
+
+4. Model Selection and Training: Use the extracted graph features to train an XGBoost model and evaluate its performance using classification metrics and ROC AUC score. The feature importance plot helps understand which features contribute most to the model.
+
+This approach leverages graph characteristics to capture the structural properties of customer interactions, which can be highly indicative of churn behavior.
+
+
+4. SURVIVAL ANALYSIS TO PREDICT CHURN:
+
+To build a churn model using survival analysis, we will follow these steps:
+
+1. Data Preparation: Transform the data into a suitable format for survival analysis.
+2. Feature Engineering: Create relevant features.
+3. Survival Analysis: Use a survival analysis model, such as the Cox Proportional Hazards model, to analyze the time until churn.
+4. Evaluation: Evaluate the model performance.
+
+ Step-by-Step Construction
+
+1. Data Preparation:
+   - Load the data.
+   - Create time-to-event and event occurrence variables.
+
+2. Feature Engineering:
+   - Extract meaningful features.
+
+3. Survival Analysis:
+   - Fit a Cox Proportional Hazards model.
+
+4. Evaluation:
+   - Evaluate the model using survival analysis metrics.
+
+Here’s the Python code to implement this approach using the `lifelines` library:
+
+```python
+import pandas as pd
+import numpy as np
+from lifelines import CoxPHFitter
+from sklearn.model_selection import train_test_split
+
+# Assume data is loaded into a pandas DataFrame `df`
+# df = pd.read_csv('customer_data.csv')
+
+# Example DataFrame structure for illustration
+# df = pd.DataFrame({
+#     'customer_id': [...],
+#     'date': [...],
+#     'deposits': [...],
+#     'check_transactions': [...],
+#     'wire_transactions': [...],
+#     'ach_transactions': [...],
+#     'agent_customer_calls': [...],
+#     'product_use': [...],
+#     'revenue': [...]
+# })
+
+# Create the churn event and time-to-event variables
+# For simplicity, assume that we have a 'churn_date' column indicating the date of churn or the last observed date
+
+# Calculate the time-to-event (in days) and the event occurrence (1 if churned, 0 otherwise)
+df['churn_date'] = pd.to_datetime(df['churn_date'])
+df['last_observed_date'] = pd.to_datetime(df['last_observed_date'])
+df['duration'] = (df['churn_date'] - df['start_date']).dt.days
+df['event'] = df['churn_date'].notnull().astype(int)
+
+# Feature Engineering: Create summary statistics for each feature
+def calculate_features(df):
+    df['deposits_mean'] = df['deposits'].mean()
+    df['deposits_std'] = df['deposits'].std()
+    df['check_transactions_mean'] = df['check_transactions'].mean()
+    df['check_transactions_std'] = df['check_transactions'].std()
+    # Add more feature calculations as needed
+    return df
+
+df = df.groupby('customer_id').apply(calculate_features).reset_index(drop=True)
+
+# Prepare the data for survival analysis
+features = ['deposits_mean', 'deposits_std', 'check_transactions_mean', 'check_transactions_std']
+X = df[features]
+y = df[['duration', 'event']]
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+train_data = X_train.join(y_train)
+test_data = X_test.join(y_test)
+
+# Fit a Cox Proportional Hazards model
+cph = CoxPHFitter()
+cph.fit(train_data, duration_col='duration', event_col='event')
+
+# Print the summary of the Cox model
+print(cph.summary)
+
+# Evaluate the model
+cph.plot()
+
+# Predict the survival function for a new customer
+new_customer_data = pd.DataFrame({
+    'deposits_mean': [300],
+    'deposits_std': [50],
+    'check_transactions_mean': [20],
+    'check_transactions_std': [5]
+})
+survival_function = cph.predict_survival_function(new_customer_data)
+survival_function.plot()
+
+import matplotlib.pyplot as plt
+plt.show()
+```
+
+ Explanation:
+
+1. Data Preparation: 
+   - Load the dataset.
+   - Calculate the time-to-event (`duration`) and event occurrence (`event`).
+
+2. Feature Engineering: 
+   - Calculate summary statistics for each feature.
+
+3. Survival Analysis: 
+   - Fit a Cox Proportional Hazards model using the `lifelines` library.
+
+4. Evaluation: 
+   - Print the summary of the model and plot the survival function.
+
+This approach leverages survival analysis to model the time until churn, providing insights into the risk factors and the likelihood of churn over time. The Cox Proportional Hazards model is suitable for this task as it can handle time-to-event data and censoring.
+
+5. TSLEARN TIME SERIES CLUSTERING TO PREDICT CUSTOMER CHURN:
+
+To build a churn model using time series clustering with `tslearn`, we'll follow these steps:
+
+1. Data Preparation: Load and preprocess the data into a suitable format for time series analysis.
+2. Time Series Clustering: Use `tslearn` to cluster customers based on their time series data.
+3. Feature Extraction: Use the cluster assignments as features for a churn prediction model.
+4. Model Training and Evaluation: Train a machine learning model using the extracted features and evaluate its performance.
+
+ Step-by-Step Construction
+
+1. Data Preparation:
+   - Load the data.
+   - Format the data into a time series structure suitable for clustering.
+
+2. Time Series Clustering:
+   - Apply `tslearn` clustering algorithms to cluster the customers based on their time series data.
+
+3. Feature Extraction:
+   - Use the cluster assignments as features for the churn prediction model.
+
+4. Model Training and Evaluation:
+   - Train a machine learning model (e.g., XGBoost) using the cluster assignments and evaluate its performance.
+
+Here's the Python code to implement this approach:
+
+```python
+import pandas as pd
+import numpy as np
+from tslearn.clustering import TimeSeriesKMeans
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+import xgboost as xgb
+
+# Assume data is loaded into a pandas DataFrame `df`
+# df = pd.read_csv('customer_data.csv')
+
+# Example DataFrame structure for illustration
+# df = pd.DataFrame({
+#     'customer_id': [...],
+#     'date': [...],
+#     'deposits': [...],
+#     'check_transactions': [...],
+#     'wire_transactions': [...],
+#     'ach_transactions': [...],
+#     'agent_customer_calls': [...],
+#     'product_use': [...],
+#     'revenue': [...]
+# })
+
+# Pivot the data to have customers as rows and dates as columns for each feature
+pivot_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use', 'revenue']
+customer_data = df.pivot_table(index='customer_id', columns='date', values=pivot_features)
+
+# Prepare the time series data for clustering
+# Assume we are clustering based on revenue time series data
+time_series_data = customer_data['revenue'].values
+time_series_data = np.array([np.array(x) for x in time_series_data])
+time_series_data = TimeSeriesScalerMeanVariance().fit_transform(time_series_data)
+
+# Perform Time Series Clustering
+n_clusters = 3  # Choose the number of clusters
+model = TimeSeriesKMeans(n_clusters=n_clusters, metric="dtw", verbose=True, random_state=42)
+cluster_labels = model.fit_predict(time_series_data)
+
+# Add the cluster labels to the customer data
+customer_data['cluster'] = cluster_labels
+
+# Feature Engineering: Create additional features if necessary
+# For simplicity, we'll use only the cluster labels as features
+X = customer_data[['cluster']]
+y = customer_data['churn']
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train an XGBoost model
+model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+model.fit(X_train, y_train)
+
+# Make predictions and evaluate the model
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+print(classification_report(y_test, y_pred))
+print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
+
+# Feature Importance
+import matplotlib.pyplot as plt
+xgb.plot_importance(model)
+plt.show()
+```
+
+ Explanation:
+
+1. Data Preparation: 
+   - Load the dataset.
+   - Pivot the data so that each customer has a row with multiple columns representing different dates for each feature.
+   - Extract the time series data for clustering.
+
+2. Time Series Clustering: 
+   - Scale the time series data.
+   - Use the `TimeSeriesKMeans` algorithm from `tslearn` to cluster the customers based on their time series data.
+
+3. Feature Extraction: 
+   - Add the cluster labels to the customer data as a feature.
+
+4. Model Training and Evaluation: 
+   - Train an XGBoost model using the cluster assignments and evaluate its performance using classification metrics and ROC AUC score. The feature importance plot helps understand the impact of the cluster labels on the model.
+
+This approach leverages time series clustering to group customers with similar behaviors, providing insights into customer segments that are more likely to churn. The cluster assignments are then used as features to predict churn.
