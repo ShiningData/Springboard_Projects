@@ -1,19 +1,25 @@
 import pandas as pd
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.cluster.hierarchy import linkage, fcluster
+import fastdtw
+from scipy.spatial.distance import euclidean
+from collections import defaultdict
 
-# Sample data
+# Sample data preparation (replace this with actual dataset)
+# Assuming df is the dataframe created in the previous step
+
+# Example: Creating a smaller sample dataset for illustration
 data = {
-    'RLTN_PWR_ID': [1, 1, 1, 2, 2, 3, 3, 3],
-    'TIME_KEY': ['2023-01', '2023-02', '2023-03', '2023-01', '2023-02', '2023-01', '2023-03', '2023-04'],
-    'TRAN_CD': ['A', 'A', 'A', 'B', 'B', 'C', 'C', 'C'],
-    'TRAN_DESC': ['desc1', 'desc1', 'desc1', 'desc2', 'desc2', 'desc3', 'desc3', 'desc3'],
-    'REVENUE': [100, 200, 150, 300, 400, 500, 600, 700],
-    'VOLUME': [1, 2, 3, 4, 5, 6, 7, 8]
+    'RLTN_PWR_ID': np.random.randint(1, 10001, size=50000),
+    'TIME_KEY': np.tile(pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m'), 50000 // 12),
+    'TRAN_CD': np.random.choice([f'TRAN_{i}' for i in range(1, 62)], size=50000),
+    'VOLUME': np.random.randint(0, 100, size=50000)
 }
 
 df = pd.DataFrame(data)
 
-# Create a dataframe for all combinations of RLTN_PWR_ID, TIME_KEY, and TRAN_CD
+# Generate the pivot table as before
 unique_rlt_ids = df['RLTN_PWR_ID'].unique()
 unique_tran_cd = df['TRAN_CD'].unique()
 time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m').tolist()
@@ -21,98 +27,45 @@ time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%
 all_combinations = pd.MultiIndex.from_product([unique_rlt_ids, time_keys, unique_tran_cd], names=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'])
 df_full = pd.DataFrame(index=all_combinations).reset_index()
 
-# Merge with the original dataframe to get the full structure
 df_merged = pd.merge(df_full, df, on=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'], how='left')
-
-# Fill missing values in VOLUME with 0
 df_merged['VOLUME'] = df_merged['VOLUME'].fillna(0)
 
-# Pivot the table to get the desired structure
 pivot_table = df_merged.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x))
-
-# Fill any missing TRAN_CD columns with [0]*12
 for tran_cd in unique_tran_cd:
     if tran_cd not in pivot_table.columns:
         pivot_table[tran_cd] = [[0]*12] * len(pivot_table)
 
-# Ensure the order of TRAN_CD columns
 pivot_table = pivot_table[unique_tran_cd]
-
-# Convert pivot table to a DataFrame with lists as cells
 final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
 
-print(final_table)
+# Compute the cosine similarity matrix
+cosine_sim_matrix = pd.DataFrame(
+    cosine_similarity(
+        np.stack(final_table.apply(lambda x: np.array(x.tolist()), axis=1).values)
+    ),
+    index=unique_tran_cd,
+    columns=unique_tran_cd
+)
 
+# Use hierarchical clustering to group similar TRAN_CDs
+Z = linkage(1 - cosine_sim_matrix, 'average')
+max_d = 0.1  # Threshold for clustering
+clusters = fcluster(Z, max_d, criterion='distance')
 
-===============
+# Create a dictionary to hold consolidation groups
+consolidation_groups = defaultdict(list)
+for i, cluster in enumerate(clusters):
+    consolidation_groups[cluster].append(unique_tran_cd[i])
 
+# Calculate the average cosine similarity for each group
+consolidation_similarities = {}
+for cluster, tran_cds in consolidation_groups.items():
+    if len(tran_cds) > 1:
+        group_similarities = cosine_sim_matrix.loc[tran_cds, tran_cds].values
+        avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
+        consolidation_similarities[cluster] = (tran_cds, avg_similarity)
 
+# Output the recommended consolidation groups
+for cluster, (tran_cds, avg_similarity) in consolidation_similarities.items():
+    print(f"Group {cluster}: TRAN_CDs {tran_cds} with average cosine similarity {avg_similarity:.2f}")
 
-
-
-import pandas as pd
-import numpy as np
-from scipy.spatial.distance import cosine
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
-import itertools
-
-# Load the dataset
-df = pd.read_csv('your_dataset.csv')
-
-# Ensure the dataset has the required columns
-assert set(['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD', 'VOLUME']).issubset(df.columns), "Dataset does not have the required columns."
-
-# Pivot the dataset
-pivot_df = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x)).fillna([0]*12)
-
-# Ensure all lists are of length 12
-for col in pivot_df.columns:
-    pivot_df[col] = pivot_df[col].apply(lambda x: x if len(x) == 12 else [0]*12)
-
-# Get the list of TRAN_CDs
-tran_cds = pivot_df.columns
-
-# Function to calculate cosine similarity
-def calculate_cosine_similarity(series1, series2):
-    series1 = np.array(series1)
-    series2 = np.array(series2)
-    cosine_sim = 1 - cosine(series1, series2)
-    return cosine_sim
-
-# Function to calculate DTW distance
-def calculate_dtw_distance(series1, series2):
-    dtw_distance, _ = fastdtw(series1, series2, dist=euclidean)
-    return dtw_distance
-
-# Create a DataFrame to store the results
-results = []
-
-# Iterate over all pairs of TRAN_CDs
-for (cd1, cd2) in itertools.combinations(tran_cds, 2):
-    series1 = np.array(pivot_df[cd1].tolist())
-    series2 = np.array(pivot_df[cd2].tolist())
-    cosine_sim = calculate_cosine_similarity(series1, series2)
-    dtw_distance = calculate_dtw_distance(series1, series2)
-    results.append({'TRAN_CD_1': cd1, 'TRAN_CD_2': cd2, 'Cosine_Similarity': cosine_sim, 'DTW_Distance': dtw_distance})
-
-# Convert the results into a DataFrame
-results_df = pd.DataFrame(results)
-
-# Filter for high similarity pairs (you can adjust the thresholds as needed)
-cosine_threshold = 0.8  # Example threshold for cosine similarity
-
-consolidation_recommendations = results_df[results_df['Cosine_Similarity'] > cosine_threshold]
-
-# Group the consolidations
-consolidations = consolidation_recommendations.groupby('TRAN_CD_1').agg({
-    'TRAN_CD_2': lambda x: list(x),
-    'Cosine_Similarity': 'mean',
-    'DTW_Distance': 'mean'
-}).reset_index()
-
-# Output the results
-print(consolidations)
-
-# Save the results to a CSV file
-consolidations.to_csv('consolidation_recommendations.csv', index=False)
