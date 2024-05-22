@@ -1,585 +1,280 @@
-1. TREE BASED ALGORITHM TO PREDICT CHURN:
-
-To construct the churn model, we will follow these steps:
-
-1. Data Preparation: Aggregate and transform the data to create features for each customer. This involves calculating summary statistics, time-based features, and the target variable (churn).
-
-2. Feature Engineering: Extract meaningful features from the time series data, such as recent trends, averages, and variances for the different transaction types.
-
-3. Churn Labeling: Define the churn based on the given criteria and label each customer accordingly.
-
-4. Model Selection and Training: Choose an appropriate model, train it on the prepared data, and evaluate its performance. For this case, we can use a gradient boosting model like XGBoost or LightGBM, as they handle tabular data and can capture complex relationships.
-
-Here’s the step-by-step Python code to achieve this:
-
-```python
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
-import xgboost as xgb
+from scipy.spatial.distance import euclidean
+from fastdtw import fastdtw
 
-# Assume data is loaded into a pandas DataFrame `df`
-# df = pd.read_csv('customer_data.csv')
+# Load the data
+data = pd.read_csv('your_dataset.csv')
 
-# Example DataFrame structure for illustration
-# df = pd.DataFrame({
-#     'customer_id': [...],
-#     'date': [...],
-#     'deposits': [...],
-#     'check_transactions': [...],
-#     'wire_transactions': [...],
-#     'ach_transactions': [...],
-#     'agent_customer_calls': [...],
-#     'product_use': [...],
-#     'revenue': [...]
-# })
+# Ensure RLTN_PWR_ID, TRAN_CD, REVENUE, and VOLUME are integers
+data[['RLTN_PWR_ID', 'TRAN_CD', 'REVENUE', 'VOLUME']] = data[['RLTN_PWR_ID', 'TRAN_CD', 'REVENUE', 'VOLUME']].astype(int)
 
-# Pivot the data to have customers as rows and dates as columns for each feature
-pivot_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use', 'revenue']
-customer_data = df.pivot_table(index='customer_id', columns='date', values=pivot_features)
+# Handle missing values (if any)
+data = data.dropna()
 
-# Create a target variable for churn based on the revenue criteria
-def label_churn(revenue_series):
-    recent_3_months = revenue_series[-3:]
-    prior_3_months = revenue_series[-6:-3]
-    if prior_3_months.mean() == 0:  # Avoid division by zero
-        return 0
-    return 1 if recent_3_months.mean() < 0.75 * prior_3_months.mean() else 0
+# Calculate the DTW distance between each pair of TRAN_CDs for each RLTN_PWR_ID.
 
-# Apply the churn labeling function
-customer_data['churn'] = customer_data['revenue'].apply(label_churn, axis=1)
+# Create a dictionary to store the DTW distances
+dtw_distances = {}
 
-# Feature Engineering: Create summary statistics for each feature
-features = []
-for feature in pivot_features[:-1]:  # Exclude 'revenue' as it's used for churn labeling
-    customer_data[f'{feature}_mean'] = customer_data[feature].apply(np.mean, axis=1)
-    customer_data[f'{feature}_std'] = customer_data[feature].apply(np.std, axis=1)
-    customer_data[f'{feature}_max'] = customer_data[feature].apply(np.max, axis=1)
-    customer_data[f'{feature}_min'] = customer_data[feature].apply(np.min, axis=1)
-    customer_data[f'{feature}_trend'] = customer_data[feature].apply(lambda x: np.polyfit(range(len(x)), x, 1)[0], axis=1)
-    features.extend([f'{feature}_mean', f'{feature}_std', f'{feature}_max', f'{feature}_min', f'{feature}_trend'])
+# Iterate through each unique RLTN_PWR_ID
+for rlt in data['RLTN_PWR_ID'].unique():
+    # Filter the data for the current RLTN_PWR_ID
+    rlt_data = data[data['RLTN_PWR_ID'] == rlt]
 
-# Prepare the data for modeling
-X = customer_data[features]
-y = customer_data['churn']
+    # Iterate through each unique pair of TRAN_CDs
+    for i in range(len(rlt_data['TRAN_CD'].unique())):
+        for j in range(i+1, len(rlt_data['TRAN_CD'].unique())):
+            # Calculate the DTW distance
+            dist, _ = fastdtw(rlt_data[rlt_data['TRAN_CD'] == i]['VOLUME'].values, rlt_data[rlt_data['TRAN_CD'] == j]['VOLUME'].values, dist=euclidean)
 
-# Split the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Train an XGBoost model
-model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-model.fit(X_train, y_train)
-
-# Make predictions and evaluate the model
-y_pred = model.predict(X_test)
-y_prob = model.predict_proba(X_test)[:, 1]
-
-print(classification_report(y_test, y_pred))
-print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
-
-# Feature Importance
-import matplotlib.pyplot as plt
-xgb.plot_importance(model)
-plt.show()
-```
-
- Explanation:
-
-1. Data Loading and Pivoting: Load the dataset and pivot it so that each customer has a row with multiple columns representing different dates for each feature.
-
-2. Churn Labeling: Define the `label_churn` function to determine if a customer has churned based on the given revenue criteria. Apply this function to create the target variable.
-
-3. Feature Engineering: Calculate summary statistics (mean, std, max, min) and trend for each feature to use as input for the model.
-
-4. Model Training and Evaluation: Split the data into training and testing sets, train an XGBoost classifier, and evaluate its performance using classification metrics and ROC AUC score. Plot the feature importance to understand the impact of each feature.
-
-This approach ensures we capture the time series dynamics and other important aspects of customer behavior to build a robust churn prediction model.
+            # Store the DTW distance in the dictionary
+            dtw_distances[(i, j, rlt)] = dist
 
 
+Calculate the correlation between each pair of TRAN_CDs based on the DTW distances.
+# Create a dictionary to store the correlation coefficients
+correlations = {}
 
-2. RFM PLUS XGBOOST TO PREDICT CUSTOMER CHURN:
+# Iterate through each unique pair of TRAN_CDs
+for i in range(len(data['TRAN_CD'].unique())):
+    for j in range(i+1, len(data['TRAN_CD'].unique())):
+        # Calculate the correlation coefficient
+        corr = np.corrcoef([dtw_distances[(i, k, rlt)] for k in range(len(data['TRAN_CD'].unique())) if (i, k, rlt) in dtw_distances],
+                           [dtw_distances[(j, k, rlt)] for k in range(len(data['TRAN_CD'].unique())) if (j, k, rlt) in dtw_distances])[0, 1]
 
-To construct a churn model using an RFM (Recency, Frequency, Monetary) approach combined with XGBoost, we will follow these steps:
+        # Store the correlation coefficient in the dictionary
+        correlations[(i, j)] = corr
 
-1. Data Preparation: Aggregate and transform the data to create RFM features for each customer.
-2. Feature Engineering: Create the RFM metrics and any additional features.
-3. Churn Labeling: Define the churn based on the given criteria and label each customer accordingly.
-4. Model Selection and Training: Train an XGBoost model using the RFM features and evaluate its performance.
+# Output the consolidated TRAN_CDs.
+# Print the consolidated TRAN_CDs
+for key, value in consolidated.items():
+    print(f'TRAN_CD {key} is consolidated with TRAN_CDs {value}')
 
- Step-by-Step Construction
+=====================
 
-1. Data Preparation:
-   - Load the data.
-   - Pivot the data to have customers as rows and dates as columns for each feature.
-
-2. Feature Engineering (RFM Metrics):
-   - Recency: Calculate the number of days since the last transaction.
-   - Frequency: Count the number of transactions in the past 24 months.
-   - Monetary: Calculate the total monetary value of transactions in the past 24 months.
-
-3. Churn Labeling:
-   - Define churn based on the given criteria: if the average revenue in the last 3 months is less than 75% of the average revenue in the previous 3 months.
-
-4. Model Selection and Training:
-   - Train an XGBoost model using the RFM features.
-   - Evaluate the model using appropriate metrics.
-
-Here's the Python code to implement this approach:
-
-```python
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
-import xgboost as xgb
+from dtw import dtw
+from scipy.spatial.distance import euclidean
+from scipy.stats import pearsonr
 
-# Assume data is loaded into a pandas DataFrame `df`
-# df = pd.read_csv('customer_data.csv')
+# Load your dataset into a pandas DataFrame
+df = pd.read_csv('your_dataset.csv')
 
-# Example DataFrame structure for illustration
-# df = pd.DataFrame({
-#     'customer_id': [...],
-#     'date': [...],
-#     'deposits': [...],
-#     'check_transactions': [...],
-#     'wire_transactions': [...],
-#     'ach_transactions': [...],
-#     'agent_customer_calls': [...],
-#     'product_use': [...],
-#     'revenue': [...]
-# })
+# Convert the TIME_KEY column to datetime format
+df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
 
-# Pivot the data to have customers as rows and dates as columns for each feature
-pivot_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use', 'revenue']
-customer_data = df.pivot_table(index='customer_id', columns='date', values=pivot_features)
+# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
+grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
 
-# RFM Feature Engineering
-def calculate_recency(transaction_dates):
-    return (pd.to_datetime('today') - transaction_dates.max()).days
+# Reshape the data to a 2D array for DTW analysis
+data = grouped.unstack().values
 
-def calculate_frequency(transaction_dates):
-    return transaction_dates.count()
+# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
+dtw_distances = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
+        dtw_distances[j, i] = dtw_distances[i, j]
 
-def calculate_monetary(values):
-    return values.sum()
+# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
+correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
+        correlation_matrix[j, i] = correlation_matrix[i, j]
 
-rfm_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use']
-for feature in rfm_features:
-    customer_data[f'{feature}_recency'] = customer_data[feature].apply(calculate_recency, axis=1)
-    customer_data[f'{feature}_frequency'] = customer_data[feature].apply(calculate_frequency, axis=1)
-    customer_data[f'{feature}_monetary'] = customer_data[feature].apply(calculate_monetary, axis=1)
+# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
+# This step will depend on the specific criteria you want to use for consolidation
+# For example, you could consolidate TRAN_CDs that have a DTW distance below a certain threshold
+# and a correlation coefficient above a certain threshold
 
-# Calculate RFM for revenue specifically
-customer_data['revenue_recency'] = customer_data['revenue'].apply(calculate_recency, axis=1)
-customer_data['revenue_frequency'] = customer_data['revenue'].apply(calculate_frequency, axis=1)
-customer_data['revenue_monetary'] = customer_data['revenue'].apply(calculate_monetary, axis=1)
-
-# Create a target variable for churn based on the revenue criteria
-def label_churn(revenue_series):
-    recent_3_months = revenue_series[-3:]
-    prior_3_months = revenue_series[-6:-3]
-    if prior_3_months.mean() == 0:  # Avoid division by zero
-        return 0
-    return 1 if recent_3_months.mean() < 0.75 * prior_3_months.mean() else 0
-
-# Apply the churn labeling function
-customer_data['churn'] = customer_data['revenue'].apply(label_churn, axis=1)
-
-# Prepare the data for modeling
-features = [col for col in customer_data.columns if col not in pivot_features + ['churn']]
-X = customer_data[features]
-y = customer_data['churn']
-
-# Split the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Train an XGBoost model
-model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-model.fit(X_train, y_train)
-
-# Make predictions and evaluate the model
-y_pred = model.predict(X_test)
-y_prob = model.predict_proba(X_test)[:, 1]
-
-print(classification_report(y_test, y_pred))
-print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
-
-# Feature Importance
-import matplotlib.pyplot as plt
-xgb.plot_importance(model)
-plt.show()
-```
-
- Explanation:
-
-1. Data Preparation: Load and pivot the data to create a customer-level dataset with features over time.
-
-2. Feature Engineering (RFM):
-   - Recency: Calculate the days since the last transaction for each feature.
-   - Frequency: Count the number of transactions for each feature.
-   - Monetary: Sum the transaction values for each feature.
-
-3. Churn Labeling: Define the churn based on the provided revenue criteria.
-
-4. Model Selection and Training: Use the RFM features to train an XGBoost model and evaluate its performance using classification metrics and ROC AUC score. The feature importance plot helps understand which features contribute most to the model.
-
-This approach leverages the RFM metrics to capture customer behavior and uses a powerful machine learning model to predict churn.
-
-
-3. GRAPH ANALYSIS METRICS TO PREDICT CUSTOMER CHURN:
-
-To build a churn model using graph machine learning, we'll represent the customers and their interactions as a graph. We will use `igraph` to create and manipulate the graph and then extract features that can be used to train a machine learning model such as XGBoost.
-
- Step-by-Step Construction
-
-1. Data Preparation:
-   - Load the data and create a graph representation.
-   - Nodes represent customers.
-   - Edges represent interactions or transactions between customers.
-
-2. Feature Engineering:
-   - Extract graph features such as centrality measures, clustering coefficients, and other structural properties.
-
-3. Churn Labeling:
-   - Define churn based on the given criteria and label each customer accordingly.
-
-4. Model Selection and Training:
-   - Train an XGBoost model using the graph features and evaluate its performance.
-
-Here’s the Python code to implement this approach:
-
-```python
+============
 import pandas as pd
 import numpy as np
-from igraph import Graph
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
-import xgboost as xgb
+from dtw import dtw
+from dtw import dtw_distance
 
-# Assume data is loaded into a pandas DataFrame `df`
-# df = pd.read_csv('customer_data.csv')
-
-# Example DataFrame structure for illustration
-# df = pd.DataFrame({
-#     'customer_id': [...],
-#     'date': [...],
-#     'deposits': [...],
-#     'check_transactions': [...],
-#     'wire_transactions': [...],
-#     'ach_transactions': [...],
-#     'agent_customer_calls': [...],
-#     'product_use': [...],
-#     'revenue': [...]
-# })
-
-# For graph construction, we need a way to define edges. Assume we have a dataframe `interactions`
-# which contains the interactions between customers
-# interactions = pd.DataFrame({
-#     'customer_id_1': [...],
-#     'customer_id_2': [...],
-#     'interaction_weight': [...]
-# })
-
-# Create a graph from the interactions DataFrame
-g = Graph.DataFrame(interactions, directed=False)
-
-# Add customer attributes to the graph nodes
-for col in df.columns:
-    if col != 'customer_id':
-        g.vs[col] = df.set_index('customer_id')[col].to_dict()
-
-# Graph Feature Engineering
-def extract_graph_features(graph):
-    features = {}
-    features['degree'] = graph.degree()
-    features['betweenness'] = graph.betweenness()
-    features['closeness'] = graph.closeness()
-    features['pagerank'] = graph.pagerank()
-    features['transitivity'] = graph.transitivity_local_undirected()
-    return pd.DataFrame(features)
-
-graph_features = extract_graph_features(g)
-
-# Churn Labeling: Create a target variable for churn based on the revenue criteria
-def label_churn(revenue_series):
-    recent_3_months = revenue_series[-3:]
-    prior_3_months = revenue_series[-6:-3]
-    if prior_3_months.mean() == 0:  # Avoid division by zero
-        return 0
-    return 1 if recent_3_months.mean() < 0.75 * prior_3_months.mean() else 0
-
-df['churn'] = df['revenue'].apply(label_churn, axis=1)
-
-# Merge graph features with customer data
-customer_data = df.set_index('customer_id').join(graph_features)
-
-# Prepare the data for modeling
-features = [col for col in customer_data.columns if col not in ['churn', 'revenue']]
-X = customer_data[features]
-y = customer_data['churn']
-
-# Split the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Train an XGBoost model
-model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-model.fit(X_train, y_train)
-
-# Make predictions and evaluate the model
-y_pred = model.predict(X_test)
-y_prob = model.predict_proba(X_test)[:, 1]
-
-print(classification_report(y_test, y_pred))
-print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
-
-# Feature Importance
-import matplotlib.pyplot as plt
-xgb.plot_importance(model)
-plt.show()
-```
-
- Explanation:
-
-1. Data Preparation: Load the dataset and create a graph using `igraph`, where nodes represent customers and edges represent interactions between them.
-
-2. Feature Engineering: Extract graph-based features such as degree, betweenness, closeness, PageRank, and local transitivity for each customer.
-
-3. Churn Labeling: Define churn based on the provided revenue criteria.
-
-4. Model Selection and Training: Use the extracted graph features to train an XGBoost model and evaluate its performance using classification metrics and ROC AUC score. The feature importance plot helps understand which features contribute most to the model.
-
-This approach leverages graph characteristics to capture the structural properties of customer interactions, which can be highly indicative of churn behavior.
-
-
-4. SURVIVAL ANALYSIS TO PREDICT CHURN:
-
-To build a churn model using survival analysis, we will follow these steps:
-
-1. Data Preparation: Transform the data into a suitable format for survival analysis.
-2. Feature Engineering: Create relevant features.
-3. Survival Analysis: Use a survival analysis model, such as the Cox Proportional Hazards model, to analyze the time until churn.
-4. Evaluation: Evaluate the model performance.
-
- Step-by-Step Construction
-
-1. Data Preparation:
-   - Load the data.
-   - Create time-to-event and event occurrence variables.
-
-2. Feature Engineering:
-   - Extract meaningful features.
-
-3. Survival Analysis:
-   - Fit a Cox Proportional Hazards model.
-
-4. Evaluation:
-   - Evaluate the model using survival analysis metrics.
-
-Here’s the Python code to implement this approach using the `lifelines` library:
-
-```python
 import pandas as pd
 import numpy as np
-from lifelines import CoxPHFitter
-from sklearn.model_selection import train_test_split
+from dtw import dtw
+from scipy.spatial.distance import euclidean
+from scipy.stats import pearsonr
 
-# Assume data is loaded into a pandas DataFrame `df`
-# df = pd.read_csv('customer_data.csv')
+# Load your dataset into a pandas DataFrame
+df = pd.read_csv('your_dataset.csv')
 
-# Example DataFrame structure for illustration
-# df = pd.DataFrame({
-#     'customer_id': [...],
-#     'date': [...],
-#     'deposits': [...],
-#     'check_transactions': [...],
-#     'wire_transactions': [...],
-#     'ach_transactions': [...],
-#     'agent_customer_calls': [...],
-#     'product_use': [...],
-#     'revenue': [...]
-# })
+# Convert the TIME_KEY column to datetime format
+df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
 
-# Create the churn event and time-to-event variables
-# For simplicity, assume that we have a 'churn_date' column indicating the date of churn or the last observed date
+# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
+grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
 
-# Calculate the time-to-event (in days) and the event occurrence (1 if churned, 0 otherwise)
-df['churn_date'] = pd.to_datetime(df['churn_date'])
-df['last_observed_date'] = pd.to_datetime(df['last_observed_date'])
-df['duration'] = (df['churn_date'] - df['start_date']).dt.days
-df['event'] = df['churn_date'].notnull().astype(int)
+# Reshape the data to a 2D array for DTW analysis
+data = grouped.unstack().values
 
-# Feature Engineering: Create summary statistics for each feature
-def calculate_features(df):
-    df['deposits_mean'] = df['deposits'].mean()
-    df['deposits_std'] = df['deposits'].std()
-    df['check_transactions_mean'] = df['check_transactions'].mean()
-    df['check_transactions_std'] = df['check_transactions'].std()
-    # Add more feature calculations as needed
-    return df
+# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
+dtw_distances = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
+        dtw_distances[j, i] = dtw_distances[i, j]
 
-df = df.groupby('customer_id').apply(calculate_features).reset_index(drop=True)
+# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
+correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
+        correlation_matrix[j, i] = correlation_matrix[i, j]
 
-# Prepare the data for survival analysis
-features = ['deposits_mean', 'deposits_std', 'check_transactions_mean', 'check_transactions_std']
-X = df[features]
-y = df[['duration', 'event']]
+# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
+# This step will depend on the specific criteria you want to use for consolidation
+# For example, you could consolidate TRAN_CDs that have a DTW distance below a certain threshold
+# and a correlation coefficient above a certain threshold
 
-# Split the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-train_data = X_train.join(y_train)
-test_data = X_test.join(y_test)
-
-# Fit a Cox Proportional Hazards model
-cph = CoxPHFitter()
-cph.fit(train_data, duration_col='duration', event_col='event')
-
-# Print the summary of the Cox model
-print(cph.summary)
-
-# Evaluate the model
-cph.plot()
-
-# Predict the survival function for a new customer
-new_customer_data = pd.DataFrame({
-    'deposits_mean': [300],
-    'deposits_std': [50],
-    'check_transactions_mean': [20],
-    'check_transactions_std': [5]
-})
-survival_function = cph.predict_survival_function(new_customer_data)
-survival_function.plot()
-
-import matplotlib.pyplot as plt
-plt.show()
-```
-
- Explanation:
-
-1. Data Preparation: 
-   - Load the dataset.
-   - Calculate the time-to-event (`duration`) and event occurrence (`event`).
-
-2. Feature Engineering: 
-   - Calculate summary statistics for each feature.
-
-3. Survival Analysis: 
-   - Fit a Cox Proportional Hazards model using the `lifelines` library.
-
-4. Evaluation: 
-   - Print the summary of the model and plot the survival function.
-
-This approach leverages survival analysis to model the time until churn, providing insights into the risk factors and the likelihood of churn over time. The Cox Proportional Hazards model is suitable for this task as it can handle time-to-event data and censoring.
-
-5. TSLEARN TIME SERIES CLUSTERING TO PREDICT CUSTOMER CHURN:
-
-To build a churn model using time series clustering with `tslearn`, we'll follow these steps:
-
-1. Data Preparation: Load and preprocess the data into a suitable format for time series analysis.
-2. Time Series Clustering: Use `tslearn` to cluster customers based on their time series data.
-3. Feature Extraction: Use the cluster assignments as features for a churn prediction model.
-4. Model Training and Evaluation: Train a machine learning model using the extracted features and evaluate its performance.
-
- Step-by-Step Construction
-
-1. Data Preparation:
-   - Load the data.
-   - Format the data into a time series structure suitable for clustering.
-
-2. Time Series Clustering:
-   - Apply `tslearn` clustering algorithms to cluster the customers based on their time series data.
-
-3. Feature Extraction:
-   - Use the cluster assignments as features for the churn prediction model.
-
-4. Model Training and Evaluation:
-   - Train a machine learning model (e.g., XGBoost) using the cluster assignments and evaluate its performance.
-
-Here's the Python code to implement this approach:
-
-```python
-import pandas as pd
 import numpy as np
-from tslearn.clustering import TimeSeriesKMeans
-from tslearn.preprocessing import TimeSeriesScalerMeanVariance
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
-import xgboost as xgb
+from dtw import dtw
+from scipy.spatial.distance import euclidean
+from scipy.stats import pearsonr
 
-# Assume data is loaded into a pandas DataFrame `df`
-# df = pd.read_csv('customer_data.csv')
+# Load your dataset into a pandas DataFrame
+df = pd.read_csv('your_dataset.csv')
 
-# Example DataFrame structure for illustration
-# df = pd.DataFrame({
-#     'customer_id': [...],
-#     'date': [...],
-#     'deposits': [...],
-#     'check_transactions': [...],
-#     'wire_transactions': [...],
-#     'ach_transactions': [...],
-#     'agent_customer_calls': [...],
-#     'product_use': [...],
-#     'revenue': [...]
-# })
+# Convert the TIME_KEY column to datetime format
+df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
 
-# Pivot the data to have customers as rows and dates as columns for each feature
-pivot_features = ['deposits', 'check_transactions', 'wire_transactions', 'ach_transactions', 'agent_customer_calls', 'product_use', 'revenue']
-customer_data = df.pivot_table(index='customer_id', columns='date', values=pivot_features)
+# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
+grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
 
-# Prepare the time series data for clustering
-# Assume we are clustering based on revenue time series data
-time_series_data = customer_data['revenue'].values
-time_series_data = np.array([np.array(x) for x in time_series_data])
-time_series_data = TimeSeriesScalerMeanVariance().fit_transform(time_series_data)
+# Reshape the data to a 2D array for DTW analysis
+data = grouped.unstack().values
 
-# Perform Time Series Clustering
-n_clusters = 3  # Choose the number of clusters
-model = TimeSeriesKMeans(n_clusters=n_clusters, metric="dtw", verbose=True, random_state=42)
-cluster_labels = model.fit_predict(time_series_data)
+# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
+dtw_distances = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
+        dtw_distances[j, i] = dtw_distances[i, j]
 
-# Add the cluster labels to the customer data
-customer_data['cluster'] = cluster_labels
+# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
+correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
+        correlation_matrix[j, i] = correlation_matrix[i, j]
 
-# Feature Engineering: Create additional features if necessary
-# For simplicity, we'll use only the cluster labels as features
-X = customer_data[['cluster']]
-y = customer_data['churn']
+# Calculate the mean and standard deviation of the DTW distances and correlation coefficients
+dtw_mean = np.mean(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)])
+dtw_std = np.std(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)])
+correlation_mean = np.mean(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)])
+correlation_std = np.std(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)])
 
-# Split the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Set a threshold based on a certain number of standard deviations from the mean
+dtw_threshold = dtw_mean + 2 * dtw_std
+correlation_threshold = correlation_mean + 2 * correlation_std
 
-# Train an XGBoost model
-model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-model.fit(X_train, y_train)
+# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
+consolidated_trans_cds = {}
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        if dtw_distances[i, j] < dtw_threshold and correlation_matrix[i, j] > correlation_
 
-# Make predictions and evaluate the model
-y_pred = model.predict(X_test)
-y_prob = model.predict_proba(X_test)[:, 1]
+=======================
+outlier
 
-print(classification_report(y_test, y_pred))
-print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
 
-# Feature Importance
-import matplotlib.pyplot as plt
-xgb.plot_importance(model)
-plt.show()
-```
+import numpy as np
+from dtw import dtw
+from scipy.interpolate import interp1d
+from dtaidistance import dtw
+from scipy.stats import pearsonr
+import pandas as pd
 
- Explanation:
+# Load your dataset into a pandas DataFrame
+df = pd.read_csv('your_dataset.csv')
 
-1. Data Preparation: 
-   - Load the dataset.
-   - Pivot the data so that each customer has a row with multiple columns representing different dates for each feature.
-   - Extract the time series data for clustering.
+# Convert the TIME_KEY column to datetime format
+df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
 
-2. Time Series Clustering: 
-   - Scale the time series data.
-   - Use the `TimeSeriesKMeans` algorithm from `tslearn` to cluster the customers based on their time series data.
+# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
+grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
 
-3. Feature Extraction: 
-   - Add the cluster labels to the customer data as a feature.
+# Reshape the data to a 2D array for DTW analysis
+data = grouped.unstack().values
 
-4. Model Training and Evaluation: 
-   - Train an XGBoost model using the cluster assignments and evaluate its performance using classification metrics and ROC AUC score. The feature importance plot helps understand the impact of the cluster labels on the model.
+# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
+dtw_distances = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
+        dtw_distances[j, i] = dtw_distances[i, j]
 
-This approach leverages time series clustering to group customers with similar behaviors, providing insights into customer segments that are more likely to churn. The cluster assignments are then used as features to predict churn.
+# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
+correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
+        correlation_matrix[j, i] = correlation_matrix[i, j]
+
+# Calculate the median and IQR of the DTW distances and correlation coefficients
+dtw_median = np.median(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)])
+dtw_iqr = np.subtract(*np.percentile(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)], [75, 25]))
+correlation_median = np.median(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)])
+correlation_iqr = np.subtract(*np.percentile(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)], [75, 25]))
+
+# Set a threshold based on the median and IQR
+dtw_threshold = dtw_median + 1.5 * dtw_iqr
+correlation_threshold = correlation_median + 1.5 * correlation_iqr
+
+# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
+consolidated_trans_cds = {}
+for i in range(data.shape[1]):
+    for j in range(i+1, data.shape[1]):
+        if dtw_distances[i, j] < dtw_threshold and correlation_matrix[i, j] > correlation_threshold:
+            if i not in consolidated_trans_cds:
+                consolidated_trans_cds[i]
+
+import numpy as np
+from scipy.stats import zscore
+
+# Calculate the DTW distances between all pairs of TRAN_CDs
+dtw_distances = np.zeros((len(trans_cds), len(trans_cds)))
+for i in range(len(trans_cds)):
+    for j in range(i+1, len(trans_cds)):
+        dtw_distances[i, j] = dtw(trans_cds[i], trans_cds[j])[0]
+        dtw_distances[j, i] = dtw_distances[i, j]
+
+# Calculate the Z-scores of the DTW distances
+z_scores = np.abs(zscore(dtw_distances))
+
+# Identify outliers based on a threshold Z-score
+threshold = 3
+outliers = np.where(z_scores > threshold)
+
+# Remove outliers from the DTW distances
+dtw_distances[outliers] = np.nan
+
+import numpy as np
+from scipy.stats import median_abs_deviation
+
+# Calculate the DTW distances between all pairs of TRAN_CDs
+dtw_distances = np.zeros((len(trans_cds), len(trans_cds)))
+for i in range(len(trans_cds)):
+    for j in range(i+1, len(trans_cds)):
+        dtw_distances[i, j] = dtw(trans_cds[i], trans_cds[j])[0]
+        dtw_distances[j, i] = dtw_distances[i, j]
+
+# Calculate the Modified Z-scores of the DTW distances
+mad = median_abs_deviation(dtw_distances)
+modified_z_scores = 0.6745 * (dtw_distances - np.median(dtw_distances)) / mad
+
+# Identify outliers based on a threshold Modified Z-score
+threshold = 3.5
+outliers = np.where(np.abs(modified_z_scores) > threshold)
+
+# Remove outliers from the DTW distances
+dtw_distances[outliers] = np.nan
+
+
+
