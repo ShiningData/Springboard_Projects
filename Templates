@@ -1,280 +1,51 @@
 import pandas as pd
 import numpy as np
-from scipy.spatial.distance import euclidean
+from scipy.spatial.distance import cosine
 from fastdtw import fastdtw
-
-# Load the data
-data = pd.read_csv('your_dataset.csv')
-
-# Ensure RLTN_PWR_ID, TRAN_CD, REVENUE, and VOLUME are integers
-data[['RLTN_PWR_ID', 'TRAN_CD', 'REVENUE', 'VOLUME']] = data[['RLTN_PWR_ID', 'TRAN_CD', 'REVENUE', 'VOLUME']].astype(int)
-
-# Handle missing values (if any)
-data = data.dropna()
-
-# Calculate the DTW distance between each pair of TRAN_CDs for each RLTN_PWR_ID.
-
-# Create a dictionary to store the DTW distances
-dtw_distances = {}
-
-# Iterate through each unique RLTN_PWR_ID
-for rlt in data['RLTN_PWR_ID'].unique():
-    # Filter the data for the current RLTN_PWR_ID
-    rlt_data = data[data['RLTN_PWR_ID'] == rlt]
-
-    # Iterate through each unique pair of TRAN_CDs
-    for i in range(len(rlt_data['TRAN_CD'].unique())):
-        for j in range(i+1, len(rlt_data['TRAN_CD'].unique())):
-            # Calculate the DTW distance
-            dist, _ = fastdtw(rlt_data[rlt_data['TRAN_CD'] == i]['VOLUME'].values, rlt_data[rlt_data['TRAN_CD'] == j]['VOLUME'].values, dist=euclidean)
-
-            # Store the DTW distance in the dictionary
-            dtw_distances[(i, j, rlt)] = dist
-
-
-Calculate the correlation between each pair of TRAN_CDs based on the DTW distances.
-# Create a dictionary to store the correlation coefficients
-correlations = {}
-
-# Iterate through each unique pair of TRAN_CDs
-for i in range(len(data['TRAN_CD'].unique())):
-    for j in range(i+1, len(data['TRAN_CD'].unique())):
-        # Calculate the correlation coefficient
-        corr = np.corrcoef([dtw_distances[(i, k, rlt)] for k in range(len(data['TRAN_CD'].unique())) if (i, k, rlt) in dtw_distances],
-                           [dtw_distances[(j, k, rlt)] for k in range(len(data['TRAN_CD'].unique())) if (j, k, rlt) in dtw_distances])[0, 1]
-
-        # Store the correlation coefficient in the dictionary
-        correlations[(i, j)] = corr
-
-# Output the consolidated TRAN_CDs.
-# Print the consolidated TRAN_CDs
-for key, value in consolidated.items():
-    print(f'TRAN_CD {key} is consolidated with TRAN_CDs {value}')
-
-=====================
-
-import pandas as pd
-import numpy as np
-from dtw import dtw
 from scipy.spatial.distance import euclidean
-from scipy.stats import pearsonr
+import itertools
 
-# Load your dataset into a pandas DataFrame
+# Load the dataset
 df = pd.read_csv('your_dataset.csv')
 
-# Convert the TIME_KEY column to datetime format
-df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
+# Pivot the dataset
+pivot_df = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc='sum').fillna(0)
 
-# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
-grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
+# Get the list of TRAN_CDs
+tran_cds = pivot_df.columns
 
-# Reshape the data to a 2D array for DTW analysis
-data = grouped.unstack().values
+# Function to calculate DTW distance and cosine similarity
+def calculate_dtw_cosine(series1, series2):
+    dtw_distance, _ = fastdtw(series1, series2, dist=euclidean)
+    cosine_sim = 1 - cosine(series1, series2)
+    return dtw_distance, cosine_sim
 
-# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
-dtw_distances = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
-        dtw_distances[j, i] = dtw_distances[i, j]
+# Create a DataFrame to store the results
+results = []
 
-# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
-correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
-        correlation_matrix[j, i] = correlation_matrix[i, j]
+# Iterate over all pairs of TRAN_CDs
+for (cd1, cd2) in itertools.combinations(tran_cds, 2):
+    series1 = pivot_df[cd1].values
+    series2 = pivot_df[cd2].values
+    dtw_distance, cosine_sim = calculate_dtw_cosine(series1, series2)
+    results.append({'TRAN_CD_1': cd1, 'TRAN_CD_2': cd2, 'DTW_Distance': dtw_distance, 'Cosine_Similarity': cosine_sim})
 
-# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
-# This step will depend on the specific criteria you want to use for consolidation
-# For example, you could consolidate TRAN_CDs that have a DTW distance below a certain threshold
-# and a correlation coefficient above a certain threshold
+# Convert the results into a DataFrame
+results_df = pd.DataFrame(results)
 
-============
-import pandas as pd
-import numpy as np
-from dtw import dtw
-from dtw import dtw_distance
+# Filter for high similarity pairs (you can adjust the thresholds as needed)
+dtw_threshold = 100  # Example threshold for DTW distance
+cosine_threshold = 0.8  # Example threshold for cosine similarity
 
-import pandas as pd
-import numpy as np
-from dtw import dtw
-from scipy.spatial.distance import euclidean
-from scipy.stats import pearsonr
+consolidation_recommendations = results_df[(results_df['DTW_Distance'] < dtw_threshold) & 
+                                           (results_df['Cosine_Similarity'] > cosine_threshold)]
 
-# Load your dataset into a pandas DataFrame
-df = pd.read_csv('your_dataset.csv')
+# Group the consolidations
+consolidations = consolidation_recommendations.groupby('TRAN_CD_1').agg({
+    'TRAN_CD_2': lambda x: list(x),
+    'DTW_Distance': 'mean',
+    'Cosine_Similarity': 'mean'
+}).reset_index()
 
-# Convert the TIME_KEY column to datetime format
-df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
-
-# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
-grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
-
-# Reshape the data to a 2D array for DTW analysis
-data = grouped.unstack().values
-
-# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
-dtw_distances = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
-        dtw_distances[j, i] = dtw_distances[i, j]
-
-# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
-correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
-        correlation_matrix[j, i] = correlation_matrix[i, j]
-
-# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
-# This step will depend on the specific criteria you want to use for consolidation
-# For example, you could consolidate TRAN_CDs that have a DTW distance below a certain threshold
-# and a correlation coefficient above a certain threshold
-
-import numpy as np
-from dtw import dtw
-from scipy.spatial.distance import euclidean
-from scipy.stats import pearsonr
-
-# Load your dataset into a pandas DataFrame
-df = pd.read_csv('your_dataset.csv')
-
-# Convert the TIME_KEY column to datetime format
-df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
-
-# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
-grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
-
-# Reshape the data to a 2D array for DTW analysis
-data = grouped.unstack().values
-
-# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
-dtw_distances = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
-        dtw_distances[j, i] = dtw_distances[i, j]
-
-# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
-correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
-        correlation_matrix[j, i] = correlation_matrix[i, j]
-
-# Calculate the mean and standard deviation of the DTW distances and correlation coefficients
-dtw_mean = np.mean(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)])
-dtw_std = np.std(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)])
-correlation_mean = np.mean(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)])
-correlation_std = np.std(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)])
-
-# Set a threshold based on a certain number of standard deviations from the mean
-dtw_threshold = dtw_mean + 2 * dtw_std
-correlation_threshold = correlation_mean + 2 * correlation_std
-
-# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
-consolidated_trans_cds = {}
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        if dtw_distances[i, j] < dtw_threshold and correlation_matrix[i, j] > correlation_
-
-=======================
-outlier
-
-
-import numpy as np
-from dtw import dtw
-from scipy.interpolate import interp1d
-from dtaidistance import dtw
-from scipy.stats import pearsonr
-import pandas as pd
-
-# Load your dataset into a pandas DataFrame
-df = pd.read_csv('your_dataset.csv')
-
-# Convert the TIME_KEY column to datetime format
-df['TIME_KEY'] = pd.to_datetime(df['TIME_KEY'])
-
-# Group the data by RLTN_PWR_ID and TRAN_CD, and calculate the monthly VOLUME
-grouped = df.groupby(['RLTN_PWR_ID', 'TRAN_CD'])['VOLUME'].resample('M', on='TIME_KEY').sum()
-
-# Reshape the data to a 2D array for DTW analysis
-data = grouped.unstack().values
-
-# Calculate the pairwise DTW distances between all TRAN_CDs for each RLTN_PWR_ID
-dtw_distances = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        dtw_distances[i, j] = dtw(data[:, i], data[:, j])[0]
-        dtw_distances[j, i] = dtw_distances[i, j]
-
-# Calculate the pairwise correlation coefficients between all TRAN_CDs for each RLTN_PWR_ID
-correlation_matrix = np.zeros((data.shape[1], data.shape[1]))
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        correlation_matrix[i, j], _ = pearsonr(data[:, i], data[:, j])
-        correlation_matrix[j, i] = correlation_matrix[i, j]
-
-# Calculate the median and IQR of the DTW distances and correlation coefficients
-dtw_median = np.median(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)])
-dtw_iqr = np.subtract(*np.percentile(dtw_distances[np.triu_indices(dtw_distances.shape[0], k=1)], [75, 25]))
-correlation_median = np.median(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)])
-correlation_iqr = np.subtract(*np.percentile(correlation_matrix[np.triu_indices(correlation_matrix.shape[0], k=1)], [75, 25]))
-
-# Set a threshold based on the median and IQR
-dtw_threshold = dtw_median + 1.5 * dtw_iqr
-correlation_threshold = correlation_median + 1.5 * correlation_iqr
-
-# Consolidate TRAN_CDs based on DTW distances and correlation coefficients
-consolidated_trans_cds = {}
-for i in range(data.shape[1]):
-    for j in range(i+1, data.shape[1]):
-        if dtw_distances[i, j] < dtw_threshold and correlation_matrix[i, j] > correlation_threshold:
-            if i not in consolidated_trans_cds:
-                consolidated_trans_cds[i]
-
-import numpy as np
-from scipy.stats import zscore
-
-# Calculate the DTW distances between all pairs of TRAN_CDs
-dtw_distances = np.zeros((len(trans_cds), len(trans_cds)))
-for i in range(len(trans_cds)):
-    for j in range(i+1, len(trans_cds)):
-        dtw_distances[i, j] = dtw(trans_cds[i], trans_cds[j])[0]
-        dtw_distances[j, i] = dtw_distances[i, j]
-
-# Calculate the Z-scores of the DTW distances
-z_scores = np.abs(zscore(dtw_distances))
-
-# Identify outliers based on a threshold Z-score
-threshold = 3
-outliers = np.where(z_scores > threshold)
-
-# Remove outliers from the DTW distances
-dtw_distances[outliers] = np.nan
-
-import numpy as np
-from scipy.stats import median_abs_deviation
-
-# Calculate the DTW distances between all pairs of TRAN_CDs
-dtw_distances = np.zeros((len(trans_cds), len(trans_cds)))
-for i in range(len(trans_cds)):
-    for j in range(i+1, len(trans_cds)):
-        dtw_distances[i, j] = dtw(trans_cds[i], trans_cds[j])[0]
-        dtw_distances[j, i] = dtw_distances[i, j]
-
-# Calculate the Modified Z-scores of the DTW distances
-mad = median_abs_deviation(dtw_distances)
-modified_z_scores = 0.6745 * (dtw_distances - np.median(dtw_distances)) / mad
-
-# Identify outliers based on a threshold Modified Z-score
-threshold = 3.5
-outliers = np.where(np.abs(modified_z_scores) > threshold)
-
-# Remove outliers from the DTW distances
-dtw_distances[outliers] = np.nan
-
-
-
+# Output the results
+print(consolidations)
