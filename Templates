@@ -8,43 +8,55 @@ import itertools
 # Load the dataset
 df = pd.read_csv('your_dataset.csv')
 
+# Ensure the dataset has the required columns
+assert set(['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD', 'VOLUME']).issubset(df.columns), "Dataset does not have the required columns."
+
 # Pivot the dataset
-pivot_df = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc='sum').fillna(0)
+pivot_df = df.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x)).fillna([0]*12)
+
+# Ensure all lists are of length 12
+for col in pivot_df.columns:
+    pivot_df[col] = pivot_df[col].apply(lambda x: x if len(x) == 12 else [0]*12)
 
 # Get the list of TRAN_CDs
 tran_cds = pivot_df.columns
 
-# Function to calculate DTW distance and cosine similarity
-def calculate_dtw_cosine(series1, series2):
-    dtw_distance, _ = fastdtw(series1, series2, dist=euclidean)
+# Function to calculate cosine similarity
+def calculate_cosine_similarity(series1, series2):
+    series1 = np.array(series1)
+    series2 = np.array(series2)
     cosine_sim = 1 - cosine(series1, series2)
-    return dtw_distance, cosine_sim
+    return cosine_sim
+
+# Function to calculate DTW distance
+def calculate_dtw_distance(series1, series2):
+    dtw_distance, _ = fastdtw(series1, series2, dist=euclidean)
+    return dtw_distance
 
 # Create a DataFrame to store the results
 results = []
 
 # Iterate over all pairs of TRAN_CDs
 for (cd1, cd2) in itertools.combinations(tran_cds, 2):
-    series1 = pivot_df[cd1].values
-    series2 = pivot_df[cd2].values
-    dtw_distance, cosine_sim = calculate_dtw_cosine(series1, series2)
-    results.append({'TRAN_CD_1': cd1, 'TRAN_CD_2': cd2, 'DTW_Distance': dtw_distance, 'Cosine_Similarity': cosine_sim})
+    series1 = np.array(pivot_df[cd1].tolist())
+    series2 = np.array(pivot_df[cd2].tolist())
+    cosine_sim = calculate_cosine_similarity(series1, series2)
+    dtw_distance = calculate_dtw_distance(series1, series2)
+    results.append({'TRAN_CD_1': cd1, 'TRAN_CD_2': cd2, 'Cosine_Similarity': cosine_sim, 'DTW_Distance': dtw_distance})
 
 # Convert the results into a DataFrame
 results_df = pd.DataFrame(results)
 
 # Filter for high similarity pairs (you can adjust the thresholds as needed)
-dtw_threshold = 100  # Example threshold for DTW distance
 cosine_threshold = 0.8  # Example threshold for cosine similarity
 
-consolidation_recommendations = results_df[(results_df['DTW_Distance'] < dtw_threshold) & 
-                                           (results_df['Cosine_Similarity'] > cosine_threshold)]
+consolidation_recommendations = results_df[results_df['Cosine_Similarity'] > cosine_threshold]
 
 # Group the consolidations
 consolidations = consolidation_recommendations.groupby('TRAN_CD_1').agg({
     'TRAN_CD_2': lambda x: list(x),
-    'DTW_Distance': 'mean',
-    'Cosine_Similarity': 'mean'
+    'Cosine_Similarity': 'mean',
+    'DTW_Distance': 'mean'
 }).reset_index()
 
 # Output the results
