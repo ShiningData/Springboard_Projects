@@ -49,3 +49,6 @@ consolidations = consolidation_recommendations.groupby('TRAN_CD_1').agg({
 
 # Output the results
 print(consolidations)
+
+# Save the results to a CSV file
+consolidations.to_csv('consolidation_recommendations.csv', index=False)
