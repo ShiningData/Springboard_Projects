@@ -1,4 +1,4 @@
-Certainly! Here's the updated code without the support and confidence calculations, focusing on generating the table with threshold, consolidation recommendation group, cosine similarity metric, and co-occurrence count:
+Certainly! Below is the updated code that includes the threshold, consolidation recommendation group, cosine similarity metric, co-occurrence count, and the number of `TRAN_CD` in the consolidation recommendation group. The table is sorted by the cosine similarity metric from highest to lowest.
 
 ### Updated Code:
 
@@ -80,11 +80,13 @@ for max_d in thresholds:
                 'Threshold': max_d,
                 'Consolidation Group': tran_cds,
                 'Average Cosine Similarity': avg_similarity,
-                'Co-occurrence Count': co_occurrence_count
+                'Co-occurrence Count': co_occurrence_count,
+                'Number of TRAN_CD in Group': len(tran_cds)
             })
 
-# Convert results to DataFrame and display
+# Convert results to DataFrame, sort by cosine similarity, and display
 results_df = pd.DataFrame(results)
+results_df = results_df.sort_values(by='Average Cosine Similarity', ascending=False)
 print(results_df)
 ```
 
@@ -94,7 +96,7 @@ print(results_df)
 3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
 4. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
 5. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs using a defined function.
-6. **Compile Results**: Store the results in a DataFrame and print it.
+6. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and print it.
 
 ### Result Table:
 The resulting DataFrame (`results_df`) contains the following columns:
@@ -102,9 +104,9 @@ The resulting DataFrame (`results_df`) contains the following columns:
 - **Consolidation Group**: The list of `TRAN_CD`s in the group.
 - **Average Cosine Similarity**: The average cosine similarity of the group.
 - **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
+- **Number of TRAN_CD in Group**: The number of `TRAN_CD` in the consolidation group.
 
-This table will help you evaluate the consolidation recommendations, understand the clustering results, and provide valuable metrics for the consolidated groups.
-
+This table is sorted by the average cosine similarity metric from highest to lowest, providing a clear view of the most similar and frequently co-occurring groups.
 ================================================================================================================================
 To create a new column that shows how many times the elements of the consolidated `TRAN_CD` groups appear together throughout the dataset, you can follow these steps:
 
