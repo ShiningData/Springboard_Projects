@@ -1,18 +1,3 @@
-You are correct that cosine similarity ranges between -1 and 1, but typically, the cosine similarity metric in practice ranges between 0 and 1 when used for non-negative data, which is likely in this case with volume data. However, to ensure that we cover the correct transformation and account for cosine similarity correctly, we should normalize the data appropriately.
-
-For our purposes, if cosine similarity is indeed in the range [-1, 1], we should adjust the methodology accordingly. Here, we will transform the similarity to a distance measure ranging from 0 to 2 by subtracting from 1 (since 1 - (-1) = 2).
-
-### Revised Approach:
-
-1. **Compute Cosine Similarity**: Compute cosine similarity, ensuring it correctly handles the range.
-2. **Transform Cosine Similarity to Distance**: Transform the similarity measure to a distance measure ranging from 0 to 2.
-3. **Perform Clustering**: Use hierarchical clustering based on the transformed distance.
-
-Here’s the updated code:
-
-### Python Code:
-
-```python
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -58,7 +43,6 @@ time_series_matrix = np.array([np.concatenate(final_table[col].values) for col i
 cosine_sim = cosine_similarity(time_series_matrix)
 
 # Transform cosine similarity to distance: distance = 1 - cosine_similarity
-# If cosine similarity ranges from -1 to 1, we use: distance = 1 - cosine_similarity
 cosine_dist = 1 - cosine_sim
 
 # Use hierarchical clustering to group similar TRAN_CDs
@@ -71,27 +55,26 @@ consolidation_groups = defaultdict(list)
 for i, cluster in enumerate(clusters):
     consolidation_groups[cluster].append(unique_tran_cd[i])
 
-# Calculate the average cosine similarity for each group
+# Calculate the average cosine similarity for each group and count co-occurrences
 consolidation_similarities = {}
+co_occurrence_counts = {}
+
+# Create a co-occurrence matrix
+co_occurrence_matrix = pd.crosstab(df['RLTN_PWR_ID'], df['TRAN_CD'])
+
 for cluster, tran_cds in consolidation_groups.items():
     if len(tran_cds) > 1:
         group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
                                                [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
         avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
         consolidation_similarities[cluster] = (tran_cds, avg_similarity)
+        
+        # Calculate co-occurrence count
+        co_occurrence_count = 0
+        for rlt_id in co_occurrence_matrix.index:
+            co_occurrence_count += all(co_occurrence_matrix.loc[rlt_id, tran_cd] > 0 for tran_cd in tran_cds)
+        co_occurrence_counts[cluster] = co_occurrence_count
 
-# Output the recommended consolidation groups
+# Output the recommended consolidation groups with co-occurrence counts
 for cluster, (tran_cds, avg_similarity) in consolidation_similarities.items():
-    print(f"Group {cluster}: TRAN_CDs {tran_cds} with average cosine similarity {avg_similarity:.2f}")
-```
-
-### Explanation:
-1. **Data Preparation**: Prepare the sample dataset (replace this with the actual dataset).
-2. **Generate Pivot Table**: Ensure each `RLTN_PWR_ID` and `TRAN_CD` has a 12-month `VOLUME` time series.
-3. **Flatten the Lists**: Flatten the lists of 12-month volumes into a 2D array where each row represents a `TRAN_CD` and each column represents a month.
-4. **Cosine Similarity Calculation**: Compute the cosine similarity between these 12-month time series.
-5. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
-6. **Hierarchical Clustering**: Perform hierarchical clustering on the distance matrix to group similar `TRAN_CD`s.
-7. **Output Groups**: Print the recommended consolidation groups with their average cosine similarity.
-
-By following these steps, the updated code correctly handles the cosine similarity and performs hierarchical clustering to identify similar transaction codes (`TRAN_CD`) for consolidation.
+    print(f"Group {cluster}: TRAN_CDs {tran_cds} with average cosine similarity {avg_similarity:.2f} and co-occurrence count {co_occurrence_counts[cluster]}")
