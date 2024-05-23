@@ -1,3 +1,62 @@
+To resolve the issue with GEPHI not recognizing the installed Java, follow these steps:
+
+1. **Verify Java Installation:**
+   Ensure that Java is properly installed and the version is 1.8 or higher. Open a terminal or command prompt and type:
+   ```sh
+   java -version
+   ```
+   This should display the installed Java version.
+
+2. **Set JAVA_HOME Environment Variable:**
+   Set the `JAVA_HOME` environment variable to point to the directory where Java is installed.
+
+   - **Windows:**
+     1. Open the Start Menu and search for "Environment Variables."
+     2. Click on "Edit the system environment variables."
+     3. In the System Properties window, click on "Environment Variables."
+     4. Under System Variables, click "New" and set the variable name to `JAVA_HOME` and the variable value to the path of your JDK installation (e.g., `C:\Program Files\Java\jdk1.8.0_xx`).
+     5. Click OK and apply the changes.
+
+   - **Mac/Linux:**
+     1. Open a terminal.
+     2. Edit your shell profile file (`~/.bashrc`, `~/.bash_profile`, `~/.zshrc`, or `~/.profile`) and add the following line:
+        ```sh
+        export JAVA_HOME=/path/to/your/jdk
+        ```
+        Replace `/path/to/your/jdk` with the actual path to your JDK installation (e.g., `/Library/Java/JavaVirtualMachines/jdk1.8.0_xx.jdk/Contents/Home` for macOS).
+     3. Save the file and run `source ~/.bashrc` or the equivalent command for your shell profile file to apply the changes.
+
+3. **Update System PATH:**
+   Add the `JAVA_HOME/bin` directory to your system `PATH`.
+
+   - **Windows:**
+     1. In the Environment Variables window, under System Variables, find the `Path` variable and click "Edit."
+     2. Click "New" and add the path to your JDK's `bin` directory (e.g., `C:\Program Files\Java\jdk1.8.0_xx\bin`).
+     3. Click OK and apply the changes.
+
+   - **Mac/Linux:**
+     1. Open a terminal.
+     2. Edit your shell profile file and add the following line:
+        ```sh
+        export PATH=$JAVA_HOME/bin:$PATH
+        ```
+     3. Save the file and run `source ~/.bashrc` or the equivalent command for your shell profile file to apply the changes.
+
+4. **Check GEPHI Configuration:**
+   Ensure that GEPHI is configured to use the correct Java installation. Sometimes, you may need to explicitly specify the Java path in GEPHI's configuration files.
+
+   - Navigate to the GEPHI installation directory.
+   - Locate the `gephi.conf` file (typically in the `etc` subdirectory).
+   - Open the `gephi.conf` file in a text editor.
+   - Add or modify the following line to point to your JDK installation:
+     ```sh
+     jdkhome="/path/to/your/jdk"
+     ```
+     Replace `/path/to/your/jdk` with the actual path to your JDK installation.
+
+After completing these steps, try to launch GEPHI again. If the problem persists, consider reinstalling both Java and GEPHI, ensuring that all previous installations are completely removed before reinstalling.
+================
+
 To consolidate TRAN_CDs based on their usage volume correlation over 12 months using Dynamic Time Warping (DTW) and cosine similarity, we can follow these steps:
 1. Generate the Dataframe with Time Series: Ensure each TRAN_CD for each RLTN_PWR_ID has a 12-month time series of VOLUME.
 2. Calculate Cosine Similarity: Compute cosine similarity between the 12-month time series of each pair of TRAN_CDs.
