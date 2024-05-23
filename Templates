@@ -2,8 +2,6 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.cluster.hierarchy import linkage, fcluster
-import fastdtw
-from scipy.spatial.distance import euclidean
 from collections import defaultdict
 
 # Sample data preparation (replace this with actual dataset)
@@ -38,11 +36,12 @@ for tran_cd in unique_tran_cd:
 pivot_table = pivot_table[unique_tran_cd]
 final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
 
+# Flatten the lists into a 2D array for each TRAN_CD
+time_series_matrix = np.array([np.concatenate(final_table[col].values) for col in final_table.columns])
+
 # Compute the cosine similarity matrix
 cosine_sim_matrix = pd.DataFrame(
-    cosine_similarity(
-        np.stack(final_table.apply(lambda x: np.array(x.tolist()), axis=1).values)
-    ),
+    cosine_similarity(time_series_matrix),
     index=unique_tran_cd,
     columns=unique_tran_cd
 )
@@ -68,4 +67,3 @@ for cluster, tran_cds in consolidation_groups.items():
 # Output the recommended consolidation groups
 for cluster, (tran_cds, avg_similarity) in consolidation_similarities.items():
     print(f"Group {cluster}: TRAN_CDs {tran_cds} with average cosine similarity {avg_similarity:.2f}")
-
