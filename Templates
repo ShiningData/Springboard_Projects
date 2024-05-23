@@ -1,69 +1,113 @@
-import pandas as pd
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.cluster.hierarchy import linkage, fcluster
-from collections import defaultdict
+To consolidate TRAN_CDs based on their usage volume correlation over 12 months using Dynamic Time Warping (DTW) and cosine similarity, we can follow these steps:
+1. Generate the Dataframe with Time Series: Ensure each TRAN_CD for each RLTN_PWR_ID has a 12-month time series of VOLUME.
+2. Calculate Cosine Similarity: Compute cosine similarity between the 12-month time series of each pair of TRAN_CDs.
+3. Cluster TRAN_CDs: Use hierarchical clustering based on cosine similarity to group similar TRAN_CDs.
+4. Output Recommended Consolidation Groups: Provide the consolidation groups and their similarity scores.
+Steps:
+1. Data Preparation: Generate or use the provided dataset and ensure each RLTN_PWR_ID and TRAN_CD has a 12-month VOLUME time series.
+2. Pivot the Table: Create a pivot table where rows are RLTN_PWR_ID, columns are TRAN_CD, and cell values are lists of 12 monthly VOLUME values.
+3. Flatten the Lists: Flatten the lists of 12-month volumes into a 2D array where each row represents a TRAN_CD and each column represents a month.
+3. Cosine Similarity Calculation: Compute the cosine similarity between these 12-month time series.
+4. Hierarchical Clustering: Perform hierarchical clustering on the similarity matrix to group similar TRAN_CDs.
+5. Output Groups: Print the recommended consolidation groups with their average cosine similarity.
+This approach correctly handles the flattening of the 12-month volume lists and computes the cosine similarity between the time series for clustering and consolidation.
 
-# Sample data preparation (replace this with actual dataset)
-# Assuming df is the dataframe created in the previous step
+=========================================================================================================================
 
-# Example: Creating a smaller sample dataset for illustration
-data = {
-    'RLTN_PWR_ID': np.random.randint(1, 10001, size=50000),
-    'TIME_KEY': np.tile(pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m'), 50000 // 12),
-    'TRAN_CD': np.random.choice([f'TRAN_{i}' for i in range(1, 62)], size=50000),
-    'VOLUME': np.random.randint(0, 100, size=50000)
-}
+Let's break down the hierarchical clustering part of the pipeline:
 
-df = pd.DataFrame(data)
+### Hierarchical Clustering Explanation
 
-# Generate the pivot table as before
-unique_rlt_ids = df['RLTN_PWR_ID'].unique()
-unique_tran_cd = df['TRAN_CD'].unique()
-time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m').tolist()
+Hierarchical clustering is a method of cluster analysis which seeks to build a hierarchy of clusters. It's a popular method for finding natural groupings in data based on the similarity between data points. In this pipeline, we are using hierarchical clustering to group similar `TRAN_CD`s based on their cosine similarity over 12 months.
 
-all_combinations = pd.MultiIndex.from_product([unique_rlt_ids, time_keys, unique_tran_cd], names=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'])
-df_full = pd.DataFrame(index=all_combinations).reset_index()
+### Code Breakdown
 
-df_merged = pd.merge(df_full, df, on=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'], how='left')
-df_merged['VOLUME'] = df_merged['VOLUME'].fillna(0)
+1. Linkage Function:
+    ```python
+    Z = linkage(1 - cosine_sim_matrix, 'average')
+    ```
+    - `cosine_sim_matrix`: This is a DataFrame where each cell `(i, j)` contains the cosine similarity between the time series of `TRAN_CD_i` and `TRAN_CD_j`. The values range from 0 to 1, where 1 indicates identical time series and 0 indicates completely dissimilar time series.
+    
+    - `1 - cosine_sim_matrix`: We are converting the similarity matrix to a distance matrix. Since cosine similarity ranges from 0 to 1, subtracting it from 1 transforms it into a distance metric (0 indicates identical time series, and 1 indicates completely dissimilar time series).
+    
+    - `linkage()`: This function performs hierarchical/agglomerative clustering. It takes a distance matrix (or a condensed distance matrix) and a method to calculate the distance between clusters.
+        - Input: `1 - cosine_sim_matrix` (distance matrix)
+        - Method: `'average'` (also known as UPGMA - Unweighted Pair Group Method with Arithmetic Mean). This method calculates the average distance between all pairs of objects in two clusters.
+        - Output: `Z` (linkage matrix)
 
-pivot_table = df_merged.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x))
-for tran_cd in unique_tran_cd:
-    if tran_cd not in pivot_table.columns:
-        pivot_table[tran_cd] = [[0]*12] * len(pivot_table)
+    - `Z`: The linkage matrix which encodes the hierarchical clustering. Each row represents a merge between two clusters. The columns are:
+        1. The indices of the clusters being merged.
+        2. The distance between the clusters being merged.
+        3. The number of original observations in the newly formed cluster.
 
-pivot_table = pivot_table[unique_tran_cd]
-final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
+2. Threshold for Clustering:
+    ```python
+    max_d = 0.1  # Threshold for clustering
+    ```
+    - `max_d`: This is the maximum distance threshold to apply when forming flat clusters from the hierarchical clustering tree. Clusters that are further apart than this distance will not be merged.
 
-# Flatten the lists into a 2D array for each TRAN_CD
-time_series_matrix = np.array([np.concatenate(final_table[col].values) for col in final_table.columns])
+3. Forming Flat Clusters:
+    ```python
+    clusters = fcluster(Z, max_d, criterion='distance')
+    ```
+    - `fcluster()`: This function forms flat clusters from the hierarchical clustering defined by the linkage matrix `Z`.
+        - Input: 
+            - `Z`: The linkage matrix obtained from the `linkage()` function.
+            - `max_d`: The threshold for forming clusters.
+            - `criterion`: Defines the criterion to use for forming clusters. In this case, `'distance'` means clusters are formed so that no cluster pair has a distance greater than `max_d`.
+        - Output: `clusters` (array of cluster labels)
+            - `clusters`: An array where each element represents the cluster label assigned to the corresponding `TRAN_CD`. For example, if there are 61 `TRAN_CD`s, `clusters` will be an array of length 61 with each element representing the cluster ID.
 
-# Compute the cosine similarity matrix
-cosine_sim_matrix = pd.DataFrame(
-    cosine_similarity(time_series_matrix),
-    index=unique_tran_cd,
-    columns=unique_tran_cd
-)
+### Example Walkthrough
 
-# Use hierarchical clustering to group similar TRAN_CDs
-Z = linkage(1 - cosine_sim_matrix, 'average')
-max_d = 0.1  # Threshold for clustering
-clusters = fcluster(Z, max_d, criterion='distance')
+1. Calculate Linkage Matrix (`Z`):
+    - Given a distance matrix derived from `1 - cosine_sim_matrix`, `linkage()` will build a hierarchical clustering tree.
+    - The linkage matrix `Z` contains information about the merges that happen at each step of the clustering process.
 
-# Create a dictionary to hold consolidation groups
-consolidation_groups = defaultdict(list)
-for i, cluster in enumerate(clusters):
-    consolidation_groups[cluster].append(unique_tran_cd[i])
+2. Set Distance Threshold (`max_d`):
+    - `max_d = 0.1` sets the threshold for forming clusters. Any clusters with a distance greater than 0.1 will remain separate.
 
-# Calculate the average cosine similarity for each group
-consolidation_similarities = {}
-for cluster, tran_cds in consolidation_groups.items():
-    if len(tran_cds) > 1:
-        group_similarities = cosine_sim_matrix.loc[tran_cds, tran_cds].values
-        avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-        consolidation_similarities[cluster] = (tran_cds, avg_similarity)
+3. Form Flat Clusters:
+    - Using `fcluster(Z, max_d, criterion='distance')`, the hierarchical tree is cut at the distance `max_d`, and clusters are formed accordingly.
+    - The output `clusters` assigns a cluster label to each `TRAN_CD`.
 
-# Output the recommended consolidation groups
-for cluster, (tran_cds, avg_similarity) in consolidation_similarities.items():
-    print(f"Group {cluster}: TRAN_CDs {tran_cds} with average cosine similarity {avg_similarity:.2f}")
+### Practical Example
+
+Suppose we have 5 `TRAN_CD`s with the following cosine similarities:
+
+|        | TRAN_1 | TRAN_2 | TRAN_3 | TRAN_4 | TRAN_5 |
+|--------|--------|--------|--------|--------|--------|
+| TRAN_1 | 1.00   | 0.85   | 0.10   | 0.20   | 0.25   |
+| TRAN_2 | 0.85   | 1.00   | 0.15   | 0.25   | 0.30   |
+| TRAN_3 | 0.10   | 0.15   | 1.00   | 0.90   | 0.85   |
+| TRAN_4 | 0.20   | 0.25   | 0.90   | 1.00   | 0.80   |
+| TRAN_5 | 0.25   | 0.30   | 0.85   | 0.80   | 1.00   |
+
+1. Convert to Distance Matrix:
+    ```python
+    1 - cosine_sim_matrix
+    ```
+
+|        | TRAN_1 | TRAN_2 | TRAN_3 | TRAN_4 | TRAN_5 |
+|--------|--------|--------|--------|--------|--------|
+| TRAN_1 | 0.00   | 0.15   | 0.90   | 0.80   | 0.75   |
+| TRAN_2 | 0.15   | 0.00   | 0.85   | 0.75   | 0.70   |
+| TRAN_3 | 0.90   | 0.85   | 0.00   | 0.10   | 0.15   |
+| TRAN_4 | 0.80   | 0.75   | 0.10   | 0.00   | 0.20   |
+| TRAN_5 | 0.75   | 0.70   | 0.15   | 0.20   | 0.00   |
+
+2. Linkage Matrix:
+    ```python
+    Z = linkage(1 - cosine_sim_matrix, 'average')
+    ```
+    The linkage matrix `Z` will encode the hierarchy of the clusters.
+
+3. Form Clusters:
+    ```python
+    clusters = fcluster(Z, max_d, criterion='distance')
+    ```
+    With `max_d = 0.1`, the function will cut the tree at this threshold and form clusters based on the distance.
+
+The output `clusters` will contain the cluster labels for each `TRAN_CD`, indicating which `TRAN_CD`s are grouped together based on their similarity.
+
+By following these steps and understanding each part of the code, you can apply hierarchical clustering to group similar transaction codes (`TRAN_CD`) based on their usage patterns over time.
