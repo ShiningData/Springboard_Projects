@@ -1,29 +1,6 @@
-Sure! To create a table that includes the threshold, consolidation recommendation groups, cosine similarity, and also support and confidence metrics, we'll follow these steps:
+Certainly! Here's how you can enhance the code to include the number of times the groups co-occur, and the support and confidence metrics:
 
-1. **Generate the pivot table**.
-2. **Calculate cosine similarity**.
-3. **Perform hierarchical clustering with various thresholds**.
-4. **Calculate support and confidence for each consolidated group using basket analysis**.
-5. **Compile the results into a table**.
-
-Let's walk through the code step-by-step:
-
-### Step 1: Generate the Pivot Table
-This is similar to the previous steps where we prepare the data and create the pivot table.
-
-### Step 2: Calculate Cosine Similarity
-We compute the cosine similarity matrix for the `TRAN_CD` time series data.
-
-### Step 3: Perform Hierarchical Clustering with Various Thresholds
-We cluster the `TRAN_CD`s with different thresholds and collect the consolidation groups.
-
-### Step 4: Calculate Support and Confidence Metrics
-For each group, we calculate the support and confidence metrics using the co-occurrence matrix.
-
-### Step 5: Compile the Results into a Table
-We compile all the results into a table.
-
-Here is the complete Python code to achieve this:
+### Enhanced Code:
 
 ```python
 import pandas as pd
@@ -31,7 +8,6 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.cluster.hierarchy import linkage, fcluster
 from collections import defaultdict
-from itertools import combinations
 
 # Sample data preparation (replace this with actual dataset)
 # Assuming df is the dataframe created in the previous step
@@ -85,7 +61,7 @@ def calculate_support_confidence(group, co_occurrence_matrix):
     total_transactions = co_occurrence_matrix.shape[0]
     support = group_support / total_transactions
     confidence = group_support / np.sum((group_matrix > 0).any(axis=1))
-    return support, confidence
+    return support, confidence, group_support
 
 # Experiment with different max_d values and compile results
 results = []
@@ -102,11 +78,12 @@ for max_d in thresholds:
             group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
                                                    [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
             avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-            support, confidence = calculate_support_confidence(tran_cds, co_occurrence_matrix)
+            support, confidence, co_occurrence_count = calculate_support_confidence(tran_cds, co_occurrence_matrix)
             results.append({
                 'Threshold': max_d,
                 'Consolidation Group': tran_cds,
                 'Average Cosine Similarity': avg_similarity,
+                'Co-occurrence Count': co_occurrence_count,
                 'Support': support,
                 'Confidence': confidence
             })
@@ -117,21 +94,24 @@ print(results_df)
 ```
 
 ### Explanation:
-1. **Data Preparation**: We prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
+1. **Data Preparation**: Prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
 2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
-3. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
-4. **Support and Confidence Calculation**: For each consolidation group, calculate the support and confidence metrics using the co-occurrence matrix.
-5. **Compile Results**: Store the results in a DataFrame and print it.
+3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
+4. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
+5. **Support and Confidence Calculation**: For each consolidation group, calculate the support and confidence metrics using the co-occurrence matrix.
+6. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs.
+7. **Compile Results**: Store the results in a DataFrame and print it.
 
 ### Result Table:
 The resulting DataFrame (`results_df`) contains the following columns:
 - **Threshold**: The threshold used for clustering.
 - **Consolidation Group**: The list of `TRAN_CD`s in the group.
 - **Average Cosine Similarity**: The average cosine similarity of the group.
+- **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
 - **Support**: The support metric from basket analysis.
 - **Confidence**: The confidence metric from basket analysis.
 
-This table will help you evaluate the consolidation recommendations and understand the clustering results better.
+This table will help you evaluate the consolidation recommendations, understand the clustering results, and also provide valuable metrics for the consolidated groups.
 
 
 ================================================================================================================================
