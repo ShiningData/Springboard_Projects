@@ -1,3 +1,140 @@
+Sure! To create a table that includes the threshold, consolidation recommendation groups, cosine similarity, and also support and confidence metrics, we'll follow these steps:
+
+1. **Generate the pivot table**.
+2. **Calculate cosine similarity**.
+3. **Perform hierarchical clustering with various thresholds**.
+4. **Calculate support and confidence for each consolidated group using basket analysis**.
+5. **Compile the results into a table**.
+
+Let's walk through the code step-by-step:
+
+### Step 1: Generate the Pivot Table
+This is similar to the previous steps where we prepare the data and create the pivot table.
+
+### Step 2: Calculate Cosine Similarity
+We compute the cosine similarity matrix for the `TRAN_CD` time series data.
+
+### Step 3: Perform Hierarchical Clustering with Various Thresholds
+We cluster the `TRAN_CD`s with different thresholds and collect the consolidation groups.
+
+### Step 4: Calculate Support and Confidence Metrics
+For each group, we calculate the support and confidence metrics using the co-occurrence matrix.
+
+### Step 5: Compile the Results into a Table
+We compile all the results into a table.
+
+Here is the complete Python code to achieve this:
+
+```python
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.cluster.hierarchy import linkage, fcluster
+from collections import defaultdict
+from itertools import combinations
+
+# Sample data preparation (replace this with actual dataset)
+# Assuming df is the dataframe created in the previous step
+
+# Example: Creating a smaller sample dataset for illustration
+data = {
+    'RLTN_PWR_ID': np.random.randint(1, 10001, size=50000),
+    'TIME_KEY': np.tile(pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m'), 50000 // 12),
+    'TRAN_CD': np.random.choice([f'TRAN_{i}' for i in range(1, 62)], size=50000),
+    'VOLUME': np.random.randint(0, 100, size=50000)
+}
+
+df = pd.DataFrame(data)
+
+# Generate the pivot table as before
+unique_rlt_ids = df['RLTN_PWR_ID'].unique()
+unique_tran_cd = df['TRAN_CD'].unique()
+time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m').tolist()
+
+all_combinations = pd.MultiIndex.from_product([unique_rlt_ids, time_keys, unique_tran_cd], names=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'])
+df_full = pd.DataFrame(index=all_combinations).reset_index()
+
+df_merged = pd.merge(df_full, df, on=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'], how='left')
+df_merged['VOLUME'] = df_merged['VOLUME'].fillna(0)
+
+pivot_table = df_merged.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x))
+for tran_cd in unique_tran_cd:
+    if tran_cd not in pivot_table.columns:
+        pivot_table[tran_cd] = [[0]*12] * len(pivot_table)
+
+pivot_table = pivot_table[unique_tran_cd]
+final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
+
+# Flatten the lists into a 2D array for each TRAN_CD
+time_series_matrix = np.array([np.concatenate(final_table[col].values) for col in final_table.columns])
+
+# Compute the cosine similarity matrix
+cosine_sim = cosine_similarity(time_series_matrix)
+
+# Transform cosine similarity to distance: distance = 1 - cosine_similarity
+cosine_dist = 1 - cosine_sim
+
+# Create a co-occurrence matrix
+co_occurrence_matrix = pd.crosstab(df['RLTN_PWR_ID'], df['TRAN_CD'])
+
+# Define a function to calculate support and confidence
+def calculate_support_confidence(group, co_occurrence_matrix):
+    group_indices = [unique_tran_cd.tolist().index(cd) for cd in group]
+    group_matrix = co_occurrence_matrix.iloc[:, group_indices]
+    group_support = np.sum((group_matrix > 0).all(axis=1))
+    total_transactions = co_occurrence_matrix.shape[0]
+    support = group_support / total_transactions
+    confidence = group_support / np.sum((group_matrix > 0).any(axis=1))
+    return support, confidence
+
+# Experiment with different max_d values and compile results
+results = []
+
+thresholds = [0.1, 0.3, 0.5, 0.7, 0.9]
+for max_d in thresholds:
+    clusters = fcluster(linkage(cosine_dist, 'average'), max_d, criterion='distance')
+    consolidation_groups = defaultdict(list)
+    for i, cluster in enumerate(clusters):
+        consolidation_groups[cluster].append(unique_tran_cd[i])
+
+    for cluster, tran_cds in consolidation_groups.items():
+        if len(tran_cds) > 1:
+            group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
+                                                   [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
+            avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
+            support, confidence = calculate_support_confidence(tran_cds, co_occurrence_matrix)
+            results.append({
+                'Threshold': max_d,
+                'Consolidation Group': tran_cds,
+                'Average Cosine Similarity': avg_similarity,
+                'Support': support,
+                'Confidence': confidence
+            })
+
+# Convert results to DataFrame and display
+results_df = pd.DataFrame(results)
+print(results_df)
+```
+
+### Explanation:
+1. **Data Preparation**: We prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
+2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
+3. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
+4. **Support and Confidence Calculation**: For each consolidation group, calculate the support and confidence metrics using the co-occurrence matrix.
+5. **Compile Results**: Store the results in a DataFrame and print it.
+
+### Result Table:
+The resulting DataFrame (`results_df`) contains the following columns:
+- **Threshold**: The threshold used for clustering.
+- **Consolidation Group**: The list of `TRAN_CD`s in the group.
+- **Average Cosine Similarity**: The average cosine similarity of the group.
+- **Support**: The support metric from basket analysis.
+- **Confidence**: The confidence metric from basket analysis.
+
+This table will help you evaluate the consolidation recommendations and understand the clustering results better.
+
+
+================================================================================================================================
 To create a new column that shows how many times the elements of the consolidated `TRAN_CD` groups appear together throughout the dataset, you can follow these steps:
 
 1. Create the consolidated groups using the cosine similarity and hierarchical clustering as before.
