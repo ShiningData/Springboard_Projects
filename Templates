@@ -1,6 +1,4 @@
-Certainly! Here's how you can enhance the code to include the number of times the groups co-occur, and the support and confidence metrics:
-
-### Enhanced Code:
+Certainly! Here's the updated code that creates a table including the threshold, consolidation recommendation group, cosine similarity metric, and co-occurrence count:
 
 ```python
 import pandas as pd
@@ -83,9 +81,7 @@ for max_d in thresholds:
                 'Threshold': max_d,
                 'Consolidation Group': tran_cds,
                 'Average Cosine Similarity': avg_similarity,
-                'Co-occurrence Count': co_occurrence_count,
-                'Support': support,
-                'Confidence': confidence
+                'Co-occurrence Count': co_occurrence_count
             })
 
 # Convert results to DataFrame and display
@@ -94,7 +90,7 @@ print(results_df)
 ```
 
 ### Explanation:
-1. **Data Preparation**: Prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
+1. **Data Preparation**: We prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
 2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
 3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
 4. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
@@ -108,12 +104,8 @@ The resulting DataFrame (`results_df`) contains the following columns:
 - **Consolidation Group**: The list of `TRAN_CD`s in the group.
 - **Average Cosine Similarity**: The average cosine similarity of the group.
 - **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
-- **Support**: The support metric from basket analysis.
-- **Confidence**: The confidence metric from basket analysis.
 
-This table will help you evaluate the consolidation recommendations, understand the clustering results, and also provide valuable metrics for the consolidated groups.
-
-
+This table will help you evaluate the consolidation recommendations, understand the clustering results, and provide valuable metrics for the consolidated groups.
 ================================================================================================================================
 To create a new column that shows how many times the elements of the consolidated `TRAN_CD` groups appear together throughout the dataset, you can follow these steps:
 
