@@ -1,4 +1,6 @@
-Certainly! Here's the updated code that creates a table including the threshold, consolidation recommendation group, cosine similarity metric, and co-occurrence count:
+Certainly! Here's the updated code without the support and confidence calculations, focusing on generating the table with threshold, consolidation recommendation group, cosine similarity metric, and co-occurrence count:
+
+### Updated Code:
 
 ```python
 import pandas as pd
@@ -51,15 +53,12 @@ cosine_dist = 1 - cosine_sim
 # Create a co-occurrence matrix
 co_occurrence_matrix = pd.crosstab(df['RLTN_PWR_ID'], df['TRAN_CD'])
 
-# Define a function to calculate support and confidence
-def calculate_support_confidence(group, co_occurrence_matrix):
-    group_indices = [unique_tran_cd.tolist().index(cd) for cd in group]
-    group_matrix = co_occurrence_matrix.iloc[:, group_indices]
-    group_support = np.sum((group_matrix > 0).all(axis=1))
-    total_transactions = co_occurrence_matrix.shape[0]
-    support = group_support / total_transactions
-    confidence = group_support / np.sum((group_matrix > 0).any(axis=1))
-    return support, confidence, group_support
+# Define a function to calculate co-occurrence count
+def calculate_co_occurrence_count(group, co_occurrence_matrix):
+    co_occurrence_count = 0
+    for rlt_id in co_occurrence_matrix.index:
+        co_occurrence_count += all(co_occurrence_matrix.loc[rlt_id, tran_cd] > 0 for tran_cd in group)
+    return co_occurrence_count
 
 # Experiment with different max_d values and compile results
 results = []
@@ -76,7 +75,7 @@ for max_d in thresholds:
             group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
                                                    [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
             avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-            support, confidence, co_occurrence_count = calculate_support_confidence(tran_cds, co_occurrence_matrix)
+            co_occurrence_count = calculate_co_occurrence_count(tran_cds, co_occurrence_matrix)
             results.append({
                 'Threshold': max_d,
                 'Consolidation Group': tran_cds,
@@ -94,9 +93,8 @@ print(results_df)
 2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
 3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
 4. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
-5. **Support and Confidence Calculation**: For each consolidation group, calculate the support and confidence metrics using the co-occurrence matrix.
-6. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs.
-7. **Compile Results**: Store the results in a DataFrame and print it.
+5. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs using a defined function.
+6. **Compile Results**: Store the results in a DataFrame and print it.
 
 ### Result Table:
 The resulting DataFrame (`results_df`) contains the following columns:
@@ -106,6 +104,7 @@ The resulting DataFrame (`results_df`) contains the following columns:
 - **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
 
 This table will help you evaluate the consolidation recommendations, understand the clustering results, and provide valuable metrics for the consolidated groups.
+
 ================================================================================================================================
 To create a new column that shows how many times the elements of the consolidated `TRAN_CD` groups appear together throughout the dataset, you can follow these steps:
 
