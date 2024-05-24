@@ -1,18 +1,20 @@
-Sure, we can create a heatmap using only the `results_df` table. We'll extract the unique `TRAN_CD` from the `Consolidation Group` column and compute the pairwise cosine similarities based on the average cosine similarities of the groups.
+I apologize for that. Let's correct the process and ensure we properly extract and visualize the transaction codes.
 
-### Python Code for Heatmap Using `results_df`:
+Here’s the revised approach:
+
+1. **Extract unique transaction codes from the `Consolidation Group` column.**
+2. **Create a pairwise similarity matrix for these transaction codes based on the provided average cosine similarity.**
+3. **Generate a heatmap to visualize these similarities.**
+
+### Updated Python Code for Heatmap Using `results_df`:
 
 ```python
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics.pairwise import cosine_similarity
 
 # Sample results_df data (replace with the actual results_df)
-# The actual results_df should have columns: Threshold, Consolidation Group, Average Cosine Similarity, Number of TRAN_CD in Group, Co-occurrence Count
-
-# For illustration, here's a simplified version of results_df
 data = {
     'Threshold': [0.1, 0.3, 0.5, 0.7, 0.9],
     'Consolidation Group': [(1, 2, 3), (2, 3, 4), (4, 5, 6), (5, 6, 7), (7, 8, 9)],
@@ -26,8 +28,8 @@ results_df = pd.DataFrame(data)
 # Extract unique TRAN_CDs from the consolidation groups
 unique_tran_cds = sorted(set(tran_cd for group in results_df['Consolidation Group'] for tran_cd in group))
 
-# Initialize a similarity matrix
-similarity_matrix = np.zeros((len(unique_tran_cds), len(unique_tran_cds)))
+# Initialize a similarity matrix with NaN
+similarity_matrix = np.full((len(unique_tran_cds), len(unique_tran_cds)), np.nan)
 
 # Create a dictionary to map TRAN_CDs to their indices
 tran_cd_index = {tran_cd: idx for idx, tran_cd in enumerate(unique_tran_cds)}
@@ -42,13 +44,14 @@ for _, row in results_df.iterrows():
                 idx1 = tran_cd_index[tran_cd1]
                 idx2 = tran_cd_index[tran_cd2]
                 similarity_matrix[idx1, idx2] = avg_similarity
+                similarity_matrix[idx2, idx1] = avg_similarity  # Ensure symmetry
 
-# Create a DataFrame for the heatmap
+# Convert the matrix to a DataFrame for the heatmap
 similarity_df = pd.DataFrame(similarity_matrix, index=unique_tran_cds, columns=unique_tran_cds)
 
 # Plot the heatmap
 plt.figure(figsize=(12, 8))
-sns.heatmap(similarity_df, xticklabels=True, yticklabels=True, cmap='coolwarm', annot=True)
+sns.heatmap(similarity_df, xticklabels=True, yticklabels=True, cmap='coolwarm', annot=True, linewidths=.5)
 plt.title('Heatmap of Average Cosine Similarity Between Consolidated Transaction Codes')
 plt.xlabel('Transaction Code')
 plt.ylabel('Transaction Code')
@@ -57,14 +60,10 @@ plt.show()
 
 ### Explanation:
 1. **Extract Unique Transaction Codes**: Identify all unique `TRAN_CD`s from the consolidation groups in `results_df`.
-2. **Initialize Similarity Matrix**: Create a matrix to hold the similarity values.
+2. **Initialize Similarity Matrix**: Create a matrix initialized with NaN values to hold the similarity values.
 3. **Map Transaction Codes to Indices**: Create a mapping of `TRAN_CD`s to their respective indices in the matrix.
-4. **Populate Similarity Matrix**: Fill the matrix with average cosine similarities from the consolidation groups.
+4. **Populate Similarity Matrix**: Fill the matrix with average cosine similarities from the consolidation groups. Ensure the matrix is symmetric.
 5. **Create DataFrame for Heatmap**: Convert the similarity matrix into a DataFrame for easier plotting.
 6. **Plot the Heatmap**: Use seaborn to create and display a heatmap of the similarities.
 
-### Note:
-- This code assumes that `results_df` has already been created as described in your workflow.
-- The heatmap visually represents the average cosine similarity between consolidated transaction codes, providing a clear picture of their relationships.
-
-This approach uses only the data in `results_df` to create the heatmap, without recalculating the similarities or re-running the clustering function.
+This approach should correctly visualize the relationships between transaction codes as described in `results_df`.
