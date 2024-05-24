@@ -1,6 +1,6 @@
-I see where the issue is. Instead of using `co_occurrence_matrix.columns.levels`, we should directly iterate through the multi-index levels of the `co_occurrence_matrix`. Here’s the corrected function and the updated code:
+Sure! Here’s the updated code with the co-occurrence count calculation moved to the last step in the pipeline:
 
-### Corrected Function and Updated Code:
+### Updated Code:
 
 ```python
 import pandas as pd
@@ -77,21 +77,20 @@ for max_d in thresholds:
             group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
                                                    [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
             avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-            co_occurrence_count = calculate_co_occurrence_count(tran_cds, co_occurrence_matrix)
             results.append({
                 'Threshold': max_d,
                 'Consolidation Group': tran_cds,
                 'Average Cosine Similarity': avg_similarity,
-                'Co-occurrence Count': co_occurrence_count,
                 'Number of TRAN_CD in Group': len(tran_cds)
             })
 
-# Convert results to DataFrame, sort by cosine similarity, and display
+# Convert results to DataFrame, sort by cosine similarity, and drop duplicates
 results_df = pd.DataFrame(results)
 results_df = results_df.sort_values(by='Average Cosine Similarity', ascending=False)
+results_df = results_df.sort_values(by=['Consolidation Group', 'Threshold']).drop_duplicates(subset=['Consolidation Group', 'Average Cosine Similarity', 'Number of TRAN_CD in Group'], keep='first')
 
-# Drop duplicates keeping only the row with the lowest threshold for each duplicate subset
-results_df = results_df.sort_values(by=['Consolidation Group', 'Threshold']).drop_duplicates(subset=['Consolidation Group', 'Average Cosine Similarity', 'Co-occurrence Count', 'Number of TRAN_CD in Group'], keep='first')
+# Calculate co-occurrence count for the final groups and add to the DataFrame
+results_df['Co-occurrence Count'] = results_df['Consolidation Group'].apply(lambda group: calculate_co_occurrence_count(group, co_occurrence_matrix))
 
 print(results_df)
 ```
@@ -101,8 +100,8 @@ print(results_df)
 2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
 3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
 4. **Co-occurrence Matrix Creation**: Create a pivot table where each cell represents the `VOLUME` of a `TRAN_CD` for a specific `RLTN_PWR_ID` and `TIME_KEY`.
-5. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs in the dataset by iterating through each month for each `RLTN_PWR_ID` using the corrected function.
-6. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and drop duplicates while keeping the row with the lowest threshold for each duplicate subset.
+5. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and drop duplicates while keeping the row with the lowest threshold for each duplicate subset.
+6. **Calculate Co-occurrence Count**: After dropping duplicates, calculate the co-occurrence count for each consolidation group and add it to the DataFrame as the last column.
 7. **Display Results**: Print the final DataFrame.
 
 ### Result Table:
@@ -110,12 +109,10 @@ The resulting DataFrame (`results_df`) contains the following columns:
 - **Threshold**: The threshold used for clustering.
 - **Consolidation Group**: The list of `TRAN_CD`s in the group.
 - **Average Cosine Similarity**: The average cosine similarity of the group.
-- **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
 - **Number of TRAN_CD in Group**: The number of `TRAN_CD` in the consolidation group.
+- **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
 
-The table is sorted by the average cosine similarity metric from highest to lowest, and duplicates are dropped based on the specified subset of columns, keeping only the row with the lowest threshold for each duplicate subset.
-
-
+The table is sorted by the average cosine similarity metric from highest to lowest, and duplicates are dropped based on the specified subset of columns, keeping only the row with the lowest threshold for each duplicate subset. The co-occurrence count is calculated and added to the DataFrame at the end.
 =====================================================================================================================
 
 Certainly! Below is the updated code that includes the threshold, consolidation recommendation group, cosine similarity metric, co-occurrence count, and the number of `TRAN_CD` in the consolidation recommendation group. The table is sorted by the cosine similarity metric from highest to lowest.
