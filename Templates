@@ -1,6 +1,6 @@
-Certainly! Here’s the updated code to correctly calculate the co-occurrence count, summing up all co-occurrence cases across the entire dataset, looking at each individual month per `RLTN_PWR_ID`.
+I see where the issue is. Instead of using `co_occurrence_matrix.columns.levels`, we should directly iterate through the multi-index levels of the `co_occurrence_matrix`. Here’s the corrected function and the updated code:
 
-### Updated Code:
+### Corrected Function and Updated Code:
 
 ```python
 import pandas as pd
@@ -56,11 +56,10 @@ co_occurrence_matrix = df_merged.pivot_table(index=['RLTN_PWR_ID', 'TIME_KEY'], 
 # Define a function to calculate co-occurrence count
 def calculate_co_occurrence_count(group, co_occurrence_matrix):
     co_occurrence_count = 0
-    for rlt_id in co_occurrence_matrix.index.get_level_values(0).unique():
-        for month in co_occurrence_matrix.columns.levels[1]:
-            monthly_data = co_occurrence_matrix.loc[(rlt_id, month), group]
-            if all(monthly_data > 0):
-                co_occurrence_count += 1
+    for rlt_id, month in co_occurrence_matrix.index:
+        monthly_data = co_occurrence_matrix.loc[(rlt_id, month), group]
+        if all(monthly_data > 0):
+            co_occurrence_count += 1
     return co_occurrence_count
 
 # Experiment with different max_d values and compile results
@@ -90,16 +89,21 @@ for max_d in thresholds:
 # Convert results to DataFrame, sort by cosine similarity, and display
 results_df = pd.DataFrame(results)
 results_df = results_df.sort_values(by='Average Cosine Similarity', ascending=False)
+
+# Drop duplicates keeping only the row with the lowest threshold for each duplicate subset
+results_df = results_df.sort_values(by=['Consolidation Group', 'Threshold']).drop_duplicates(subset=['Consolidation Group', 'Average Cosine Similarity', 'Co-occurrence Count', 'Number of TRAN_CD in Group'], keep='first')
+
 print(results_df)
 ```
 
 ### Explanation:
-1. **Data Preparation**: We prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
+1. **Data Preparation**: Prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
 2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
 3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
 4. **Co-occurrence Matrix Creation**: Create a pivot table where each cell represents the `VOLUME` of a `TRAN_CD` for a specific `RLTN_PWR_ID` and `TIME_KEY`.
-5. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs in the dataset by iterating through each month for each `RLTN_PWR_ID`.
-6. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and print it.
+5. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs in the dataset by iterating through each month for each `RLTN_PWR_ID` using the corrected function.
+6. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and drop duplicates while keeping the row with the lowest threshold for each duplicate subset.
+7. **Display Results**: Print the final DataFrame.
 
 ### Result Table:
 The resulting DataFrame (`results_df`) contains the following columns:
@@ -109,12 +113,7 @@ The resulting DataFrame (`results_df`) contains the following columns:
 - **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
 - **Number of TRAN_CD in Group**: The number of `TRAN_CD` in the consolidation group.
 
-This table is sorted by the average cosine similarity metric from highest to lowest, providing a clear view of the most similar and frequently co-occurring groups.
-
-
-
-
-
+The table is sorted by the average cosine similarity metric from highest to lowest, and duplicates are dropped based on the specified subset of columns, keeping only the row with the lowest threshold for each duplicate subset.
 
 
 =====================================================================================================================
