@@ -1,383 +1,70 @@
-Sure! Here’s the updated code with the co-occurrence count calculation moved to the last step in the pipeline:
+Sure, we can create a heatmap using only the `results_df` table. We'll extract the unique `TRAN_CD` from the `Consolidation Group` column and compute the pairwise cosine similarities based on the average cosine similarities of the groups.
 
-### Updated Code:
-
-```python
-import pandas as pd
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.cluster.hierarchy import linkage, fcluster
-from collections import defaultdict
-
-# Sample data preparation (replace this with actual dataset)
-# Assuming df is the dataframe created in the previous step
-
-# Example: Creating a smaller sample dataset for illustration
-data = {
-    'RLTN_PWR_ID': np.random.randint(1, 10001, size=50000),
-    'TIME_KEY': np.tile(pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m'), 50000 // 12),
-    'TRAN_CD': np.random.choice([f'TRAN_{i}' for i in range(1, 62)], size=50000),
-    'VOLUME': np.random.randint(0, 100, size=50000)
-}
-
-df = pd.DataFrame(data)
-
-# Generate the pivot table as before
-unique_rlt_ids = df['RLTN_PWR_ID'].unique()
-unique_tran_cd = df['TRAN_CD'].unique()
-time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m').tolist()
-
-all_combinations = pd.MultiIndex.from_product([unique_rlt_ids, time_keys, unique_tran_cd], names=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'])
-df_full = pd.DataFrame(index=all_combinations).reset_index()
-
-df_merged = pd.merge(df_full, df, on=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'], how='left')
-df_merged['VOLUME'] = df_merged['VOLUME'].fillna(0)
-
-pivot_table = df_merged.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x))
-for tran_cd in unique_tran_cd:
-    if tran_cd not in pivot_table.columns:
-        pivot_table[tran_cd] = [[0]*12] * len(pivot_table)
-
-pivot_table = pivot_table[unique_tran_cd]
-final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
-
-# Flatten the lists into a 2D array for each TRAN_CD
-time_series_matrix = np.array([np.concatenate(final_table[col].values) for col in final_table.columns])
-
-# Compute the cosine similarity matrix
-cosine_sim = cosine_similarity(time_series_matrix)
-
-# Transform cosine similarity to distance: distance = 1 - cosine_similarity
-cosine_dist = 1 - cosine_sim
-
-# Create a co-occurrence matrix
-co_occurrence_matrix = df_merged.pivot_table(index=['RLTN_PWR_ID', 'TIME_KEY'], columns='TRAN_CD', values='VOLUME', aggfunc='sum').fillna(0)
-
-# Define a function to calculate co-occurrence count
-def calculate_co_occurrence_count(group, co_occurrence_matrix):
-    co_occurrence_count = 0
-    for rlt_id, month in co_occurrence_matrix.index:
-        monthly_data = co_occurrence_matrix.loc[(rlt_id, month), group]
-        if all(monthly_data > 0):
-            co_occurrence_count += 1
-    return co_occurrence_count
-
-# Experiment with different max_d values and compile results
-results = []
-
-thresholds = [0.1, 0.3, 0.5, 0.7, 0.9]
-for max_d in thresholds:
-    clusters = fcluster(linkage(cosine_dist, 'average'), max_d, criterion='distance')
-    consolidation_groups = defaultdict(list)
-    for i, cluster in enumerate(clusters):
-        consolidation_groups[cluster].append(unique_tran_cd[i])
-
-    for cluster, tran_cds in consolidation_groups.items():
-        if len(tran_cds) > 1:
-            group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
-                                                   [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
-            avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-            results.append({
-                'Threshold': max_d,
-                'Consolidation Group': tran_cds,
-                'Average Cosine Similarity': avg_similarity,
-                'Number of TRAN_CD in Group': len(tran_cds)
-            })
-
-# Convert results to DataFrame, sort by cosine similarity, and drop duplicates
-results_df = pd.DataFrame(results)
-results_df = results_df.sort_values(by='Average Cosine Similarity', ascending=False)
-results_df = results_df.sort_values(by=['Consolidation Group', 'Threshold']).drop_duplicates(subset=['Consolidation Group', 'Average Cosine Similarity', 'Number of TRAN_CD in Group'], keep='first')
-
-# Calculate co-occurrence count for the final groups and add to the DataFrame
-results_df['Co-occurrence Count'] = results_df['Consolidation Group'].apply(lambda group: calculate_co_occurrence_count(group, co_occurrence_matrix))
-
-print(results_df)
-```
-
-### Explanation:
-1. **Data Preparation**: Prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
-2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
-3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
-4. **Co-occurrence Matrix Creation**: Create a pivot table where each cell represents the `VOLUME` of a `TRAN_CD` for a specific `RLTN_PWR_ID` and `TIME_KEY`.
-5. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and drop duplicates while keeping the row with the lowest threshold for each duplicate subset.
-6. **Calculate Co-occurrence Count**: After dropping duplicates, calculate the co-occurrence count for each consolidation group and add it to the DataFrame as the last column.
-7. **Display Results**: Print the final DataFrame.
-
-### Result Table:
-The resulting DataFrame (`results_df`) contains the following columns:
-- **Threshold**: The threshold used for clustering.
-- **Consolidation Group**: The list of `TRAN_CD`s in the group.
-- **Average Cosine Similarity**: The average cosine similarity of the group.
-- **Number of TRAN_CD in Group**: The number of `TRAN_CD` in the consolidation group.
-- **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
-
-The table is sorted by the average cosine similarity metric from highest to lowest, and duplicates are dropped based on the specified subset of columns, keeping only the row with the lowest threshold for each duplicate subset. The co-occurrence count is calculated and added to the DataFrame at the end.
-=====================================================================================================================
-
-Certainly! Below is the updated code that includes the threshold, consolidation recommendation group, cosine similarity metric, co-occurrence count, and the number of `TRAN_CD` in the consolidation recommendation group. The table is sorted by the cosine similarity metric from highest to lowest.
-
-### Updated Code:
+### Python Code for Heatmap Using `results_df`:
 
 ```python
 import pandas as pd
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.cluster.hierarchy import linkage, fcluster
-from collections import defaultdict
-
-# Sample data preparation (replace this with actual dataset)
-# Assuming df is the dataframe created in the previous step
-
-# Example: Creating a smaller sample dataset for illustration
-data = {
-    'RLTN_PWR_ID': np.random.randint(1, 10001, size=50000),
-    'TIME_KEY': np.tile(pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m'), 50000 // 12),
-    'TRAN_CD': np.random.choice([f'TRAN_{i}' for i in range(1, 62)], size=50000),
-    'VOLUME': np.random.randint(0, 100, size=50000)
-}
-
-df = pd.DataFrame(data)
-
-# Generate the pivot table as before
-unique_rlt_ids = df['RLTN_PWR_ID'].unique()
-unique_tran_cd = df['TRAN_CD'].unique()
-time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m').tolist()
-
-all_combinations = pd.MultiIndex.from_product([unique_rlt_ids, time_keys, unique_tran_cd], names=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'])
-df_full = pd.DataFrame(index=all_combinations).reset_index()
-
-df_merged = pd.merge(df_full, df, on=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'], how='left')
-df_merged['VOLUME'] = df_merged['VOLUME'].fillna(0)
-
-pivot_table = df_merged.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x))
-for tran_cd in unique_tran_cd:
-    if tran_cd not in pivot_table.columns:
-        pivot_table[tran_cd] = [[0]*12] * len(pivot_table)
-
-pivot_table = pivot_table[unique_tran_cd]
-final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
-
-# Flatten the lists into a 2D array for each TRAN_CD
-time_series_matrix = np.array([np.concatenate(final_table[col].values) for col in final_table.columns])
-
-# Compute the cosine similarity matrix
-cosine_sim = cosine_similarity(time_series_matrix)
-
-# Transform cosine similarity to distance: distance = 1 - cosine_similarity
-cosine_dist = 1 - cosine_sim
-
-# Create a co-occurrence matrix
-co_occurrence_matrix = pd.crosstab(df['RLTN_PWR_ID'], df['TRAN_CD'])
-
-# Define a function to calculate co-occurrence count
-def calculate_co_occurrence_count(group, co_occurrence_matrix):
-    co_occurrence_count = 0
-    for rlt_id in co_occurrence_matrix.index:
-        co_occurrence_count += all(co_occurrence_matrix.loc[rlt_id, tran_cd] > 0 for tran_cd in group)
-    return co_occurrence_count
-
-# Experiment with different max_d values and compile results
-results = []
-
-thresholds = [0.1, 0.3, 0.5, 0.7, 0.9]
-for max_d in thresholds:
-    clusters = fcluster(linkage(cosine_dist, 'average'), max_d, criterion='distance')
-    consolidation_groups = defaultdict(list)
-    for i, cluster in enumerate(clusters):
-        consolidation_groups[cluster].append(unique_tran_cd[i])
-
-    for cluster, tran_cds in consolidation_groups.items():
-        if len(tran_cds) > 1:
-            group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
-                                                   [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
-            avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-            co_occurrence_count = calculate_co_occurrence_count(tran_cds, co_occurrence_matrix)
-            results.append({
-                'Threshold': max_d,
-                'Consolidation Group': tran_cds,
-                'Average Cosine Similarity': avg_similarity,
-                'Co-occurrence Count': co_occurrence_count,
-                'Number of TRAN_CD in Group': len(tran_cds)
-            })
-
-# Convert results to DataFrame, sort by cosine similarity, and display
-results_df = pd.DataFrame(results)
-results_df = results_df.sort_values(by='Average Cosine Similarity', ascending=False)
-print(results_df)
-```
-
-### Explanation:
-1. **Data Preparation**: We prepare the sample dataset and generate the pivot table with 12-month `VOLUME` time series.
-2. **Cosine Similarity Calculation**: Compute the cosine similarity matrix.
-3. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
-4. **Hierarchical Clustering with Various Thresholds**: Experiment with different `max_d` values to see how they affect the clustering.
-5. **Co-occurrence Count Calculation**: For each group, calculate the number of times the group co-occurs using a defined function.
-6. **Compile Results**: Store the results in a DataFrame, include the number of `TRAN_CD` in each group, sort by cosine similarity, and print it.
-
-### Result Table:
-The resulting DataFrame (`results_df`) contains the following columns:
-- **Threshold**: The threshold used for clustering.
-- **Consolidation Group**: The list of `TRAN_CD`s in the group.
-- **Average Cosine Similarity**: The average cosine similarity of the group.
-- **Co-occurrence Count**: The number of times the group co-occurs in the dataset.
-- **Number of TRAN_CD in Group**: The number of `TRAN_CD` in the consolidation group.
-
-This table is sorted by the average cosine similarity metric from highest to lowest, providing a clear view of the most similar and frequently co-occurring groups.
-================================================================================================================================
-To create a new column that shows how many times the elements of the consolidated `TRAN_CD` groups appear together throughout the dataset, you can follow these steps:
-
-1. Create the consolidated groups using the cosine similarity and hierarchical clustering as before.
-2. Count the co-occurrences of `TRAN_CD` elements within the same `RLTN_PWR_ID` across the dataset.
-3. Update the consolidated groups to include this co-occurrence count.
-
-### Updated Python Code:
-
-```python
-import pandas as pd
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.cluster.hierarchy import linkage, fcluster
-from collections import defaultdict
-
-# Sample data preparation (replace this with actual dataset)
-# Assuming df is the dataframe created in the previous step
-
-# Example: Creating a smaller sample dataset for illustration
-data = {
-    'RLTN_PWR_ID': np.random.randint(1, 10001, size=50000),
-    'TIME_KEY': np.tile(pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m'), 50000 // 12),
-    'TRAN_CD': np.random.choice([f'TRAN_{i}' for i in range(1, 62)], size=50000),
-    'VOLUME': np.random.randint(0, 100, size=50000)
-}
-
-df = pd.DataFrame(data)
-
-# Generate the pivot table as before
-unique_rlt_ids = df['RLTN_PWR_ID'].unique()
-unique_tran_cd = df['TRAN_CD'].unique()
-time_keys = pd.date_range(start='2023-01-01', periods=12, freq='MS').strftime('%Y-%m').tolist()
-
-all_combinations = pd.MultiIndex.from_product([unique_rlt_ids, time_keys, unique_tran_cd], names=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'])
-df_full = pd.DataFrame(index=all_combinations).reset_index()
-
-df_merged = pd.merge(df_full, df, on=['RLTN_PWR_ID', 'TIME_KEY', 'TRAN_CD'], how='left')
-df_merged['VOLUME'] = df_merged['VOLUME'].fillna(0)
-
-pivot_table = df_merged.pivot_table(index='RLTN_PWR_ID', columns='TRAN_CD', values='VOLUME', aggfunc=lambda x: list(x))
-for tran_cd in unique_tran_cd:
-    if tran_cd not in pivot_table.columns:
-        pivot_table[tran_cd] = [[0]*12] * len(pivot_table)
-
-pivot_table = pivot_table[unique_tran_cd]
-final_table = pivot_table.applymap(lambda x: x if isinstance(x, list) else [0]*12)
-
-# Flatten the lists into a 2D array for each TRAN_CD
-time_series_matrix = np.array([np.concatenate(final_table[col].values) for col in final_table.columns])
-
-# Compute the cosine similarity matrix
-cosine_sim = cosine_similarity(time_series_matrix)
-
-# Transform cosine similarity to distance: distance = 1 - cosine_similarity
-cosine_dist = 1 - cosine_sim
-
-# Use hierarchical clustering to group similar TRAN_CDs
-Z = linkage(cosine_dist, 'average')
-max_d = 0.1  # Threshold for clustering (this might need adjustment based on your data)
-clusters = fcluster(Z, max_d, criterion='distance')
-
-# Create a dictionary to hold consolidation groups
-consolidation_groups = defaultdict(list)
-for i, cluster in enumerate(clusters):
-    consolidation_groups[cluster].append(unique_tran_cd[i])
-
-# Calculate the average cosine similarity for each group and count co-occurrences
-consolidation_similarities = {}
-co_occurrence_counts = {}
-
-# Create a co-occurrence matrix
-co_occurrence_matrix = pd.crosstab(df['RLTN_PWR_ID'], df['TRAN_CD'])
-
-for cluster, tran_cds in consolidation_groups.items():
-    if len(tran_cds) > 1:
-        group_similarities = cosine_sim[np.ix_([unique_tran_cd.tolist().index(cd) for cd in tran_cds], 
-                                               [unique_tran_cd.tolist().index(cd) for cd in tran_cds])]
-        avg_similarity = np.mean(group_similarities[np.triu_indices_from(group_similarities, k=1)])
-        consolidation_similarities[cluster] = (tran_cds, avg_similarity)
-        
-        # Calculate co-occurrence count
-        co_occurrence_count = 0
-        for rlt_id in co_occurrence_matrix.index:
-            co_occurrence_count += all(co_occurrence_matrix.loc[rlt_id, tran_cd] > 0 for tran_cd in tran_cds)
-        co_occurrence_counts[cluster] = co_occurrence_count
-
-# Output the recommended consolidation groups with co-occurrence counts
-for cluster, (tran_cds, avg_similarity) in consolidation_similarities.items():
-    print(f"Group {cluster}: TRAN_CDs {tran_cds} with average cosine similarity {avg_similarity:.2f} and co-occurrence count {co_occurrence_counts[cluster]}")
-```
-
-### Explanation:
-
-1. **Data Preparation**: Generate or use the provided dataset and ensure each `RLTN_PWR_ID` and `TRAN_CD` has a 12-month `VOLUME` time series.
-2. **Pivot the Table**: Create a pivot table where rows represent `RLTN_PWR_ID` and columns represent `TRAN_CD`, with cell values containing lists of 12 monthly `VOLUME` values.
-3. **Flatten the Lists**: Flatten the lists of 12-month volumes into a 2D array where each row represents a `TRAN_CD` and each column represents a month.
-4. **Cosine Similarity Calculation**: Compute the cosine similarity between the time series of each pair of `TRAN_CD`s.
-5. **Transform to Distance Matrix**: Convert the similarity measure to a distance measure suitable for clustering.
-6. **Hierarchical Clustering**: Perform hierarchical clustering on the distance matrix to group similar `TRAN_CD`s.
-7. **Create Co-occurrence Matrix**: Create a co-occurrence matrix to track how often `TRAN_CD`s appear together for each `RLTN_PWR_ID`.
-8. **Count Co-occurrences**: For each consolidated group of `TRAN_CD`s, count how many times the elements of the group appear together in the same `RLTN_PWR_ID`.
-9. **Output Groups**: Print the recommended consolidation groups with their average cosine similarity and co-occurrence counts.
-
-By following these steps, the updated code not only identifies similar `TRAN_CD`s for consolidation based on their usage patterns over time but also provides a count of how often these consolidated groups appear together in the dataset.
-
-=================================================================
-
-Choosing an appropriate threshold value (`max_d`) for hierarchical clustering depends on the specifics of your data and the desired granularity of the clusters. Here are some guidelines to help you decide on the `max_d` value:
-
-### Understanding `max_d`
-- **Low Threshold (e.g., 0.1)**: Results in more, smaller clusters. This means that only very similar `TRAN_CD`s will be grouped together.
-- **High Threshold (e.g., 0.9)**: Results in fewer, larger clusters. This means that `TRAN_CD`s with lower similarity will be grouped together, leading to broader, less specific clusters.
-
-### Factors to Consider:
-1. **Data Characteristics**: The distribution of your similarity values can guide your choice. If most similarities are high, a lower threshold might be appropriate to capture finer distinctions.
-2. **Domain Knowledge**: Understanding the business context or domain can help determine how similar `TRAN_CD`s need to be to be considered for consolidation.
-3. **Analysis of Dendrogram**: Plotting the dendrogram (a tree-like diagram of the hierarchical clustering) can help visualize the clustering process and identify a suitable threshold.
-
-### Practical Approach:
-1. **Plot the Dendrogram**: Visualize the hierarchical clustering to see the natural breaks in the data.
-2. **Experiment with Thresholds**: Test different threshold values and evaluate the resulting clusters.
-3. **Validation**: Validate the clusters using domain knowledge or other clustering validation techniques (e.g., silhouette score).
-
-### Example Code for Dendrogram Plotting and Experimentation:
-
-```python
+import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.cluster.hierarchy import dendrogram
+from sklearn.metrics.pairwise import cosine_similarity
 
-# Plot the dendrogram
-plt.figure(figsize=(10, 7))
-dendrogram(Z, labels=unique_tran_cd, leaf_rotation=90, leaf_font_size=8)
-plt.title('Dendrogram for TRAN_CD Clustering')
-plt.xlabel('TRAN_CD')
-plt.ylabel('Distance')
+# Sample results_df data (replace with the actual results_df)
+# The actual results_df should have columns: Threshold, Consolidation Group, Average Cosine Similarity, Number of TRAN_CD in Group, Co-occurrence Count
+
+# For illustration, here's a simplified version of results_df
+data = {
+    'Threshold': [0.1, 0.3, 0.5, 0.7, 0.9],
+    'Consolidation Group': [(1, 2, 3), (2, 3, 4), (4, 5, 6), (5, 6, 7), (7, 8, 9)],
+    'Average Cosine Similarity': [0.95, 0.85, 0.80, 0.75, 0.70],
+    'Number of TRAN_CD in Group': [3, 3, 3, 3, 3],
+    'Co-occurrence Count': [10, 15, 20, 25, 30]
+}
+
+results_df = pd.DataFrame(data)
+
+# Extract unique TRAN_CDs from the consolidation groups
+unique_tran_cds = sorted(set(tran_cd for group in results_df['Consolidation Group'] for tran_cd in group))
+
+# Initialize a similarity matrix
+similarity_matrix = np.zeros((len(unique_tran_cds), len(unique_tran_cds)))
+
+# Create a dictionary to map TRAN_CDs to their indices
+tran_cd_index = {tran_cd: idx for idx, tran_cd in enumerate(unique_tran_cds)}
+
+# Populate the similarity matrix using the average cosine similarities
+for _, row in results_df.iterrows():
+    group = row['Consolidation Group']
+    avg_similarity = row['Average Cosine Similarity']
+    for tran_cd1 in group:
+        for tran_cd2 in group:
+            if tran_cd1 != tran_cd2:
+                idx1 = tran_cd_index[tran_cd1]
+                idx2 = tran_cd_index[tran_cd2]
+                similarity_matrix[idx1, idx2] = avg_similarity
+
+# Create a DataFrame for the heatmap
+similarity_df = pd.DataFrame(similarity_matrix, index=unique_tran_cds, columns=unique_tran_cds)
+
+# Plot the heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(similarity_df, xticklabels=True, yticklabels=True, cmap='coolwarm', annot=True)
+plt.title('Heatmap of Average Cosine Similarity Between Consolidated Transaction Codes')
+plt.xlabel('Transaction Code')
+plt.ylabel('Transaction Code')
 plt.show()
-
-# Experiment with different max_d values
-thresholds = [0.1, 0.3, 0.5, 0.7, 0.9]
-for max_d in thresholds:
-    clusters = fcluster(Z, max_d, criterion='distance')
-    consolidation_groups = defaultdict(list)
-    for i, cluster in enumerate(clusters):
-        consolidation_groups[cluster].append(unique_tran_cd[i])
-
-    print(f"Threshold {max_d}:")
-    for cluster, tran_cds in consolidation_groups.items():
-        print(f"  Group {cluster}: {tran_cds}")
-    print()
 ```
 
 ### Explanation:
-1. **Plot the Dendrogram**: Helps visualize the hierarchical clustering process and identify suitable thresholds.
-2. **Experiment with Thresholds**: Allows you to see how different thresholds affect the number and composition of clusters.
+1. **Extract Unique Transaction Codes**: Identify all unique `TRAN_CD`s from the consolidation groups in `results_df`.
+2. **Initialize Similarity Matrix**: Create a matrix to hold the similarity values.
+3. **Map Transaction Codes to Indices**: Create a mapping of `TRAN_CD`s to their respective indices in the matrix.
+4. **Populate Similarity Matrix**: Fill the matrix with average cosine similarities from the consolidation groups.
+5. **Create DataFrame for Heatmap**: Convert the similarity matrix into a DataFrame for easier plotting.
+6. **Plot the Heatmap**: Use seaborn to create and display a heatmap of the similarities.
 
-By following these steps, you can better understand your data and make an informed decision about the appropriate `max_d` value for your clustering task.
+### Note:
+- This code assumes that `results_df` has already been created as described in your workflow.
+- The heatmap visually represents the average cosine similarity between consolidated transaction codes, providing a clear picture of their relationships.
+
+This approach uses only the data in `results_df` to create the heatmap, without recalculating the similarities or re-running the clustering function.
