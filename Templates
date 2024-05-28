@@ -66,6 +66,7 @@ Here is a Python script to achieve the solution:
 
 ```python
 import pandas as pd
+from dateutil.parser import parse
 import re
 
 # Define expected fields and their properties
@@ -79,8 +80,6 @@ required_fields = {
     "Payee 2": {"length": 50, "type": "text", "required": False},
     "Note": {"length": 15, "type": "text", "required": False}
 }
-
-date_formats = ["%m%d%y", "%m%d%Y", "%m/%d/%y", "%m/%d/%Y", "%Y%m%d"]
 
 def validate_and_format(df):
     errors = []
@@ -97,13 +96,9 @@ def validate_and_format(df):
             elif properties["type"] == "decimal":
                 df[field] = df[field].apply(lambda x: f"{float(x):.2f}".replace(",", ""))
             elif properties["type"] == "date":
-                for fmt in date_formats:
-                    try:
-                        df[field] = pd.to_datetime(df[field], format=fmt).dt.strftime("%m%d%Y")
-                        break
-                    except ValueError:
-                        continue
-                else:
+                try:
+                    df[field] = df[field].apply(lambda x: parse(str(x)).strftime("%m%d%Y"))
+                except ValueError:
                     errors.append(f"Invalid date format in field: {field}")
             elif properties["type"] == "action":
                 df[field] = df[field].apply(lambda x: x if x in ["I", "V"] else "I")
@@ -136,6 +131,7 @@ def process_file(file_path):
 # Example usage
 file_path = "/mnt/data/example.csv"  # Replace with the actual file path
 process_file(file_path)
+
 ```
 
 This script reads the file, validates and formats the fields according to the specifications, and outputs a processed file. Ensure the file path points to the correct location of your input file. Let me know if you need any modifications or additional functionality.
