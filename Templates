@@ -1,42 +1,141 @@
-# Extract unique TRAN_CDs from the consolidation groups
-unique_tran_cds = sorted(set(tran_cd for group in results_df['Consolidation Group'] for tran_cd in group))
+Thank you for the second screenshot. Here’s a summary of the additional details provided:
 
-# Initialize a similarity matrix with NaN
-similarity_matrix = np.full((len(unique_tran_cds), len(unique_tran_cds)), np.nan)
+### Summary of the Second Screenshot
 
-# Create a dictionary to map TRAN_CDs to their indices
-tran_cd_index = {tran_cd: idx for idx, tran_cd in enumerate(unique_tran_cds)}
+#### Field Definitions and Requirements:
+- **Account Number**: 
+  - Length: 10 (csv), 10 (txt, fixed width)
+  - Format: Numeric
+  - Required
+- **Serial Number**: 
+  - Length: 10 (csv), 10 (txt, fixed width)
+  - Format: Numeric
+  - Required
+- **Issued Amount**: 
+  - Length: 11 (csv, up to 11 characters), 11 (txt, fixed width)
+  - Format: Decimal (without commas)
+  - Required
+- **Date**: 
+  - Length: 10 (csv), 10 (txt, fixed width)
+  - Format: MMDDYY, MMDDYYYY, MM/DD/YY, MM/DD/YYYY, YYYYMMDD
+  - Required
+- **Action**: 
+  - Length: 1 (csv and txt)
+  - Format: I (Issue) or V (Void)
+  - Required
+- **Payee 1**: 
+  - Length: 50 (csv), 50 (txt, fixed width)
+  - Format: Text
+  - Required if client has Check Positive Pay with Payee Positive Pay
+- **Payee 2**: 
+  - Length: 50 (csv), 50 (txt, fixed width)
+  - Format: Text
+  - Optional
+- **Note**: 
+  - Length: 15 (csv), 15 (txt, fixed width)
+  - Format: Text
+  - Optional
 
-# Populate the similarity matrix using the average cosine similarities
-for _, row in results_df.iterrows():
-    group = row['Consolidation Group']
-    avg_similarity = row['Average Cosine Similarity']
-    for tran_cd1 in group:
-        for tran_cd2 in group:
-            if tran_cd1 != tran_cd2:
-                idx1 = tran_cd_index[tran_cd1]
-                idx2 = tran_cd_index[tran_cd2]
-                similarity_matrix[idx1, idx2] = avg_similarity
-                similarity_matrix[idx2, idx1] = avg_similarity  # Ensure symmetry
+#### Ideal Workflow:
+1. User uploads the file into PINACLE.
+   - Provides all required fields in the correct format.
+   - Provides either a csv or txt file.
+2. Solution can read the file and automatically identify fields.
+   - Reads file without a template and supports various formatting.
+   - Verifies all required fields are present.
+3. If unsure, the solution prompts the user for confirmation.
+4. Solution translates all submitted fields to meet formatting requirements.
+5. Issued items are processed in scheduled batch jobs throughout the day.
 
-# Convert the matrix to a DataFrame for the heatmap
-similarity_df = pd.DataFrame(similarity_matrix, index=unique_tran_cds, columns=unique_tran_cds)
+### Solution Approach
 
-# Plot the heatmap
-plt.figure(figsize=(12, 8))
-sns.heatmap(similarity_df, xticklabels=True, yticklabels=True, cmap='coolwarm', annot=True, linewidths=.5)
-plt.title('Heatmap of Average Cosine Similarity Between Consolidated Transaction Codes')
-plt.xlabel('Transaction Code')
-plt.ylabel('Transaction Code')
-plt.show()
+The goal is to create a Python script to read, validate, and process these files according to the given specifications.
+
+#### Steps to Solve the Problem:
+1. **Read the File**: Load the file (csv or txt) into a dataframe.
+2. **Validate Fields**:
+   - Ensure required fields are present.
+   - Check field lengths and formats.
+   - Handle common formatting issues (e.g., date formats, missing leading zeros).
+3. **Transform Data**: Adjust fields to meet the specified format.
+4. **Output Valid File**: Save the validated and transformed data into a new file.
+
+#### Python Code
+
+Here is a Python script to achieve the solution:
+
+```python
+import pandas as pd
+import re
+
+# Define expected fields and their properties
+required_fields = {
+    "Account Number": {"length": 10, "type": "numeric", "required": True},
+    "Serial Number": {"length": 10, "type": "numeric", "required": True},
+    "Issued Amount": {"length": 11, "type": "decimal", "required": True},
+    "Date": {"length": 10, "type": "date", "required": True},
+    "Action": {"length": 1, "type": "action", "required": True},
+    "Payee 1": {"length": 50, "type": "text", "required": True},
+    "Payee 2": {"length": 50, "type": "text", "required": False},
+    "Note": {"length": 15, "type": "text", "required": False}
+}
+
+date_formats = ["%m%d%y", "%m%d%Y", "%m/%d/%y", "%m/%d/%Y", "%Y%m%d"]
+
+def validate_and_format(df):
+    errors = []
+    
+    # Validate each field
+    for field, properties in required_fields.items():
+        if properties["required"] and field not in df.columns:
+            errors.append(f"Missing required field: {field}")
+            continue
+        
+        if field in df.columns:
+            if properties["type"] == "numeric":
+                df[field] = df[field].apply(lambda x: str(x).zfill(properties["length"]))
+            elif properties["type"] == "decimal":
+                df[field] = df[field].apply(lambda x: f"{float(x):.2f}".replace(",", ""))
+            elif properties["type"] == "date":
+                for fmt in date_formats:
+                    try:
+                        df[field] = pd.to_datetime(df[field], format=fmt).dt.strftime("%m%d%Y")
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    errors.append(f"Invalid date format in field: {field}")
+            elif properties["type"] == "action":
+                df[field] = df[field].apply(lambda x: x if x in ["I", "V"] else "I")
+            elif properties["type"] == "text":
+                df[field] = df[field].apply(lambda x: str(x)[:properties["length"]])
+    
+    return df, errors
+
+def process_file(file_path):
+    file_type = file_path.split(".")[-1]
+    
+    if file_type == "csv":
+        df = pd.read_csv(file_path)
+    elif file_type == "txt":
+        df = pd.read_csv(file_path, delimiter="\t")
+    else:
+        raise ValueError("Unsupported file type")
+
+    df, errors = validate_and_format(df)
+
+    if errors:
+        for error in errors:
+            print(error)
+        return None
+
+    output_path = file_path.replace(f".{file_type}", "_processed.csv")
+    df.to_csv(output_path, index=False)
+    print(f"File processed and saved to {output_path}")
+
+# Example usage
+file_path = "/mnt/data/example.csv"  # Replace with the actual file path
+process_file(file_path)
 ```
 
-### Explanation:
-1. **Extract Unique Transaction Codes**: Identify all unique `TRAN_CD`s from the consolidation groups in `results_df`.
-2. **Initialize Similarity Matrix**: Create a matrix initialized with NaN values to hold the similarity values.
-3. **Map Transaction Codes to Indices**: Create a mapping of `TRAN_CD`s to their respective indices in the matrix.
-4. **Populate Similarity Matrix**: Fill the matrix with average cosine similarities from the consolidation groups. Ensure the matrix is symmetric.
-5. **Create DataFrame for Heatmap**: Convert the similarity matrix into a DataFrame for easier plotting.
-6. **Plot the Heatmap**: Use seaborn to create and display a heatmap of the similarities.
-
-This approach should correctly visualize the relationships between transaction codes as described in `results_df`.
+This script reads the file, validates and formats the fields according to the specifications, and outputs a processed file. Ensure the file path points to the correct location of your input file. Let me know if you need any modifications or additional functionality.
