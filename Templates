@@ -1,92 +1,28 @@
-Here's the updated script to preprocess the data and convert the date to "MM-dd-YYYY" format using the `dateutil` library:
-
-```python
 import pandas as pd
-from dateutil import parser
 
-def parse_line(line):
-    # Strip any surrounding whitespace
-    line = line.strip()
-    
-    # Initialize all variables
-    action = ''
-    payee_1 = ''
-    date = ''
-    issued_amount = ''
-    serial_number = ''
-    account_number = ''
-    
-    # Extract Action (last letter which is 'I' or 'V')
-    if len(line) >= 1 and line[-1] in ['I', 'V']:
-        action = line[-1]
-        line = line[:-1]
+# Read the original CSV file
+file_path = 'your_file.csv'  # Replace with your actual file path
+df = pd.read_csv(file_path)
 
-    # Extract Payee 1 (preceding all letters until digits)
-    while len(line) > 0 and not line[-1].isdigit():
-        payee_1 = line[-1] + payee_1
-        line = line[:-1]
-    payee_1 = payee_1.strip()
+# Calculate the number of times we need to replicate the original rows
+num_original_rows = len(df)
+num_target_rows = 4358
 
-    # Extract Date (preceding 8 digits)
-    if len(line) >= 8:
-        date = line[-8:]
-        line = line[:-8]
+# If the original number of rows is greater than the target, we cannot proceed
+if num_original_rows > num_target_rows:
+    raise ValueError("The number of original rows is greater than the target number of rows.")
 
-    # Extract Issued Amount (preceding 6 elements)
-    if len(line) >= 6:
-        issued_amount = line[-6:]
-        line = line[:-6]
+# Calculate the number of times we need to replicate the original rows
+num_repeats = (num_target_rows // num_original_rows) + 1
 
-    # Extract Serial Number (preceding 10 digits)
-    if len(line) >= 10:
-        serial_number = line[-10:]
-        line = line[:-10]
+# Replicate the rows
+expanded_df = pd.concat([df] * num_repeats, ignore_index=True)
 
-    # Extract Account Number (preceding 10 digits)
-    if len(line) >= 10:
-        account_number = line[-10:]
+# Trim the DataFrame to the target number of rows
+expanded_df = expanded_df.iloc[:num_target_rows]
 
-    return {
-        'Account Number': account_number,
-        'Serial Number': serial_number,
-        'Action': action,
-        'Payee 1': payee_1,
-        'Date': date,
-        'Issued Amount': issued_amount
-    }
+# Save the expanded DataFrame to a new CSV file
+output_file_path = 'expanded_file.csv'  # Replace with your desired output file path
+expanded_df.to_csv(output_file_path, index=False)
 
-# Convert date to "MM-dd-YYYY" format
-def format_date(date_str):
-    try:
-        date = parser.parse(date_str)
-        return date.strftime("%m-%d-%Y")
-    except ValueError:
-        return date_str
-
-# Read the text file
-file_path = 'your_file.txt'  # Replace with your actual file path
-with open(file_path, 'r') as file:
-    lines = file.readlines()
-
-# Parse each line
-data = [parse_line(line.strip()) for line in lines]
-
-# Create a DataFrame
-df = pd.DataFrame(data)
-
-# Format the Date column
-df['Date'] = df['Date'].apply(format_date)
-
-# Display the DataFrame
-print(df)
-
-# Example: Saving to a CSV file
-df.to_csv('parsed_output.csv', index=False)
-```
-
-In this updated script:
-
-1. After parsing each line, the `format_date` function uses `dateutil.parser` to convert the date to "MM-dd-YYYY" format.
-2. The `apply` function is used to convert the 'Date' column in the DataFrame.
-
-Replace `'your_file.txt'` with the actual path to your text file to use this script.
+print(f"The CSV file has been expanded to {num_target_rows} rows and saved to {output_file_path}")
