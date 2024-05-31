@@ -1,9 +1,8 @@
-The `IndexError` indicates that the string may not be long enough to accommodate the slicing operations as specified. To handle this issue gracefully, we'll need to add some error handling to ensure each segment is correctly extracted even if the input line is not of the expected length.
-
-Here's the revised script with added error handling:
+Here's the updated script to preprocess the data and convert the date to "MM-dd-YYYY" format using the `dateutil` library:
 
 ```python
 import pandas as pd
+from dateutil import parser
 
 def parse_line(line):
     # Strip any surrounding whitespace
@@ -56,6 +55,14 @@ def parse_line(line):
         'Issued Amount': issued_amount
     }
 
+# Convert date to "MM-dd-YYYY" format
+def format_date(date_str):
+    try:
+        date = parser.parse(date_str)
+        return date.strftime("%m-%d-%Y")
+    except ValueError:
+        return date_str
+
 # Read the text file
 file_path = 'your_file.txt'  # Replace with your actual file path
 with open(file_path, 'r') as file:
@@ -67,6 +74,9 @@ data = [parse_line(line.strip()) for line in lines]
 # Create a DataFrame
 df = pd.DataFrame(data)
 
+# Format the Date column
+df['Date'] = df['Date'].apply(format_date)
+
 # Display the DataFrame
 print(df)
 
@@ -74,10 +84,9 @@ print(df)
 df.to_csv('parsed_output.csv', index=False)
 ```
 
-In this script:
+In this updated script:
 
-1. We ensure that each segment is only extracted if the remaining part of the string is long enough to accommodate it.
-2. We use a loop to extract the `Payee 1` column, as it contains all non-digit characters preceding the date.
-3. Error handling ensures that no `IndexError` occurs even if the input line is shorter than expected.
+1. After parsing each line, the `format_date` function uses `dateutil.parser` to convert the date to "MM-dd-YYYY" format.
+2. The `apply` function is used to convert the 'Date' column in the DataFrame.
 
 Replace `'your_file.txt'` with the actual path to your text file to use this script.
