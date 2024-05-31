@@ -1,41 +1,42 @@
-Here's a Python script to process the text file and extract the columns based on the given information:
+Here's the Python script to process the text file and extract the columns based on the provided rules:
 
 ```python
 import pandas as pd
 
 def parse_line(line):
+    # Strip any surrounding whitespace
+    line = line.strip()
+    
     # Extract Action (last letter which is 'I' or 'V')
     action = line[-1]
-    
-    # The remaining part is for other columns
-    remaining = line[:-1]
-    
-    # Extract Payee 1 (all characters before Date)
-    payee_1_end = len(remaining) - 8 - 6 - 10 - 10
-    payee_1 = remaining[:payee_1_end].strip()
-    
-    # Extract Date (last 8 digits before Issued Amount)
-    date_end = len(remaining) - 6 - 10 - 10
-    date = remaining[payee_1_end:date_end]
-    
-    # Extract Issued Amount (last 6 elements before Serial Number)
-    issued_amount_end = len(remaining) - 10 - 10
-    issued_amount = remaining[date_end:issued_amount_end]
-    
-    # Extract Serial Number (last 10 digits before Account Number)
-    serial_number_end = len(remaining) - 10
-    serial_number = remaining[issued_amount_end:serial_number_end]
-    
-    # Extract Account Number (first 10 digits)
-    account_number = remaining[serial_number_end:]
-    
+    line = line[:-1]
+
+    # Extract Payee 1 (preceding all letters until digits)
+    payee_1 = ''.join([char for char in reversed(line) if not char.isdigit()]).strip()[::-1]
+    line = line[:-len(payee_1)]
+
+    # Extract Date (preceding 8 digits)
+    date = line[-8:]
+    line = line[:-8]
+
+    # Extract Issued Amount (preceding 6 elements)
+    issued_amount = line[-6:]
+    line = line[:-6]
+
+    # Extract Serial Number (preceding 10 digits)
+    serial_number = line[-10:]
+    line = line[:-10]
+
+    # Extract Account Number (preceding 10 digits)
+    account_number = line[-10:]
+
     return {
         'Account Number': account_number,
         'Serial Number': serial_number,
-        'Issued Amount': issued_amount,
-        'Date': date,
+        'Action': action,
         'Payee 1': payee_1,
-        'Action': action
+        'Date': date,
+        'Issued Amount': issued_amount
     }
 
 # Read the text file
@@ -56,12 +57,12 @@ print(df)
 df.to_csv('parsed_output.csv', index=False)
 ```
 
-In this script:
+This script does the following:
 
-1. The `parse_line` function extracts the columns from each line based on the given rules.
-2. The script reads the lines from the text file.
-3. Each line is parsed using the `parse_line` function to extract the necessary columns.
-4. A DataFrame is created from the parsed data.
-5. The DataFrame is printed, and you can also save it to a CSV file if needed.
+1. Defines the `parse_line` function to parse each line of the text file and extract the columns based on the given rules.
+2. Reads the lines from the text file.
+3. Parses each line using the `parse_line` function.
+4. Creates a DataFrame from the parsed data.
+5. Prints the DataFrame and saves it to a CSV file if desired.
 
-Replace `'your_file.txt'` with the actual path to your text file.
+Replace `'your_file.txt'` with the actual path to your text file to use this script.
