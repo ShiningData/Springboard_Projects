@@ -1,28 +1,59 @@
+Here's a Python script to process the CSV file based on the given requirements:
+
+```python
 import pandas as pd
+from datetime import datetime
 
-# Read the original CSV file
+def process_payee(payee):
+    # Capitalize and switch last name and first name
+    if ',' in payee:
+        last_name, first_name = payee.split(',', 1)
+        return f"{first_name.strip().capitalize()} {last_name.strip().capitalize()}"
+    return payee.capitalize()
+
+def process_date(date_str):
+    try:
+        date = datetime.strptime(date_str, "%m%d%Y")
+        return date.strftime("%m-%d-%Y")
+    except ValueError:
+        return "Invalid Date"
+
+def process_serial_number(serial):
+    return serial.zfill(10)
+
+def process_action(action):
+    return action.capitalize()
+
+def process_account_number(account_number):
+    return account_number.zfill(10)
+
+# Read the CSV file without header
 file_path = 'your_file.csv'  # Replace with your actual file path
-df = pd.read_csv(file_path)
+df = pd.read_csv(file_path, header=None)
 
-# Calculate the number of times we need to replicate the original rows
-num_original_rows = len(df)
-num_target_rows = 4358
+# Apply the transformations
+df[0] = df[0].apply(process_payee)  # Payee 1
+df[1] = df[1].apply(process_date)  # Date
+df[2] = df[2].apply(process_serial_number)  # Serial Number
+df[3] = df[3].apply(process_action)  # Action
+df[4] = df[4].apply(process_account_number)  # Account Number
 
-# If the original number of rows is greater than the target, we cannot proceed
-if num_original_rows > num_target_rows:
-    raise ValueError("The number of original rows is greater than the target number of rows.")
+# Rename the columns
+df.columns = ["Payee 1", "Date", "Serial Number", "Action", "Account Number", "Issued Amount"]
 
-# Calculate the number of times we need to replicate the original rows
-num_repeats = (num_target_rows // num_original_rows) + 1
+# Save the processed DataFrame to a new CSV file
+output_file_path = 'processed_file.csv'  # Replace with your desired output file path
+df.to_csv(output_file_path, index=False)
 
-# Replicate the rows
-expanded_df = pd.concat([df] * num_repeats, ignore_index=True)
+print(f"The CSV file has been processed and saved to {output_file_path}")
+```
 
-# Trim the DataFrame to the target number of rows
-expanded_df = expanded_df.iloc[:num_target_rows]
+In this script:
 
-# Save the expanded DataFrame to a new CSV file
-output_file_path = 'expanded_file.csv'  # Replace with your desired output file path
-expanded_df.to_csv(output_file_path, index=False)
+1. The `process_payee` function capitalizes and switches the first name and last name.
+2. The `process_date` function converts the date to the "MM-DD-YYYY" format.
+3. The `process_serial_number` function pads the serial number with preceding zeroes to make it 10 digits long.
+4. The `process_action` function capitalizes the action.
+5. The `process_account_number` function pads the account number with preceding zeroes to make it 10 digits long.
 
-print(f"The CSV file has been expanded to {num_target_rows} rows and saved to {output_file_path}")
+Replace `'your_file.csv'` and `'processed_file.csv'` with the actual paths to your input and output CSV files. This script reads the CSV file, applies the necessary transformations, renames the columns, and saves the processed DataFrame to a new CSV file.
