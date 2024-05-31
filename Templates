@@ -1,217 +1,64 @@
+Here's a Python script to process the text file and extract the columns based on the given information:
+
+```python
 import pandas as pd
-from dateutil.parser import parse
-import os
-from pydantic import BaseModel, ValidationError, validator, constr
-from typing import Optional, List
 
-# Define file constraints
-MAX_ISSUES = 4000
-MAX_FILE_SIZE_KB = 250
-
-# Define field properties
-fields_properties = {
-    "Account Number": {"length": 10, "type": "numeric", "required": True, "aliases": ["account_number", "acct_num", "acct_no"]},
-    "Serial Number": {"length": 10, "type": "numeric", "required": True, "aliases": ["serial_number", "serial_no", "check_serial_number"]},
-    "Issued Amount": {"length": 11, "type": "decimal", "required": True, "aliases": ["issued_amount", "amount"]},
-    "Date": {"length": 10, "type": "date", "required": True, "aliases": ["date", "issue_date"]},
-    "Action": {"length": 1, "type": "action", "required": True, "aliases": ["action"]},
-    "Payee 1": {"length": 50, "type": "text", "required": True, "aliases": ["payee1", "payee_1"]},
-    "Payee 2": {"length": 50, "type": "text", "required": False, "aliases": ["payee2", "payee_2"]},
-    "Note": {"length": 15, "type": "text", "required": False, "aliases": ["note"]}
-}
-
-class FileSchema(BaseModel):
-    Account_Number: Optional[constr(max_length=10, strip_whitespace=True)]
-    Serial_Number: Optional[constr(max_length=10, strip_whitespace=True)]
-    Issued_Amount: Optional[constr(max_length=11, strip_whitespace=True)]
-    Date: Optional[constr(max_length=10, strip_whitespace=True)]
-    Action: Optional[constr(max_length=1, strip_whitespace=True)]
-    Payee_1: Optional[constr(max_length=50, strip_whitespace=True)]
-    Payee_2: Optional[constr(max_length=50, strip_whitespace=True)]
-    Note: Optional[constr(max_length=15, strip_whitespace=True)]
-
-    @validator('Account_Number', 'Serial_Number', pre=True, always=True)
-    def check_numeric(cls, v):
-        if v and not v.isdigit():
-            raise ValueError('must be numeric')
-        return v
-
-    @validator('Issued_Amount', pre=True, always=True)
-    def check_decimal(cls, v):
-        if v and not v.replace(".", "").isdigit():
-            raise ValueError('must be a decimal')
-        return v
-
-    @validator('Date', pre=True, always=True)
-    def check_date(cls, v):
-        try:
-            parse(v)
-        except ValueError:
-            raise ValueError('invalid date format')
-        return v
-
-    @validator('Action', pre=True, always=True)
-    def check_action(cls, v):
-        if v not in ["I", "V"]:
-            raise ValueError('must be I or V')
-        return v
-
-def check_file_format(file_path):
-    if not file_path.endswith(('.csv', '.txt')):
-        raise ValueError("UNSUPPORTED FILE ERROR: APPROPRIATE FILE MUST BE IN CSV OR TXT FORMAT")
-
-def check_file_constraints(file_path):
-    file_size_kb = os.path.getsize(file_path) / 1024
-    if file_size_kb > MAX_FILE_SIZE_KB:
-        raise ValueError("UNSUPPORTED FILE SIZE / COUNT ISSUE ERROR: FILES MAY CONTAIN A MAXIMUM OF 4000 ISSUES PER FILE, AND THE MAXIMUM FILE SIZE CANNOT EXCEED 250KB")
+def parse_line(line):
+    # Extract Account Number (first 10 digits)
+    account_number = line[:10]
     
-    df = pd.read_csv(file_path)
-    if len(df) > MAX_ISSUES:
-        raise ValueError("UNSUPPORTED FILE SIZE / COUNT ISSUE ERROR: FILES MAY CONTAIN A MAXIMUM OF 4000 ISSUES PER FILE, AND THE MAXIMUM FILE SIZE CANNOT EXCEED 250KB")
-
-def identify_header(df):
-    first_row = df.iloc[0]
-    if all(first_row.apply(lambda x: isinstance(x, str))):
-        return df, True  # header exists
-    else:
-        # Infer header based on field patterns
-        inferred_header = []
-        for col in df.columns:
-            sample_value = str(df[col].iloc[0])
-            inferred_header.append(infer_column(sample_value))
-        df.columns = inferred_header
-        return df, False  # header inferred
-
-def infer_column(sample_value):
-    if sample_value.isdigit() and len(sample_value) <= 10:
-        return "Account Number"
-    elif sample_value.isdigit() and len(sample_value) == 10:
-        return "Serial Number"
-    elif re.match(r"^\d+(\.\d{1,2})?$", sample_value):
-        return "Issued Amount"
-    elif re.match(r"^\d{6,8}$", sample_value) or re.match(r"^\d{2}/\d{2}/\d{2,4}$", sample_value):
-        return "Date"
-    elif sample_value in ["I", "V"]:
-        return "Action"
-    elif len(sample_value) <= 50:
-        return "Payee 1"
-    else:
-        return "Unknown Field"
-
-def preprocess_file(df, file_type):
-    df = map_fields(df)
+    # Extract Serial Number (next 10 digits)
+    serial_number = line[10:20]
     
-    # Preprocess data
-    for field, properties in fields_properties.items():
-        if field in df.columns:
-            if properties["type"] == "numeric":
-                df[field] = df[field].apply(lambda x: str(x).zfill(properties["length"]))
-            elif properties["type"] == "decimal":
-                df[field] = df[field].apply(lambda x: f"{float(x):.2f}".replace(",", ""))
-            elif properties["type"] == "date":
-                df[field] = df[field].apply(lambda x: parse(str(x)).strftime("%m%d%Y"))
-            elif properties["type"] == "text":
-                if file_type == "csv":
-                    df[field] = df[field].apply(lambda x: str(x).replace(",", "")[:properties["length"]])
-                else:
-                    df[field] = df[field].apply(lambda x: str(x)[:properties["length"]])
+    # Extract Action (last sequence of 'I' or 'V' letters)
+    action = ''.join([char for char in reversed(line) if char in ['I', 'V']])
+    action = action[::-1]
     
-    # Remove optional fields not included in the file
-    for field, properties in fields_properties.items():
-        if not properties["required"] and field not in df.columns:
-            df.drop(columns=[field], inplace=True, errors='ignore')
+    # The remaining part is for other columns
+    remaining = line[20:-len(action)]
     
-    # Remove unknown fields
-    known_fields = [field for field in fields_properties.keys()]
-    df = df[[col if col in known_fields else f"UNKNOWN FIELD {i}" for i, col in enumerate(df.columns)]]
+    # Extract Date (last 8 digits in the remaining part)
+    date = remaining[-8:]
     
-    # Standardize field names and order
-    ordered_columns = ["Account Number", "Serial Number", "Issued Amount", "Date", "Action", "Payee 1", "Payee 2", "Note"]
-    df = df[[col for col in ordered_columns if col in df.columns]]
+    # Extract Payee 1 (all characters before Date)
+    payee_1 = remaining[:-8].strip()
     
-    return df
-
-def map_fields(df):
-    column_mapping = {}
-    for field, properties in fields_properties.items():
-        for alias in properties["aliases"]:
-            if alias in df.columns:
-                column_mapping[alias] = field
-                break
-    return df.rename(columns=column_mapping)
-
-def validate_and_format(df, file_type):
-    errors = []
-    df = map_fields(df)
+    # Calculate Issued Amount (concatenation of Date and Serial Number)
+    issued_amount = date + serial_number
     
-    # Validate each field
-    for field, properties in fields_properties.items():
-        if properties["required"] and field not in df.columns:
-            errors.append(f"Missing required field: {field}")
-            continue
-        
-        if field in df.columns:
-            if properties["type"] == "numeric":
-                df[field] = df[field].apply(lambda x: str(x).zfill(properties["length"]))
-            elif properties["type"] == "decimal":
-                df[field] = df[field].apply(lambda x: f"{float(x):.2f}".replace(",", ""))
-            elif properties["type"] == "date":
-                df[field] = df[field].apply(lambda x: parse(str(x)).strftime("%m%d%Y"))
-            elif properties["type"] == "action":
-                df[field] = df[field].apply(lambda x: x if x in ["I", "V"] else "I")
-            elif properties["type"] == "text":
-                if file_type == "csv":
-                    df[field] = df[field].apply(lambda x: str(x).replace(",", "")[:properties["length"]])
-                else:
-                    df[field] = df[field].apply(lambda x: str(x)[:properties["length"]])
-    
-    return df, errors
+    return {
+        'Account Number': account_number,
+        'Serial Number': serial_number,
+        'Action': action,
+        'Payee 1': payee_1,
+        'Date': date,
+        'Issued Amount': issued_amount
+    }
 
-def process_file(file_path):
-    try:
-        # Step 1: Check file format
-        check_file_format(file_path)
-        
-        # Step 2: Check file size and issue count constraints
-        check_file_constraints(file_path)
-        
-        # Step 3: Read the file
-        file_type = file_path.split(".")[-1]
-        if file_type == "csv":
-            df = pd.read_csv(file_path)
-        elif file_type == "txt":
-            df = pd.read_csv(file_path, delimiter="\t")
-        
-        # Step 4: Identify header
-        df, header_exists = identify_header(df)
-        
-        # Step 5: Validate and preprocess the file
-        df, errors = validate_and_format(df, file_type)
-        
-        if errors:
-            for error in errors:
-                print(error)
-            return None
+# Read the text file
+file_path = 'your_file.txt'  # Replace with your actual file path
+with open(file_path, 'r') as file:
+    lines = file.readlines()
 
-        # Step 6: Pydantic validation
-        try:
-            records = df.to_dict(orient='records')
-            validated_records = [FileSchema(**record) for record in records]
-        except ValidationError as e:
-            print("Validation error:", e)
-            return None
+# Parse each line
+data = [parse_line(line.strip()) for line in lines]
 
-        # Step 7: Preprocess file
-        df = preprocess_file(df, file_type)
+# Create a DataFrame
+df = pd.DataFrame(data)
 
-        # Save the processed file
-        output_path = file_path.replace(f".{file_type}", "_processed.csv")
-        df.to_csv(output_path, index=False)
-        print(f"File processed and saved to {output_path}")
-    
-    except Exception as e:
-        print(e)
+# Display the DataFrame
+print(df)
 
-# Example usage
-file_path = "/mnt/data/example.csv"  # Replace with the actual file path
-process_file(file_path)
+# Example: Saving to a CSV file
+df.to_csv('parsed_output.csv', index=False)
+```
+
+In this script:
+
+1. The `parse_line` function extracts the columns from each line based on the given rules.
+2. The script reads the lines from the text file.
+3. Each line is parsed using the `parse_line` function to extract the necessary columns.
+4. A DataFrame is created from the parsed data.
+5. The DataFrame is printed, and you can also save it to a CSV file if needed.
+
+Replace `'your_file.txt'` with the actual path to your text file.
