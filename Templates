@@ -1,59 +1,71 @@
-Here's a Python script to process the CSV file based on the given requirements:
+To achieve this, you can create a Python function that preprocesses the data and uses input from the user to determine the start positions of each relevant column. Below is an example script that demonstrates how to do this:
 
 ```python
 import pandas as pd
-from datetime import datetime
 
-def process_payee(payee):
-    # Capitalize and switch last name and first name
-    if ',' in payee:
-        last_name, first_name = payee.split(',', 1)
-        return f"{first_name.strip().capitalize()} {last_name.strip().capitalize()}"
-    return payee.capitalize()
+def get_user_input():
+    account_number_start = int(input("Enter the starting position for 'Account Number': "))
+    serial_number_start = int(input("Enter the starting position for 'Serial Number': "))
+    action_start = int(input("Enter the starting position for 'Action': "))
+    amount_start = int(input("Enter the starting position for 'Amount': "))
+    payee_start = int(input("Enter the starting position for 'Payee': "))
+    
+    return {
+        'account_number_start': account_number_start,
+        'serial_number_start': serial_number_start,
+        'action_start': action_start,
+        'amount_start': amount_start,
+        'payee_start': payee_start
+    }
 
-def process_date(date_str):
-    try:
-        date = datetime.strptime(date_str, "%m%d%Y")
-        return date.strftime("%m-%d-%Y")
-    except ValueError:
-        return "Invalid Date"
+def preprocess_line(line, col_positions):
+    line = line.strip()
+    
+    account_number = line[col_positions['account_number_start']:col_positions['serial_number_start']].strip()
+    serial_number = line[col_positions['serial_number_start']:col_positions['action_start']].strip()
+    action = line[col_positions['action_start']:col_positions['amount_start']].strip()
+    amount = line[col_positions['amount_start']:col_positions['payee_start']].strip()
+    payee = line[col_positions['payee_start']:].strip()
+    
+    return {
+        'Account Number': account_number,
+        'Serial Number': serial_number,
+        'Action': action,
+        'Amount': amount,
+        'Payee': payee
+    }
 
-def process_serial_number(serial):
-    return serial.zfill(10)
+def preprocess_text_file(file_path, col_positions):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    
+    data = [preprocess_line(line, col_positions) for line in lines]
+    
+    df = pd.DataFrame(data)
+    
+    return df
 
-def process_action(action):
-    return action.capitalize()
+def main():
+    file_path = input("Enter the path to the text file: ")
+    col_positions = get_user_input()
+    
+    df = preprocess_text_file(file_path, col_positions)
+    
+    print(df)
+    
+    output_file_path = 'processed_file.csv'
+    df.to_csv(output_file_path, index=False)
+    print(f"The DataFrame has been processed and saved to {output_file_path}")
 
-def process_account_number(account_number):
-    return account_number.zfill(10)
-
-# Read the CSV file without header
-file_path = 'your_file.csv'  # Replace with your actual file path
-df = pd.read_csv(file_path, header=None)
-
-# Apply the transformations
-df[0] = df[0].apply(process_payee)  # Payee 1
-df[1] = df[1].apply(process_date)  # Date
-df[2] = df[2].apply(process_serial_number)  # Serial Number
-df[3] = df[3].apply(process_action)  # Action
-df[4] = df[4].apply(process_account_number)  # Account Number
-
-# Rename the columns
-df.columns = ["Payee 1", "Date", "Serial Number", "Action", "Account Number", "Issued Amount"]
-
-# Save the processed DataFrame to a new CSV file
-output_file_path = 'processed_file.csv'  # Replace with your desired output file path
-df.to_csv(output_file_path, index=False)
-
-print(f"The CSV file has been processed and saved to {output_file_path}")
+if __name__ == "__main__":
+    main()
 ```
 
-In this script:
+Here's how the script works:
 
-1. The `process_payee` function capitalizes and switches the first name and last name.
-2. The `process_date` function converts the date to the "MM-DD-YYYY" format.
-3. The `process_serial_number` function pads the serial number with preceding zeroes to make it 10 digits long.
-4. The `process_action` function capitalizes the action.
-5. The `process_account_number` function pads the account number with preceding zeroes to make it 10 digits long.
+1. **`get_user_input()` function:** Prompts the user to enter the starting positions for each relevant column.
+2. **`preprocess_line()` function:** Processes each line of the text file based on the starting positions provided by the user.
+3. **`preprocess_text_file()` function:** Reads the text file, processes each line using the `preprocess_line()` function, and creates a pandas DataFrame.
+4. **`main()` function:** Coordinates the script by getting the file path and column positions from the user, processing the text file, and displaying/saving the resulting DataFrame.
 
-Replace `'your_file.csv'` and `'processed_file.csv'` with the actual paths to your input and output CSV files. This script reads the CSV file, applies the necessary transformations, renames the columns, and saves the processed DataFrame to a new CSV file.
+Replace `'processed_file.csv'` with your desired output file path. This script will read the text file, process it based on user input, and save the processed data to a new CSV file.
