@@ -4,35 +4,38 @@ Here's a Python script to process the text file and extract the columns based on
 import pandas as pd
 
 def parse_line(line):
-    # Extract Account Number (first 10 digits)
-    account_number = line[:10]
-    
-    # Extract Serial Number (next 10 digits)
-    serial_number = line[10:20]
-    
-    # Extract Action (last sequence of 'I' or 'V' letters)
-    action = ''.join([char for char in reversed(line) if char in ['I', 'V']])
-    action = action[::-1]
+    # Extract Action (last letter which is 'I' or 'V')
+    action = line[-1]
     
     # The remaining part is for other columns
-    remaining = line[20:-len(action)]
-    
-    # Extract Date (last 8 digits in the remaining part)
-    date = remaining[-8:]
+    remaining = line[:-1]
     
     # Extract Payee 1 (all characters before Date)
-    payee_1 = remaining[:-8].strip()
+    payee_1_end = len(remaining) - 8 - 6 - 10 - 10
+    payee_1 = remaining[:payee_1_end].strip()
     
-    # Calculate Issued Amount (concatenation of Date and Serial Number)
-    issued_amount = date + serial_number
+    # Extract Date (last 8 digits before Issued Amount)
+    date_end = len(remaining) - 6 - 10 - 10
+    date = remaining[payee_1_end:date_end]
+    
+    # Extract Issued Amount (last 6 elements before Serial Number)
+    issued_amount_end = len(remaining) - 10 - 10
+    issued_amount = remaining[date_end:issued_amount_end]
+    
+    # Extract Serial Number (last 10 digits before Account Number)
+    serial_number_end = len(remaining) - 10
+    serial_number = remaining[issued_amount_end:serial_number_end]
+    
+    # Extract Account Number (first 10 digits)
+    account_number = remaining[serial_number_end:]
     
     return {
         'Account Number': account_number,
         'Serial Number': serial_number,
-        'Action': action,
-        'Payee 1': payee_1,
+        'Issued Amount': issued_amount,
         'Date': date,
-        'Issued Amount': issued_amount
+        'Payee 1': payee_1,
+        'Action': action
     }
 
 # Read the text file
