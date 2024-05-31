@@ -1,4 +1,6 @@
-Here's the Python script to process the text file and extract the columns based on the provided rules:
+The `IndexError` indicates that the string may not be long enough to accommodate the slicing operations as specified. To handle this issue gracefully, we'll need to add some error handling to ensure each segment is correctly extracted even if the input line is not of the expected length.
+
+Here's the revised script with added error handling:
 
 ```python
 import pandas as pd
@@ -7,28 +9,43 @@ def parse_line(line):
     # Strip any surrounding whitespace
     line = line.strip()
     
+    # Initialize all variables
+    action = ''
+    payee_1 = ''
+    date = ''
+    issued_amount = ''
+    serial_number = ''
+    account_number = ''
+    
     # Extract Action (last letter which is 'I' or 'V')
-    action = line[-1]
-    line = line[:-1]
+    if len(line) >= 1 and line[-1] in ['I', 'V']:
+        action = line[-1]
+        line = line[:-1]
 
     # Extract Payee 1 (preceding all letters until digits)
-    payee_1 = ''.join([char for char in reversed(line) if not char.isdigit()]).strip()[::-1]
-    line = line[:-len(payee_1)]
+    while len(line) > 0 and not line[-1].isdigit():
+        payee_1 = line[-1] + payee_1
+        line = line[:-1]
+    payee_1 = payee_1.strip()
 
     # Extract Date (preceding 8 digits)
-    date = line[-8:]
-    line = line[:-8]
+    if len(line) >= 8:
+        date = line[-8:]
+        line = line[:-8]
 
     # Extract Issued Amount (preceding 6 elements)
-    issued_amount = line[-6:]
-    line = line[:-6]
+    if len(line) >= 6:
+        issued_amount = line[-6:]
+        line = line[:-6]
 
     # Extract Serial Number (preceding 10 digits)
-    serial_number = line[-10:]
-    line = line[:-10]
+    if len(line) >= 10:
+        serial_number = line[-10:]
+        line = line[:-10]
 
     # Extract Account Number (preceding 10 digits)
-    account_number = line[-10:]
+    if len(line) >= 10:
+        account_number = line[-10:]
 
     return {
         'Account Number': account_number,
@@ -57,12 +74,10 @@ print(df)
 df.to_csv('parsed_output.csv', index=False)
 ```
 
-This script does the following:
+In this script:
 
-1. Defines the `parse_line` function to parse each line of the text file and extract the columns based on the given rules.
-2. Reads the lines from the text file.
-3. Parses each line using the `parse_line` function.
-4. Creates a DataFrame from the parsed data.
-5. Prints the DataFrame and saves it to a CSV file if desired.
+1. We ensure that each segment is only extracted if the remaining part of the string is long enough to accommodate it.
+2. We use a loop to extract the `Payee 1` column, as it contains all non-digit characters preceding the date.
+3. Error handling ensures that no `IndexError` occurs even if the input line is shorter than expected.
 
 Replace `'your_file.txt'` with the actual path to your text file to use this script.
