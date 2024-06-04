@@ -1,71 +1,21 @@
-To achieve this, you can create a Python function that preprocesses the data and uses input from the user to determine the start positions of each relevant column. Below is an example script that demonstrates how to do this:
+Subject: Congratulations on a Successful Capstone Project Presentation!
 
-```python
-import pandas as pd
+Dear Team,
 
-def get_user_input():
-    account_number_start = int(input("Enter the starting position for 'Account Number': "))
-    serial_number_start = int(input("Enter the starting position for 'Serial Number': "))
-    action_start = int(input("Enter the starting position for 'Action': "))
-    amount_start = int(input("Enter the starting position for 'Amount': "))
-    payee_start = int(input("Enter the starting position for 'Payee': "))
-    
-    return {
-        'account_number_start': account_number_start,
-        'serial_number_start': serial_number_start,
-        'action_start': action_start,
-        'amount_start': amount_start,
-        'payee_start': payee_start
-    }
+I hope this email finds you well. I wanted to take a moment to express my heartfelt congratulations and appreciation for the outstanding capstone project presentation you delivered today. It was truly a pleasure to witness the culmination of your hard work, dedication, and collaborative efforts.
 
-def preprocess_line(line, col_positions):
-    line = line.strip()
-    
-    account_number = line[col_positions['account_number_start']:col_positions['serial_number_start']].strip()
-    serial_number = line[col_positions['serial_number_start']:col_positions['action_start']].strip()
-    action = line[col_positions['action_start']:col_positions['amount_start']].strip()
-    amount = line[col_positions['amount_start']:col_positions['payee_start']].strip()
-    payee = line[col_positions['payee_start']:].strip()
-    
-    return {
-        'Account Number': account_number,
-        'Serial Number': serial_number,
-        'Action': action,
-        'Amount': amount,
-        'Payee': payee
-    }
+Your ability to articulate insights, develop robust models, and interpret results with clarity and confidence was impressive. Each of you brought unique strengths to the table, and it was evident in the way you seamlessly integrated your skills and knowledge. The level of professionalism and creativity displayed was exceptional, and it’s clear that you have all grown tremendously throughout this journey.
 
-def preprocess_text_file(file_path, col_positions):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-    
-    data = [preprocess_line(line, col_positions) for line in lines]
-    
-    df = pd.DataFrame(data)
-    
-    return df
+Due to your model demo presentation to the managers, I had to leave the meeting urgently and didn’t have the chance to say goodbye to you all in person. I deeply regret missing that opportunity, but please know that my appreciation and admiration for your work are unwavering.
 
-def main():
-    file_path = input("Enter the path to the text file: ")
-    col_positions = get_user_input()
-    
-    df = preprocess_text_file(file_path, col_positions)
-    
-    print(df)
-    
-    output_file_path = 'processed_file.csv'
-    df.to_csv(output_file_path, index=False)
-    print(f"The DataFrame has been processed and saved to {output_file_path}")
+Being a part of your learning journey has been an incredibly rewarding experience for me. I am genuinely thrilled to have had the opportunity to work with such a talented and enthusiastic group of individuals. Your commitment to excellence and your collaborative spirit have made this project a resounding success, and I am proud of what we have accomplished together.
 
-if __name__ == "__main__":
-    main()
-```
+I am grateful to know each of you and to have been a part of this significant milestone in your careers. As you continue to advance in the Rising Star Data Science Program and beyond, I have no doubt that you will achieve great things and make meaningful contributions to the field of data science.
 
-Here's how the script works:
+Once again, congratulations on a job well done. I look forward to seeing your continued success and am excited for what the future holds for each of you.
 
-1. **`get_user_input()` function:** Prompts the user to enter the starting positions for each relevant column.
-2. **`preprocess_line()` function:** Processes each line of the text file based on the starting positions provided by the user.
-3. **`preprocess_text_file()` function:** Reads the text file, processes each line using the `preprocess_line()` function, and creates a pandas DataFrame.
-4. **`main()` function:** Coordinates the script by getting the file path and column positions from the user, processing the text file, and displaying/saving the resulting DataFrame.
+Warm regards,
 
-Replace `'processed_file.csv'` with your desired output file path. This script will read the text file, process it based on user input, and save the processed data to a new CSV file.
+[Your Name]  
+Senior Data Scientist  
+PNC
