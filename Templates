@@ -1,1 +1,96 @@
+Here are the user stories for each topic:
 
+### 1. Exploratory Data Analysis (EDA)
+**User Story:**
+As a data scientist, I want to be able to perform exploratory data analysis (EDA) on the 837 and 835 healthcare files to understand the data distribution and identify patterns and anomalies. 
+
+**Steps:**
+1. Load the 837 and 835 healthcare files into the analysis environment.
+2. Conduct initial data profiling to understand the structure, types, and completeness of the data.
+3. Visualize the distribution of key variables (e.g., claim amounts, service lines, denial rates) using histograms, box plots, and scatter plots.
+4. Identify and handle missing values, outliers, and inconsistencies in the data.
+5. Generate summary statistics and correlation matrices to understand relationships between variables.
+6. Document findings and insights to inform feature engineering and model development.
+
+### 2. Feature Engineering / Feature Selection
+**User Story:**
+As a data scientist, I want to be able to engineer and select relevant features from the healthcare claims data to improve model performance.
+
+**Steps:**
+1. Identify potential features from the 837 and 835 files, such as service line details, historical payment patterns, and claim-specific attributes.
+2. Create new features based on domain knowledge and EDA insights (e.g., temporal features, aggregated metrics).
+3. Perform feature selection using techniques such as correlation analysis, mutual information, and feature importance from preliminary models.
+4. Transform and normalize features to ensure they are suitable for model input.
+5. Document the feature engineering process and selected features.
+
+### 3. Build Base CatBoost Model
+**User Story:**
+As a data scientist, I want to build a base CatBoost model to predict the likelihood of healthcare claims being denied.
+
+**Steps:**
+1. Split the data into training and testing sets.
+2. Initialize the CatBoost model with default parameters.
+3. Train the model on the training data.
+4. Evaluate the model's performance on the testing data using metrics such as accuracy, precision, recall, and F1-score.
+5. Document the base model performance and identify areas for improvement.
+
+### 4. Data Sampling Algorithm to Increase Performance Metrics
+**User Story:**
+As a data scientist, I want to implement a data sampling algorithm to address class imbalance and increase the performance metrics of the model.
+
+**Steps:**
+1. Analyze the class distribution to understand the extent of imbalance in the dataset.
+2. Choose an appropriate sampling technique (e.g., oversampling, undersampling, SMOTE).
+3. Apply the sampling technique to create a balanced training dataset.
+4. Retrain the CatBoost model on the balanced dataset.
+5. Evaluate the model's performance on the testing data and compare it to the base model.
+6. Document the impact of sampling on model performance.
+
+### 5. Hyperparameter Optimization/Integration
+**User Story:**
+As a data scientist, I want to perform hyperparameter optimization to improve the CatBoost model's performance.
+
+**Steps:**
+1. Identify key hyperparameters for the CatBoost model.
+2. Set up a hyperparameter optimization process using techniques such as grid search, random search, or Bayesian optimization.
+3. Run the optimization process on the training data.
+4. Evaluate the optimized model's performance on the testing data.
+5. Compare the performance of the optimized model to the base model.
+6. Document the hyperparameter tuning process and the final selected parameters.
+
+### 6. Tuning Optimal Threshold
+**User Story:**
+As a data scientist, I want to tune the optimal decision threshold for the CatBoost model to balance precision and recall based on business requirements.
+
+**Steps:**
+1. Analyze the precision-recall curve of the CatBoost model.
+2. Identify potential decision thresholds that optimize the trade-off between precision and recall.
+3. Evaluate the model's performance at different thresholds using metrics such as F1-score and ROC-AUC.
+4. Select the optimal threshold that meets the business requirements for denial prediction.
+5. Document the threshold tuning process and the rationale for the selected threshold.
+
+### 7. Model Interpretation
+**User Story:**
+As a data scientist, I want to interpret the CatBoost model to understand the impact of different features on the prediction outcomes.
+
+**Steps:**
+1. Use model interpretation techniques such as SHAP (SHapley Additive exPlanations) values to assess feature importance.
+2. Visualize the contribution of each feature to individual predictions.
+3. Identify key features driving the model's decisions and understand their relationships.
+4. Create reports and visualizations to communicate model interpretability to stakeholders.
+5. Document the model interpretation findings.
+
+### 8. Build Streamlit App to Show Model Predictions and Artifacts
+**User Story:**
+As a data scientist, I want to build a Streamlit app to demonstrate the model predictions and share artifacts with stakeholders.
+
+**Steps:**
+1. Set up a Streamlit application environment.
+2. Develop the frontend of the app to accept user inputs and display predictions.
+3. Integrate the CatBoost model into the app to generate real-time predictions.
+4. Add visualizations and charts to explain the model's outputs and feature importance.
+5. Include documentation and links to artifacts such as data dictionaries and model performance reports.
+6. Deploy the app and share access with stakeholders.
+7. Collect feedback and iterate on the app as needed.
+
+Feel free to modify any of the user stories to better fit your specific project needs!
