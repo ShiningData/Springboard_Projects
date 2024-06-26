@@ -1,4 +1,4 @@
-To ensure the script handles the extraction of 'Payee 1' and 'Payee 2' correctly based on the provided file, let's update the script to address the issues. This includes making sure the '/' separator correctly identifies 'Payee 2' and that 'Action' values are handled appropriately.
+Sure, let's update the script to extract the new features ("Account Number", "Serial Number", "Issued Amount") and include the existing ones ("Date", "Payee 1", "Payee 2", "Action") while cleaning up the original lines in the text file.
 
 Here's the updated script:
 
@@ -73,8 +73,18 @@ def extract_payee(line, action):
     payee_2 = payees[1].strip() if len(payees) > 1 else ''
     return payee_1, payee_2
 
-# Function to extract dates, actions, and payees from the text file and create series
+# Function to extract account number, serial number, and issued amount
+def extract_account_serial_issued(line):
+    account_number = line[:10]
+    serial_number = line[10:20]
+    issued_amount = line[20:32].strip()
+    return account_number, serial_number, issued_amount
+
+# Function to extract dates, actions, payees, account numbers, serial numbers, and issued amounts from the text file and create series
 def extract_features_from_file(file_path):
+    account_numbers = []
+    serial_numbers = []
+    issued_amounts = []
     dates = []
     actions = []
     payees_1 = []
@@ -92,6 +102,7 @@ def extract_features_from_file(file_path):
             try:
                 parsed_date = extract_date_from_line(line)
                 dates.append(parsed_date)
+                line = line.replace(parsed_date, '')  # Remove date from the line
             except ValueError as e:
                 print(f"Error parsing date on line: {line}. Error: {e}")
                 dates.append('')  # Append empty string if date is not found
@@ -105,25 +116,39 @@ def extract_features_from_file(file_path):
                     pattern_type = 'none'
                     actions = ['' for _ in actions]  # Clear previous actions
             actions.append(action)
+            if action:
+                line = line.replace(action, '')  # Remove action from the line
 
             # Extract Payee 1 and Payee 2
             payee_1, payee_2 = extract_payee(original_line, action)
             payees_1.append(payee_1)
             payees_2.append(payee_2)
+
+            # Extract Account Number, Serial Number, and Issued Amount
+            account_number, serial_number, issued_amount = extract_account_serial_issued(line)
+            account_numbers.append(account_number)
+            serial_numbers.append(serial_number)
+            issued_amounts.append(issued_amount)
     
+    account_number_series = pd.Series(account_numbers, name='Account Number')
+    serial_number_series = pd.Series(serial_numbers, name='Serial Number')
+    issued_amount_series = pd.Series(issued_amounts, name='Issued Amount')
     date_series = pd.Series(dates, name='Date')
     action_series = pd.Series(actions, name='Action')
     payee_1_series = pd.Series(payees_1, name='Payee 1')
     payee_2_series = pd.Series(payees_2, name='Payee 2')
-    return date_series, action_series, payee_1_series, payee_2_series
+    return account_number_series, serial_number_series, issued_amount_series, date_series, action_series, payee_1_series, payee_2_series
 
-# Main function to create DataFrame with the date, action, and payee series
+# Main function to create DataFrame with all the series
 def main():
     file_path = input("Enter the path of the txt file to process: ")
     
     try:
-        date_series, action_series, payee_1_series, payee_2_series = extract_features_from_file(file_path)
+        account_number_series, serial_number_series, issued_amount_series, date_series, action_series, payee_1_series, payee_2_series = extract_features_from_file(file_path)
         df = pd.DataFrame({
+            'Account Number': account_number_series,
+            'Serial Number': serial_number_series,
+            'Issued Amount': issued_amount_series,
             'Date': date_series,
             'Action': action_series,
             'Payee 1': payee_1_series,
@@ -150,21 +175,15 @@ if __name__ == "__main__":
    - Regular expressions `re.sub(r'\d{2}/\d{2}/\d{4}', '', line)` and `re.sub(r'[\d.,]+', '', clean_line)` are used to clean the line. Another `re.sub(r'\s*/\s*', '/', clean_line)` ensures that spaces around '/' are removed.
    - The cleaned line is split by '/' to identify 'Payee 1' and 'Payee 2'. If no '/' is found, 'Payee 2' is set to an empty string.
 
-4. **Series Creation**:
-   - The `extract_features_from_file` function reads the file, extracts dates, actions, and payees from each line, and creates pandas Series for all features.
+4. **Account, Serial, and Issued Amount Extraction**:
+   - The `extract_account_serial_issued` function extracts the first ten digits as 'Account Number', the next ten digits as 'Serial Number', and the rest as 'Issued Amount' from the cleaned line.
 
-5. **Main Function**:
+5. **Series Creation**:
+   - The `extract_features_from_file` function reads the file, extracts dates, actions, payees, account numbers, serial numbers, and issued amounts from each line, and creates pandas Series for all features.
+
+6. **Main Function**:
    - The `main` function handles user input for the file path, processes the file, and prints the resulting DataFrame.
 
 ### Example:
 
-For the provided file, the script should correctly extract the following features:
-
-- `Date`
-- `Action`
-- `Payee 1`
-- `Payee 2`
-
-The output should be correct and separated accurately based on the provided text file.
-
-If you run the updated script with your provided file, it should now correctly handle the 'Payee 1' and 'Payee 2' fields, ensuring they are split correctly by the '/' separator and that action values do not interfere with the payee names.
+For the provided file
