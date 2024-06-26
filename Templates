@@ -1,6 +1,6 @@
-Understood. Let's update the function to extract the action value even when it is concatenated right after the last numerical value or at the end with other letters. The regular expression should be adjusted to accommodate this requirement.
+Got it. Let's update the function to ensure consistency across all lines in the file for extracting the 'Action' feature. We will first determine the pattern used for the 'Action' feature in the first line and then apply this pattern to all subsequent lines. If the pattern is inconsistent across lines, the 'Action' field will be populated with empty spaces.
 
-Here is the updated script:
+Here's the updated script:
 
 ```python
 import pandas as pd
@@ -42,28 +42,42 @@ def extract_date_from_line(line):
                 continue
     raise ValueError("Date format not recognized or date not found in line")
 
-# Function to identify and extract action from a line
-def extract_action_from_line(line):
+# Function to identify and extract action from a line based on the determined pattern
+def extract_action_from_line(line, pattern_type):
     # Remove spaces and tabs from the line
     line = re.sub(r'[ \t]', '', line)
-    # Check if 'I' or 'V' is at the end of the line or right after the last numerical value
-    match = re.search(r'(\d[IV])', line)
-    if match:
-        return match.group(1)[-1]
-    elif line[-1] in ['I', 'V']:
-        return line[-1]
+    if pattern_type == 'end':
+        if line[-1] in ['I', 'V']:
+            return line[-1]
+    elif pattern_type == 'after_last_num':
+        match = re.search(r'\d([IV])', line)
+        if match:
+            return match.group(1)
     return ''
+
+# Function to determine the pattern type for the action field from the first line
+def determine_action_pattern(line):
+    # Remove spaces and tabs from the line
+    line = re.sub(r'[ \t]', '', line)
+    if line[-1] in ['I', 'V']:
+        return 'end'
+    elif re.search(r'\d([IV])', line):
+        return 'after_last_num'
+    return 'none'
 
 # Function to extract dates and actions from the text file and create series
 def extract_features_from_file(file_path):
     dates = []
     actions = []
+    pattern_type = None
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in lines:
             line = line.strip()  # Remove leading and trailing whitespace
             if not line:  # Skip empty lines
                 continue
+            if pattern_type is None:
+                pattern_type = determine_action_pattern(line)
             try:
                 parsed_date = extract_date_from_line(line)
                 dates.append(parsed_date)
@@ -71,7 +85,14 @@ def extract_features_from_file(file_path):
                 print(f"Error parsing date on line: {line}. Error: {e}")
                 dates.append('')  # Append empty string if date is not found
             
-            action = extract_action_from_line(line)
+            if pattern_type == 'none':
+                action = ''
+            else:
+                action = extract_action_from_line(line, pattern_type)
+                # Verify pattern consistency
+                if action == '' and pattern_type != 'none':
+                    pattern_type = 'none'
+                    actions = ['' for _ in actions]  # Clear previous actions
             actions.append(action)
     
     date_series = pd.Series(dates, name='Date')
@@ -98,28 +119,34 @@ if __name__ == "__main__":
 
 ### Explanation:
 
-1. **Removing Spaces and Tabs**:
-   - The line is stripped of spaces and tabs using `re.sub(r'[ \t]', '', line)`, which replaces all spaces and tabs with an empty string.
+1. **Pattern Determination**:
+   - The `determine_action_pattern` function determines the action pattern from the first line of the file. It checks if 'I' or 'V' is at the end of the line or right after the last numerical value.
 
-2. **Extracting Action**:
-   - The `extract_action_from_line` function first checks if 'I' or 'V' is at the end of the line or right after the last numerical value using a regular expression `re.search(r'(\d[IV])', line)`.
-   - If a match is found, it returns the 'I' or 'V' character.
-   - If not found, it checks if 'I' or 'V' is at the end of the line.
-   - If neither condition is met, it returns an empty string.
+2. **Action Extraction**:
+   - The `extract_action_from_line` function extracts the action based on the determined pattern. If the pattern is 'end', it checks the last character of the line. If the pattern is 'after_last_num', it checks for 'I' or 'V' immediately following the last numerical value.
 
-3. **Creating Series**:
-   - `extract_features_from_file` function reads the file, extracts dates and actions from each line, and creates pandas Series for both.
+3. **Pattern Consistency Check**:
+   - While processing each line, if an inconsistency is detected (i.e., the action cannot be extracted using the determined pattern), the `pattern_type` is set to 'none', and all previous actions are cleared.
 
-4. **Main Function**:
+4. **Series Creation**:
+   - The `extract_features_from_file` function reads the file, extracts dates and actions from each line, and creates pandas Series for both.
+
+5. **Main Function**:
    - The `main` function handles user input for the file path, processes the file, and prints the resulting DataFrame.
 
 ### Example:
 
-For a file containing the line "19283475690012993346895.3402/09/2024INJ MANUFACTURERS INSURANCE CO", the script should extract the action 'I'. The output should be:
+For a file containing the lines:
+```
+19283475690012993346895.3402/09/2024IINJ MANUFACTURERS INSURANCE CO
+19283475690012993346895.3402/10/2024V
+```
+The script should extract the actions 'I' and 'V'. The output should be:
 
 ```
          Date Action
 0  02-09-2024      I
+1  02-10-2024      V
 ```
 
-This updated script should correctly identify and extract both the date and action features based on the specified conditions, even when they are concatenated with other values.
+This updated script ensures consistency in the extraction of the 'Action' feature based on the determined pattern across all lines in the file.
