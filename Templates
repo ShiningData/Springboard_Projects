@@ -1,4 +1,4 @@
-Understood. Let's refine the function to correctly identify and extract the 'Payee 1' and 'Payee 2' features by considering only alphabetic characters and ensuring that the 'Action' feature is not included in these features.
+Got it. Let's make sure we handle the 'Action' feature correctly so that it does not become part of 'Payee 1' or 'Payee 2', and use the '/' separator among alphabetic letters correctly.
 
 Here's the updated script:
 
@@ -66,10 +66,11 @@ def determine_action_pattern(line):
     return 'none'
 
 # Function to extract payee information
-def extract_payee(line):
+def extract_payee(line, action):
     # Remove numerical values and action from the line
     line = re.sub(r'[\d/.,]+', '', line)
-    line = re.sub(r'[IV]$', '', line)
+    line = line.replace(action, '')
+    line = re.sub(r'[ \t]*\/[ \t]*', '/', line)
     # Split by '/' to identify Payee 1 and Payee 2
     payees = line.split('/')
     payee_1 = payees[0].strip()
@@ -110,7 +111,7 @@ def extract_features_from_file(file_path):
             actions.append(action)
 
             # Extract Payee 1 and Payee 2
-            payee_1, payee_2 = extract_payee(original_line)
+            payee_1, payee_2 = extract_payee(original_line, action)
             payees_1.append(payee_1)
             payees_2.append(payee_2)
     
@@ -142,17 +143,21 @@ if __name__ == "__main__":
 
 ### Explanation:
 
-1. **Removing Numerical Values and Action**:
-   - The `extract_payee` function removes numerical values and action characters from the line before splitting by '/'.
-   - Regular expressions `re.sub(r'[\d/.,]+', '', line)` and `re.sub(r'[IV]$', '', line)` are used to clean the line.
+1. **Pattern Determination**:
+   - The `determine_action_pattern` function determines the action pattern from the first line of the file. It checks if 'I' or 'V' is at the end of the line or right after the last numerical value.
 
-2. **Payee Extraction**:
+2. **Action Extraction**:
+   - The `extract_action_from_line` function extracts the action based on the determined pattern. If the pattern is 'end', it checks the last character of the line. If the pattern is 'after_last_num', it checks for 'I' or 'V' immediately following the last numerical value.
+
+3. **Payee Extraction**:
+   - The `extract_payee` function removes numerical values and the action character from the line before splitting by '/'. It also trims spaces around the '/' separator.
+   - Regular expressions `re.sub(r'[\d/.,]+', '', line)` and `line.replace(action, '')` are used to clean the line. Another `re.sub(r'[ \t]*\/[ \t]*', '/', line)` ensures that spaces around '/' are removed.
    - The cleaned line is split by '/' to identify 'Payee 1' and 'Payee 2'. If no '/' is found, 'Payee 2' is set to an empty string.
 
-3. **Series Creation**:
+4. **Series Creation**:
    - The `extract_features_from_file` function reads the file, extracts dates, actions, and payees from each line, and creates pandas Series for all features.
 
-4. **Main Function**:
+5. **Main Function**:
    - The `main` function handles user input for the file path, processes the file, and prints the resulting DataFrame.
 
 ### Example:
