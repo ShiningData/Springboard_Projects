@@ -1,4 +1,4 @@
-Sure, I understand the requirements. Here is the updated script to identify the date part in the text file based on the specified delimiters and conditions:
+Understood, here is the updated generalized script to handle cases where the date might be concatenated with other field values. The script will extract the date based on the given patterns and reformat it accordingly.
 
 ```python
 import pandas as pd
@@ -33,7 +33,7 @@ def extract_date_from_line(line):
             try:
                 parsed_date = parse_date(date_str)
                 if parsed_date.year <= current_year:  # Ensure the date is not in the future
-                    return parsed_date
+                    return parsed_date.strftime('%m-%d-%Y')
             except ValueError:
                 continue
     raise ValueError("Date format not recognized or date not found in line")
@@ -75,16 +75,24 @@ if __name__ == "__main__":
     main()
 ```
 
-### Explanation of Updates:
+### Explanation:
+1. **Regular Expressions**:
+   - The regular expressions in `date_patterns` will match dates based on the conditions you provided: 
+     - A date is preceded by a digit (`(?<=\d)`)
+     - Followed by a space, tab, or alphabetic character (`(?=[ \tA-Za-z])`).
 
-1. **Date Pattern Adjustment**:
-   - The regular expressions ensure that a space, tab, or alphabetic letter comes after the date part (`(?=[ \tA-Za-z])`).
-   - The regular expressions also ensure that a numerical value comes before the date part (`(?<=\d)`).
+2. **Date Parsing**:
+   - `parse_date` function attempts to parse the date using multiple formats.
+   - Reformats the date to 'MM-DD-YYYY'.
 
-2. **Parsing Date**:
-   - The script continues to parse and validate the date to ensure it is not in the future.
+3. **Extracting Dates from Lines**:
+   - `extract_date_from_line` processes each line to identify and extract the date.
+   - Ensures that the date is not in the future based on the current year.
 
-3. **Handling the Entire Line**:
-   - Each line is processed to extract dates based on the new context.
+4. **Creating a Pandas Series**:
+   - `extract_dates` function reads the file, extracts dates from each line, and creates a pandas Series.
 
-This updated script will accurately identify dates in the text file based on the specified conditions and create a pandas Series with these dates.
+5. **Main Function**:
+   - The `main` function handles user input for the file path, processes the file, and prints the resulting date series.
+
+This script generalizes the extraction of dates that might be concatenated with other values and formats them as requested.
