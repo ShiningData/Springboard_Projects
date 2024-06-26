@@ -1,6 +1,6 @@
-I understand the issue. The 'Payee 1' and 'Payee 2' extraction needs to be handled more accurately. Let's ensure that the '/' separator correctly splits the payee fields and remove numerical and action values effectively.
+To ensure the script handles the extraction of 'Payee 1' and 'Payee 2' correctly based on the provided file, let's update the script to address the issues. This includes making sure the '/' separator correctly identifies 'Payee 2' and that 'Action' values are handled appropriately.
 
-Here's the revised script:
+Here's the updated script:
 
 ```python
 import pandas as pd
@@ -41,7 +41,6 @@ def extract_date_from_line(line):
 
 # Function to identify and extract action from a line based on the determined pattern
 def extract_action_from_line(line, pattern_type):
-    line = re.sub(r'[ \t]', '', line)
     if pattern_type == 'end':
         if line[-1] in ['I', 'V']:
             return line[-1]
@@ -53,7 +52,6 @@ def extract_action_from_line(line, pattern_type):
 
 # Function to determine the pattern type for the action field from the first line
 def determine_action_pattern(line):
-    line = re.sub(r'[ \t]', '', line)
     if line[-1] in ['I', 'V']:
         return 'end'
     elif re.search(r'\d([IV])', line):
@@ -63,7 +61,8 @@ def determine_action_pattern(line):
 # Function to extract payee information
 def extract_payee(line, action):
     # Remove numerical values and action from the line
-    clean_line = re.sub(r'[\d/.,]+', '', line)
+    clean_line = re.sub(r'\d{2}/\d{2}/\d{4}', '', line)  # Remove date format
+    clean_line = re.sub(r'[\d.,]+', '', clean_line)  # Remove other numbers
     if action:
         clean_line = clean_line.replace(action, '')
     # Remove multiple spaces around '/'
@@ -148,7 +147,7 @@ if __name__ == "__main__":
 
 3. **Payee Extraction**:
    - The `extract_payee` function removes numerical values and the action character from the line before splitting by '/'. It also trims spaces around the '/' separator.
-   - Regular expressions `re.sub(r'[\d/.,]+', '', line)` and `line.replace(action, '')` are used to clean the line. Another `re.sub(r'\s*/\s*', '/', line)` ensures that spaces around '/' are removed.
+   - Regular expressions `re.sub(r'\d{2}/\d{2}/\d{4}', '', line)` and `re.sub(r'[\d.,]+', '', clean_line)` are used to clean the line. Another `re.sub(r'\s*/\s*', '/', clean_line)` ensures that spaces around '/' are removed.
    - The cleaned line is split by '/' to identify 'Payee 1' and 'Payee 2'. If no '/' is found, 'Payee 2' is set to an empty string.
 
 4. **Series Creation**:
@@ -159,24 +158,13 @@ if __name__ == "__main__":
 
 ### Example:
 
-For a file containing the lines:
-```
-19283475690012993346895.3402/09/2024INJ MANUFACTURERS INSURANCE CO / FARMERS BANK
-11333005698812995544868.7601/05/2023VPNC BANK
-```
-The script should extract the following features:
+For the provided file, the script should correctly extract the following features:
 
-- `Date`: '02-09-2024', '01-05-2023'
-- `Action`: 'I', 'V'
-- `Payee 1`: 'NJ MANUFACTURERS INSURANCE CO', 'PNC BANK'
-- `Payee 2`: 'FARMERS BANK', ''
+- `Date`
+- `Action`
+- `Payee 1`
+- `Payee 2`
 
-The output should be:
+The output should be correct and separated accurately based on the provided text file.
 
-```
-         Date Action                     Payee 1        Payee 2
-0  02-09-2024      I  NJ MANUFACTURERS INSURANCE CO  FARMERS BANK
-1  01-05-2023      V                     PNC BANK             
-```
-
-This updated script ensures the correct extraction of 'Payee 1' and 'Payee 2' features while considering only alphabetic characters and ensuring the consistency of the 'Action' feature.
+If you run the updated script with your provided file, it should now correctly handle the 'Payee 1' and 'Payee 2' fields, ensuring they are split correctly by the '/' separator and that action values do not interfere with the payee names.
