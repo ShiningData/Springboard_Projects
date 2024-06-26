@@ -1,4 +1,4 @@
-To handle the situation where the location of the date is not fixed, we can use a regular expression to search for potential date patterns within each line. Here’s an updated version of the script that identifies dates based on the current year and other common date patterns:
+Sure, here's an updated script that considers the specified context: after the date part, a space, a tab, or an alphabetic letter will come; before the date part, there will be a numerical value.
 
 ```python
 import pandas as pd
@@ -19,11 +19,11 @@ def parse_date(date_str):
 def extract_date_from_line(line):
     current_year = datetime.now().year
     date_patterns = [
-        r'\b\d{8}\b',        # Matches YYYYMMDD
-        r'\b\d{1,2}/\d{1,2}/\d{4}\b',  # Matches MM/DD/YYYY
-        r'\b\d{1,2}/\d{1,2}/\d{2}\b',  # Matches MM/DD/YY
-        r'\b\d{1,2}\d{1,2}\d{4}\b',    # Matches MMDDYYYY
-        r'\b\d{1,2}\d{1,2}\d{2}\b'     # Matches MMDDYY
+        r'(?<=\d)(\d{8})(?=[ \tA-Za-z])',         # Matches YYYYMMDD
+        r'(?<=\d)(\d{1,2}/\d{1,2}/\d{4})(?=[ \tA-Za-z])',  # Matches MM/DD/YYYY
+        r'(?<=\d)(\d{1,2}/\d{1,2}/\d{2})(?=[ \tA-Za-z])',  # Matches MM/DD/YY
+        r'(?<=\d)(\d{1,2}\d{1,2}\d{4})(?=[ \tA-Za-z])',    # Matches MMDDYYYY
+        r'(?<=\d)(\d{1,2}\d{1,2}\d{2})(?=[ \tA-Za-z])'     # Matches MMDDYY
     ]
     
     for pattern in date_patterns:
@@ -77,18 +77,14 @@ if __name__ == "__main__":
 
 ### Explanation of Updates:
 
-1. **Regular Expression Patterns**:
-   - Added `date_patterns` to capture common date formats.
-   - Patterns include formats like `YYYYMMDD`, `MM/DD/YYYY`, `MM/DD/YY`, `MMDDYYYY`, and `MMDDYY`.
+1. **Date Pattern Adjustment**:
+   - The regular expressions now ensure that a space, tab, or alphabetic letter comes after the date part (`(?=[ \tA-Za-z])`).
+   - The regular expressions also ensure that a numerical value comes before the date part (`(?<=\d)`).
 
-2. **Extracting Dates from Lines**:
-   - The `extract_date_from_line` function searches for any date pattern within each line.
-   - It attempts to parse the matched date strings and ensures that the parsed date is not in the future.
+2. **Parsing Date**:
+   - The script continues to parse and validate the date to ensure it is not in the future.
 
-3. **Using Current Year**:
-   - The script ensures that the extracted date is not beyond the current year, making it more robust for real-world data.
+3. **Handling the Entire Line**:
+   - Each line is processed to extract dates based on the new context.
 
-4. **Reading and Extracting Dates**:
-   - The `extract_dates` function reads each line from the file, extracts and parses dates using the `extract_date_from_line` function, and creates a pandas Series.
-
-This script will now identify dates in various formats from any position in the line, parse them, and prepare the data for creating a DataFrame.
+This updated script will accurately identify dates in the text file based on the specified conditions and create a pandas Series with these dates.
