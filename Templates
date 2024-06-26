@@ -1,6 +1,6 @@
-Let's address the issue where '/' should correctly separate 'Payee 1' and 'Payee 2'. We'll ensure that the '/' separator is used correctly and 'Payee 1' and 'Payee 2' are extracted properly.
+I understand the issue. The 'Payee 1' and 'Payee 2' extraction needs to be handled more accurately. Let's ensure that the '/' separator correctly splits the payee fields and remove numerical and action values effectively.
 
-Here is the updated script:
+Here's the revised script:
 
 ```python
 import pandas as pd
@@ -19,9 +19,6 @@ def parse_date(date_str):
 
 # Function to identify and extract date from a line
 def extract_date_from_line(line):
-    # Remove spaces and tabs from the line
-    line = re.sub(r'[ \t]', '', line)
-    current_year = datetime.now().year
     date_patterns = [
         r'(\d{8})',  # Matches YYYYMMDD
         r'(\d{1,2}/\d{1,2}/\d{4})',  # Matches MM/DD/YYYY
@@ -36,7 +33,7 @@ def extract_date_from_line(line):
             date_str = match.group()
             try:
                 parsed_date = parse_date(date_str)
-                if parsed_date.year <= current_year:  # Ensure the date is not in the future
+                if parsed_date.year <= datetime.now().year:  # Ensure the date is not in the future
                     return parsed_date.strftime('%m-%d-%Y')
             except ValueError:
                 continue
@@ -44,7 +41,6 @@ def extract_date_from_line(line):
 
 # Function to identify and extract action from a line based on the determined pattern
 def extract_action_from_line(line, pattern_type):
-    # Remove spaces and tabs from the line
     line = re.sub(r'[ \t]', '', line)
     if pattern_type == 'end':
         if line[-1] in ['I', 'V']:
@@ -57,7 +53,6 @@ def extract_action_from_line(line, pattern_type):
 
 # Function to determine the pattern type for the action field from the first line
 def determine_action_pattern(line):
-    # Remove spaces and tabs from the line
     line = re.sub(r'[ \t]', '', line)
     if line[-1] in ['I', 'V']:
         return 'end'
@@ -68,11 +63,13 @@ def determine_action_pattern(line):
 # Function to extract payee information
 def extract_payee(line, action):
     # Remove numerical values and action from the line
-    line = re.sub(r'[\d/.,]+', '', line)
-    line = line.replace(action, '')
-    line = re.sub(r'[ \t]*\/[ \t]*', '/', line)
+    clean_line = re.sub(r'[\d/.,]+', '', line)
+    if action:
+        clean_line = clean_line.replace(action, '')
+    # Remove multiple spaces around '/'
+    clean_line = re.sub(r'\s*/\s*', '/', clean_line)
     # Split by '/' to identify Payee 1 and Payee 2
-    payees = re.split(r'/', line)
+    payees = clean_line.split('/')
     payee_1 = payees[0].strip()
     payee_2 = payees[1].strip() if len(payees) > 1 else ''
     return payee_1, payee_2
@@ -151,7 +148,7 @@ if __name__ == "__main__":
 
 3. **Payee Extraction**:
    - The `extract_payee` function removes numerical values and the action character from the line before splitting by '/'. It also trims spaces around the '/' separator.
-   - Regular expressions `re.sub(r'[\d/.,]+', '', line)` and `line.replace(action, '')` are used to clean the line. Another `re.sub(r'[ \t]*\/[ \t]*', '/', line)` ensures that spaces around '/' are removed.
+   - Regular expressions `re.sub(r'[\d/.,]+', '', line)` and `line.replace(action, '')` are used to clean the line. Another `re.sub(r'\s*/\s*', '/', line)` ensures that spaces around '/' are removed.
    - The cleaned line is split by '/' to identify 'Payee 1' and 'Payee 2'. If no '/' is found, 'Payee 2' is set to an empty string.
 
 4. **Series Creation**:
