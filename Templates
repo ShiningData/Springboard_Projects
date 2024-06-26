@@ -1,6 +1,6 @@
-Got it. Let's make sure we handle the 'Action' feature correctly so that it does not become part of 'Payee 1' or 'Payee 2', and use the '/' separator among alphabetic letters correctly.
+Let's address the issue where '/' should correctly separate 'Payee 1' and 'Payee 2'. We'll ensure that the '/' separator is used correctly and 'Payee 1' and 'Payee 2' are extracted properly.
 
-Here's the updated script:
+Here is the updated script:
 
 ```python
 import pandas as pd
@@ -72,7 +72,7 @@ def extract_payee(line, action):
     line = line.replace(action, '')
     line = re.sub(r'[ \t]*\/[ \t]*', '/', line)
     # Split by '/' to identify Payee 1 and Payee 2
-    payees = line.split('/')
+    payees = re.split(r'/', line)
     payee_1 = payees[0].strip()
     payee_2 = payees[1].strip() if len(payees) > 1 else ''
     return payee_1, payee_2
