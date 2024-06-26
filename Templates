@@ -1,4 +1,4 @@
-The error message you see is likely due to empty lines or lines that do not contain any date pattern matching. We can handle this more gracefully by ignoring empty lines or lines without any matching date pattern.
+Sure, let's update the script to also extract the 'Action' feature as a series. The 'Action' value will be either 'I' or 'V'. If it is not found at the expected positions, it will be recorded as an empty string.
 
 Here's the updated script:
 
@@ -42,9 +42,22 @@ def extract_date_from_line(line):
                 continue
     raise ValueError("Date format not recognized or date not found in line")
 
-# Function to extract dates from the text file and create a series
-def extract_dates_from_file(file_path):
+# Function to identify and extract action from a line
+def extract_action_from_line(line):
+    # Remove spaces and tabs from the line
+    line = re.sub(r'[ \t]', '', line)
+    # Search for action 'I' or 'V' at the end of the line or after the last digit
+    if re.search(r'[IV]$', line):
+        return line[-1]
+    elif re.search(r'\d[IV]$', line):
+        return line[-1]
+    else:
+        return ''
+
+# Function to extract dates and actions from the text file and create series
+def extract_features_from_file(file_path):
     dates = []
+    actions = []
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in lines:
@@ -56,25 +69,26 @@ def extract_dates_from_file(file_path):
                 dates.append(parsed_date)
             except ValueError as e:
                 print(f"Error parsing date on line: {line}. Error: {e}")
+                dates.append('')  # Append empty string if date is not found
+            
+            action = extract_action_from_line(line)
+            actions.append(action)
     
     date_series = pd.Series(dates, name='Date')
-    return date_series
+    action_series = pd.Series(actions, name='Action')
+    return date_series, action_series
 
-# Main function to create a DataFrame with the date series
+# Main function to create DataFrame with the date and action series
 def main():
     file_path = input("Enter the path of the txt file to process: ")
     
     try:
-        date_series = extract_dates_from_file(file_path)
-        print(date_series.head())
-        # You can add more series here and create a DataFrame
-        # Example:
-        # df = pd.DataFrame({
-        #     'Date': date_series,
-        #     'OtherColumn': other_series,
-        #     ...
-        # })
-        # print(df.head())
+        date_series, action_series = extract_features_from_file(file_path)
+        df = pd.DataFrame({
+            'Date': date_series,
+            'Action': action_series
+        })
+        print(df.head())
     except Exception as e:
         print(f"Error: {e}")
 
@@ -82,21 +96,28 @@ if __name__ == "__main__":
     main()
 ```
 
-### Explanation of Fixes:
+### Explanation:
 
-1. **Ignoring Empty Lines**:
-   - The script now skips empty lines by checking if `line.strip()` is empty before processing it.
+1. **Removing Spaces and Tabs**:
+   - The line is stripped of spaces and tabs using `re.sub(r'[ \t]', '', line)`, which replaces all spaces and tabs with an empty string.
 
-2. **Stripping Whitespace**:
-   - Each line is stripped of leading and trailing whitespace using `line.strip()`.
+2. **Extracting Action**:
+   - The `extract_action_from_line` function searches for 'I' or 'V' at the end of the line or right after the last digit.
+   - If neither is found, it returns an empty string.
+
+3. **Creating Series**:
+   - `extract_features_from_file` function reads the file, extracts dates and actions from each line, and creates pandas Series for both.
+
+4. **Main Function**:
+   - The `main` function handles user input for the file path, processes the file, and prints the resulting DataFrame.
 
 ### Example:
 
-For a file containing the line "19283746501345734876 456.7803082019 Roland Victor  V", the script should correctly extract the date '03082019' and format it as '03-08-2019'. The output should be:
+For a file containing the line "19283746501345734876 456.7803082019 Roland Victor  V", the script should extract the date '03082019' and format it as '03-08-2019', and the action 'V'. The output should be:
 
 ```
-0    03-08-2019
-Name: Date, dtype: object
+         Date Action
+0  03-08-2019      V
 ```
 
-This updated script should handle empty lines and lines without date patterns gracefully, without producing unnecessary error messages.
+This updated script will now read from a text file, remove spaces and tabs between values, and correctly identify and extract both the date and action features.
