@@ -1,4 +1,6 @@
-Sure, we can update the script to remove spaces and tabs between values in the line and then proceed to identify and extract the date. Here is the updated script:
+The error message you see is likely due to empty lines or lines that do not contain any date pattern matching. We can handle this more gracefully by ignoring empty lines or lines without any matching date pattern.
+
+Here's the updated script:
 
 ```python
 import pandas as pd
@@ -46,11 +48,14 @@ def extract_dates_from_file(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in lines:
+            line = line.strip()  # Remove leading and trailing whitespace
+            if not line:  # Skip empty lines
+                continue
             try:
                 parsed_date = extract_date_from_line(line)
                 dates.append(parsed_date)
             except ValueError as e:
-                print(f"Error parsing date on line: {line.strip()}. Error: {e}")
+                print(f"Error parsing date on line: {line}. Error: {e}")
     
     date_series = pd.Series(dates, name='Date')
     return date_series
@@ -77,25 +82,13 @@ if __name__ == "__main__":
     main()
 ```
 
-### Explanation of the Updates:
+### Explanation of Fixes:
 
-1. **Removing Spaces and Tabs**:
-   - The line is stripped of spaces and tabs using `re.sub(r'[ \t]', '', line)`, which replaces all spaces and tabs with an empty string.
+1. **Ignoring Empty Lines**:
+   - The script now skips empty lines by checking if `line.strip()` is empty before processing it.
 
-2. **Regular Expressions**:
-   - The date patterns remain the same, but now they match dates in the concatenated string without spaces or tabs.
-
-3. **Parsing Date**:
-   - The `parse_date` function attempts to parse the date using multiple formats and reformats the date to 'MM-DD-YYYY'.
-
-4. **Extracting Dates from Lines**:
-   - The `extract_date_from_line` function processes each line to identify and extract the date. It ensures that the date is not in the future based on the current year.
-
-5. **Creating a Pandas Series**:
-   - The `extract_dates_from_file` function reads the file, extracts dates from each line, and creates a pandas Series.
-
-6. **Main Function**:
-   - The `main` function handles user input for the file path, processes the file, and prints the resulting date series.
+2. **Stripping Whitespace**:
+   - Each line is stripped of leading and trailing whitespace using `line.strip()`.
 
 ### Example:
 
@@ -106,4 +99,4 @@ For a file containing the line "19283746501345734876 456.7803082019 Roland Victo
 Name: Date, dtype: object
 ```
 
-This updated script will now read from a text file, remove spaces and tabs between values, and correctly identify and extract the date.
+This updated script should handle empty lines and lines without date patterns gracefully, without producing unnecessary error messages.
