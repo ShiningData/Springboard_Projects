@@ -1,189 +1,27 @@
-Sure, let's update the script to extract the new features ("Account Number", "Serial Number", "Issued Amount") and include the existing ones ("Date", "Payee 1", "Payee 2", "Action") while cleaning up the original lines in the text file.
+Here is the updated matrix with an additional column for derived sensitivity metrics for each method:
 
-Here's the updated script:
+| Method                             | Effort (Low/High) | Impact (Low/High) | Derived Metrics                         |
+|------------------------------------|-------------------|-------------------|----------------------------------------|
+| Bayesian Network Modeling          | High              | High              | Conditional Probabilities               |
+| Bootstrap Sampling                 | Low               | Low               | Confidence Intervals, Distribution      |
+| Correlation Analysis               | Low               | Low               | Correlation Coefficients                |
+| Counterfactual Analysis            | High              | High              | Causal Impact                           |
+| DoubleML Package Sensitivity Analysis | High            | High              | Treatment Effect Estimates              |
+| Fuzzy Logic Modeling               | High              | High              | Membership Functions                    |
+| Granger Causality Testing          | High              | High              | Granger Causality Statistics            |
+| Sensitivity Package                | Low               | Low               | Sensitivity Indices                     |
+| Simulated Annealing                | High              | High              | Optimized Parameter Sets                |
+| Simultaneous Equations Models      | High              | High              | Structural Coefficients                 |
+| Agent-Based Modeling               | High              | High              | Agent Interaction Metrics               |
+| Bayesian Sensitivity Analysis      | High              | High              | Posterior Distributions                 |
+| Dynamic Panel Data Analysis        | High              | High              | Panel Data Estimates                    |
+| Dynamic Time Series Modeling       | High              | High              | Time Series Forecasts                   |
+| Econometric Time Series Models     | High              | High              | Econometric Model Parameters            |
+| Monte Carlo Simulation             | High              | High              | Simulation Results, Probabilistic Outcomes |
+| Partial Dependency Plots           | Low               | Low               | Partial Dependencies                    |
+| Response Surface Methodology RSM   | High              | High              | Response Surfaces, Optimization Results |
+| Scenario Analysis                  | Low               | Low               | Scenario Impact Assessments             |
+| Sensitivity Indices                | Low               | Low               | Sensitivity Index Scores                |
+| Spatial Econometric Analysis       | High              | High              | Spatial Dependence Metrics              |
 
-```python
-import pandas as pd
-import re
-from datetime import datetime
-
-# Function to parse the date from a string
-def parse_date(date_str):
-    date_formats = ['%m%d%Y', '%m/%d/%Y', '%m/%d/%y', '%m%d%y', '%Y%m%d']
-    for date_format in date_formats:
-        try:
-            return pd.to_datetime(date_str, format=date_format)
-        except ValueError:
-            continue
-    raise ValueError(f"Date format not recognized: {date_str}")
-
-# Function to identify and extract date from a line
-def extract_date_from_line(line):
-    date_patterns = [
-        r'(\d{8})',  # Matches YYYYMMDD
-        r'(\d{1,2}/\d{1,2}/\d{4})',  # Matches MM/DD/YYYY
-        r'(\d{1,2}/\d{1,2}/\d{2})',  # Matches MM/DD/YY
-        r'(\d{1,2}\d{1,2}\d{4})',    # Matches MMDDYYYY
-        r'(\d{1,2}\d{1,2}\d{2})'     # Matches MMDDYY
-    ]
-    
-    for pattern in date_patterns:
-        match = re.search(pattern, line)
-        if match:
-            date_str = match.group()
-            try:
-                parsed_date = parse_date(date_str)
-                if parsed_date.year <= datetime.now().year:  # Ensure the date is not in the future
-                    return parsed_date.strftime('%m-%d-%Y')
-            except ValueError:
-                continue
-    raise ValueError("Date format not recognized or date not found in line")
-
-# Function to identify and extract action from a line based on the determined pattern
-def extract_action_from_line(line, pattern_type):
-    if pattern_type == 'end':
-        if line[-1] in ['I', 'V']:
-            return line[-1]
-    elif pattern_type == 'after_last_num':
-        match = re.search(r'\d([IV])', line)
-        if match:
-            return match.group(1)
-    return ''
-
-# Function to determine the pattern type for the action field from the first line
-def determine_action_pattern(line):
-    if line[-1] in ['I', 'V']:
-        return 'end'
-    elif re.search(r'\d([IV])', line):
-        return 'after_last_num'
-    return 'none'
-
-# Function to extract payee information
-def extract_payee(line, action):
-    # Remove numerical values and action from the line
-    clean_line = re.sub(r'\d{2}/\d{2}/\d{4}', '', line)  # Remove date format
-    clean_line = re.sub(r'[\d.,]+', '', clean_line)  # Remove other numbers
-    if action:
-        clean_line = clean_line.replace(action, '')
-    # Remove multiple spaces around '/'
-    clean_line = re.sub(r'\s*/\s*', '/', clean_line)
-    # Split by '/' to identify Payee 1 and Payee 2
-    payees = clean_line.split('/')
-    payee_1 = payees[0].strip()
-    payee_2 = payees[1].strip() if len(payees) > 1 else ''
-    return payee_1, payee_2
-
-# Function to extract account number, serial number, and issued amount
-def extract_account_serial_issued(line):
-    account_number = line[:10]
-    serial_number = line[10:20]
-    issued_amount = line[20:32].strip()
-    return account_number, serial_number, issued_amount
-
-# Function to extract dates, actions, payees, account numbers, serial numbers, and issued amounts from the text file and create series
-def extract_features_from_file(file_path):
-    account_numbers = []
-    serial_numbers = []
-    issued_amounts = []
-    dates = []
-    actions = []
-    payees_1 = []
-    payees_2 = []
-    pattern_type = None
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-            original_line = line.strip()  # Save the original line for payee extraction
-            line = line.strip()  # Remove leading and trailing whitespace
-            if not line:  # Skip empty lines
-                continue
-            if pattern_type is None:
-                pattern_type = determine_action_pattern(line)
-            try:
-                parsed_date = extract_date_from_line(line)
-                dates.append(parsed_date)
-                line = line.replace(parsed_date, '')  # Remove date from the line
-            except ValueError as e:
-                print(f"Error parsing date on line: {line}. Error: {e}")
-                dates.append('')  # Append empty string if date is not found
-            
-            if pattern_type == 'none':
-                action = ''
-            else:
-                action = extract_action_from_line(line, pattern_type)
-                # Verify pattern consistency
-                if action == '' and pattern_type != 'none':
-                    pattern_type = 'none'
-                    actions = ['' for _ in actions]  # Clear previous actions
-            actions.append(action)
-            if action:
-                line = line.replace(action, '')  # Remove action from the line
-
-            # Extract Payee 1 and Payee 2
-            payee_1, payee_2 = extract_payee(original_line, action)
-            payees_1.append(payee_1)
-            payees_2.append(payee_2)
-
-            # Extract Account Number, Serial Number, and Issued Amount
-            account_number, serial_number, issued_amount = extract_account_serial_issued(line)
-            account_numbers.append(account_number)
-            serial_numbers.append(serial_number)
-            issued_amounts.append(issued_amount)
-    
-    account_number_series = pd.Series(account_numbers, name='Account Number')
-    serial_number_series = pd.Series(serial_numbers, name='Serial Number')
-    issued_amount_series = pd.Series(issued_amounts, name='Issued Amount')
-    date_series = pd.Series(dates, name='Date')
-    action_series = pd.Series(actions, name='Action')
-    payee_1_series = pd.Series(payees_1, name='Payee 1')
-    payee_2_series = pd.Series(payees_2, name='Payee 2')
-    return account_number_series, serial_number_series, issued_amount_series, date_series, action_series, payee_1_series, payee_2_series
-
-# Main function to create DataFrame with all the series
-def main():
-    file_path = input("Enter the path of the txt file to process: ")
-    
-    try:
-        account_number_series, serial_number_series, issued_amount_series, date_series, action_series, payee_1_series, payee_2_series = extract_features_from_file(file_path)
-        df = pd.DataFrame({
-            'Account Number': account_number_series,
-            'Serial Number': serial_number_series,
-            'Issued Amount': issued_amount_series,
-            'Date': date_series,
-            'Action': action_series,
-            'Payee 1': payee_1_series,
-            'Payee 2': payee_2_series
-        })
-        print(df.head())
-    except Exception as e:
-        print(f"Error: {e}")
-
-if __name__ == "__main__":
-    main()
-```
-
-### Explanation:
-
-1. **Pattern Determination**:
-   - The `determine_action_pattern` function determines the action pattern from the first line of the file. It checks if 'I' or 'V' is at the end of the line or right after the last numerical value.
-
-2. **Action Extraction**:
-   - The `extract_action_from_line` function extracts the action based on the determined pattern. If the pattern is 'end', it checks the last character of the line. If the pattern is 'after_last_num', it checks for 'I' or 'V' immediately following the last numerical value.
-
-3. **Payee Extraction**:
-   - The `extract_payee` function removes numerical values and the action character from the line before splitting by '/'. It also trims spaces around the '/' separator.
-   - Regular expressions `re.sub(r'\d{2}/\d{2}/\d{4}', '', line)` and `re.sub(r'[\d.,]+', '', clean_line)` are used to clean the line. Another `re.sub(r'\s*/\s*', '/', clean_line)` ensures that spaces around '/' are removed.
-   - The cleaned line is split by '/' to identify 'Payee 1' and 'Payee 2'. If no '/' is found, 'Payee 2' is set to an empty string.
-
-4. **Account, Serial, and Issued Amount Extraction**:
-   - The `extract_account_serial_issued` function extracts the first ten digits as 'Account Number', the next ten digits as 'Serial Number', and the rest as 'Issued Amount' from the cleaned line.
-
-5. **Series Creation**:
-   - The `extract_features_from_file` function reads the file, extracts dates, actions, payees, account numbers, serial numbers, and issued amounts from each line, and creates pandas Series for all features.
-
-6. **Main Function**:
-   - The `main` function handles user input for the file path, processes the file, and prints the resulting DataFrame.
-
-### Example:
-
-For the provided file
+This matrix now includes the derived sensitivity metrics for each method, providing a comprehensive overview of the effort, impact, and specific metrics that each method yields.
