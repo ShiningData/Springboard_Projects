@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import to_date, col, sum as _sum, avg, stddev, weekofyear, month, min
+from pyspark.sql.functions import to_date, col, sum as _sum, avg, stddev, weekofyear, month, year, min, lit, udf
+from pyspark.sql.types import IntegerType
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -43,6 +44,9 @@ data = [
 # Create DataFrame
 df = spark.createDataFrame(data, schema=schema)
 
+# Add year column
+df = df.withColumn("year", year(df.src_load_date))
+
 # Calculate the minimum date
 min_date = df.select(min(col("src_load_date"))).collect()[0][0]
 
@@ -61,28 +65,28 @@ unique_combinations_before = df.select("rlt_n_pwr_id", "account_type").distinct(
 print(f"Unique combinations before aggregation: {unique_combinations_before}")
 
 # Aggregations
-daily_agg = df.groupBy("rlt_n_pwr_id", "account_type", to_date(col("src_load_date")).alias("date")).agg(
+daily_agg = df.groupBy("rlt_n_pwr_id", "account_type", "year", to_date(col("src_load_date")).alias("date")).agg(
     _sum("sum_balance").alias("total_sum_balance"),
     avg("sum_balance").alias("avg_sum_balance"),
     _sum("avg_balance").alias("total_avg_balance"),
     avg("avg_balance").alias("avg_avg_balance")
 )
 
-weekly_agg = df.groupBy("rlt_n_pwr_id", "account_type", weekofyear(col("src_load_date")).alias("week")).agg(
+weekly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "year", weekofyear(col("src_load_date")).alias("week")).agg(
     _sum("sum_balance").alias("total_sum_balance"),
     avg("sum_balance").alias("avg_sum_balance"),
     _sum("avg_balance").alias("total_avg_balance"),
     avg("avg_balance").alias("avg_avg_balance")
 )
 
-bi_weekly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "bi_weekly_period").agg(
+bi_weekly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "year", "bi_weekly_period").agg(
     _sum("sum_balance").alias("total_sum_balance"),
     avg("sum_balance").alias("avg_sum_balance"),
     _sum("avg_balance").alias("total_avg_balance"),
     avg("avg_balance").alias("avg_avg_balance")
 )
 
-monthly_agg = df.groupBy("rlt_n_pwr_id", "account_type", month(col("src_load_date")).alias("month")).agg(
+monthly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "year", month(col("src_load_date")).alias("month")).agg(
     _sum("sum_balance").alias("total_sum_balance"),
     avg("sum_balance").alias("avg_sum_balance"),
     _sum("avg_balance").alias("total_avg_balance"),
