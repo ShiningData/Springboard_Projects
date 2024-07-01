@@ -1,27 +1,196 @@
-Here is the updated matrix with an additional column for derived sensitivity metrics for each method:
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import to_date, col, sum as _sum, avg, stddev, weekofyear, month, min
+import matplotlib.pyplot as plt
+import pandas as pd
 
-| Method                             | Effort (Low/High) | Impact (Low/High) | Derived Metrics                         |
-|------------------------------------|-------------------|-------------------|----------------------------------------|
-| Bayesian Network Modeling          | High              | High              | Conditional Probabilities               |
-| Bootstrap Sampling                 | Low               | Low               | Confidence Intervals, Distribution      |
-| Correlation Analysis               | Low               | Low               | Correlation Coefficients                |
-| Counterfactual Analysis            | High              | High              | Causal Impact                           |
-| DoubleML Package Sensitivity Analysis | High            | High              | Treatment Effect Estimates              |
-| Fuzzy Logic Modeling               | High              | High              | Membership Functions                    |
-| Granger Causality Testing          | High              | High              | Granger Causality Statistics            |
-| Sensitivity Package                | Low               | Low               | Sensitivity Indices                     |
-| Simulated Annealing                | High              | High              | Optimized Parameter Sets                |
-| Simultaneous Equations Models      | High              | High              | Structural Coefficients                 |
-| Agent-Based Modeling               | High              | High              | Agent Interaction Metrics               |
-| Bayesian Sensitivity Analysis      | High              | High              | Posterior Distributions                 |
-| Dynamic Panel Data Analysis        | High              | High              | Panel Data Estimates                    |
-| Dynamic Time Series Modeling       | High              | High              | Time Series Forecasts                   |
-| Econometric Time Series Models     | High              | High              | Econometric Model Parameters            |
-| Monte Carlo Simulation             | High              | High              | Simulation Results, Probabilistic Outcomes |
-| Partial Dependency Plots           | Low               | Low               | Partial Dependencies                    |
-| Response Surface Methodology RSM   | High              | High              | Response Surfaces, Optimization Results |
-| Scenario Analysis                  | Low               | Low               | Scenario Impact Assessments             |
-| Sensitivity Indices                | Low               | Low               | Sensitivity Index Scores                |
-| Spatial Econometric Analysis       | High              | High              | Spatial Dependence Metrics              |
+# Initialize Spark session
+spark = SparkSession.builder.appName("DepositDataAggregation").getOrCreate()
 
-This matrix now includes the derived sensitivity metrics for each method, providing a comprehensive overview of the effort, impact, and specific metrics that each method yields.
+# Define schema
+schema = """
+    rlt_n_pwr_id STRING,
+    account_type STRING,
+    src_load_date DATE,
+    sum_balance DOUBLE,
+    avg_balance DOUBLE,
+    avg_int_rate DOUBLE
+"""
+
+# Sample data (top 20 rows)
+data = [
+    ("0003577133", "MMDA SWEEP", "2018-12-07", 1054543.02, 1054543.02, 0.5),
+    ("0000782508", "MMDA", "2019-10-31", 272.72, 272.72, 1.0),
+    ("0004764134", "MMDA", "2019-06-19", 763606.38, 763606.38, 0.75),
+    ("0004675448", "MMDA", "2021-04-24", 39035.65, 39035.65, 0.5),
+    ("0002467317", "MMDA SWEEP", "2010-08-01", 1582832.95, 1582832.95167, 0.179167),
+    ("0002478749", "MMDA SWEEP", "2019-09-07", 2764943.09, 2764943.09, 4.75),
+    ("0001885101", "IBDDA PF", "2024-01-10", 13536742.78, 565144.678333, 2.1125),
+    ("0009769630", "IBDDA", "2023-09-01", 1022335.74, 46469.806364, 2.8),
+    ("0005605238", "MMDA", "2023-05-24", 15140.24, 15140.24, 2.75),
+    ("0000423802", "MMDA SWEEP", "2024-05-03", 3176147.99, 3176147.99, 4.35),
+    ("0000771262", "MMDA", "2024-01-05", 476981.6, 476981.6, 2.75),
+    ("0000425531", "MMDA", "2019-02-21", 52.49, 52.49, 2.75),
+    ("0008467255", "IBDDA", "2024-05-10", 11386211.14, 1014323.933846, 2.834615),
+    ("0008015505", "IBDDA", "2024-01-11", 5728917.21, 95482.209833, 2.75),
+    ("0008113380", "Daily Interest Sweep", "2024-04-23", 7226167.24, 1033209.695714, 4.657142),
+    ("0000296609", "MMDA SWEEP", "2023-12-07", 19452376.51, 19452376.51, 3.5),
+    ("0000061532", "MMDA SWEEP", "2023-09-23", 3823496.18, 3823496.18, 3.15),
+    ("0001802165", "MMDA SWEEP", "2024-03-24", 463278.18, 463278.18, 2.75),
+    ("0004084439", "SUBACCOUNTING", "2024-04-02", 154748.73, 70337.215, 0.0),
+    ("000891518", "IBDDA", "2024-02-24", 2337122.54, 1168561.27, 2.8)
+]
+
+# Create DataFrame
+df = spark.createDataFrame(data, schema=schema)
+
+# Calculate the minimum date
+min_date = df.select(min(col("src_load_date"))).collect()[0][0]
+
+# Define UDF to calculate bi-weekly period
+def bi_weekly_period(start_date, current_date):
+    diff_days = (current_date - start_date).days
+    return (diff_days // 14) + 1
+
+bi_weekly_udf = udf(bi_weekly_period, IntegerType())
+
+# Add bi-weekly period column
+df = df.withColumn("bi_weekly_period", bi_weekly_udf(lit(min_date), col("src_load_date")))
+
+# Calculate unique combinations before aggregation
+unique_combinations_before = df.select("rlt_n_pwr_id", "account_type").distinct().count()
+print(f"Unique combinations before aggregation: {unique_combinations_before}")
+
+# Aggregations
+daily_agg = df.groupBy("rlt_n_pwr_id", "account_type", to_date(col("src_load_date")).alias("date")).agg(
+    _sum("sum_balance").alias("total_sum_balance"),
+    avg("sum_balance").alias("avg_sum_balance"),
+    _sum("avg_balance").alias("total_avg_balance"),
+    avg("avg_balance").alias("avg_avg_balance")
+)
+
+weekly_agg = df.groupBy("rlt_n_pwr_id", "account_type", weekofyear(col("src_load_date")).alias("week")).agg(
+    _sum("sum_balance").alias("total_sum_balance"),
+    avg("sum_balance").alias("avg_sum_balance"),
+    _sum("avg_balance").alias("total_avg_balance"),
+    avg("avg_balance").alias("avg_avg_balance")
+)
+
+bi_weekly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "bi_weekly_period").agg(
+    _sum("sum_balance").alias("total_sum_balance"),
+    avg("sum_balance").alias("avg_sum_balance"),
+    _sum("avg_balance").alias("total_avg_balance"),
+    avg("avg_balance").alias("avg_avg_balance")
+)
+
+monthly_agg = df.groupBy("rlt_n_pwr_id", "account_type", month(col("src_load_date")).alias("month")).agg(
+    _sum("sum_balance").alias("total_sum_balance"),
+    avg("sum_balance").alias("avg_sum_balance"),
+    _sum("avg_balance").alias("total_avg_balance"),
+    avg("avg_balance").alias("avg_avg_balance")
+)
+
+# Calculate unique combinations after aggregation
+unique_combinations_after_daily = daily_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
+unique_combinations_after_weekly = weekly_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
+unique_combinations_after_bi_weekly = bi_weekly_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
+unique_combinations_after_monthly = monthly_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
+
+print(f"Unique combinations after daily aggregation: {unique_combinations_after_daily}")
+print(f"Unique combinations after weekly aggregation: {unique_combinations_after_weekly}")
+print(f"Unique combinations after bi-weekly aggregation: {unique_combinations_after_bi_weekly}")
+print(f"Unique combinations after monthly aggregation: {unique_combinations_after_monthly}")
+
+# Calculate variability (standard deviation) for each aggregation
+daily_variability = daily_agg.agg(
+    stddev("total_sum_balance").alias("stddev_total_sum_balance"),
+    stddev("avg_sum_balance").alias("stddev_avg_sum_balance"),
+    stddev("total_avg_balance").alias("stddev_total_avg_balance"),
+    stddev("avg_avg_balance").alias("stddev_avg_avg_balance")
+)
+
+weekly_variability = weekly_agg.agg(
+    stddev("total_sum_balance").alias("stddev_total_sum_balance"),
+    stddev("avg_sum_balance").alias("stddev_avg_sum_balance"),
+    stddev("total_avg_balance").alias("stddev_total_avg_balance"),
+    stddev("avg_avg_balance").alias("stddev_avg_avg_balance")
+)
+
+bi_weekly_variability = bi_weekly_agg.agg(
+    stddev("total_sum_balance").alias("stddev_total_sum_balance"),
+    stddev("avg_sum_balance").alias("stddev_avg_sum_balance"),
+    stddev("total_avg_balance").alias("stddev_total_avg_balance"),
+    stddev("avg_avg_balance").alias("stddev_avg_avg_balance")
+)
+
+monthly_variability = monthly_agg.agg(
+    stddev("total_sum_balance").alias("stddev_total_sum_balance"),
+    stddev("avg_sum_balance").alias("stddev_avg_sum_balance"),
+    stddev("total_avg_balance").alias("stddev_total_avg_balance"),
+    stddev("avg_avg_balance").alias("stddev_avg_avg_balance")
+)
+
+# Convert PySpark DataFrames to Pandas DataFrames for plotting
+daily_agg_pd = daily_agg.toPandas()
+weekly_agg_pd = weekly_agg.toPandas()
+bi_weekly_agg_pd = bi_weekly_agg.toPandas()
+monthly_agg_pd = monthly_agg.toPandas()
+daily_variability_pd = daily_variability.toPandas()
+weekly_variability_pd = weekly_variability.toPandas()
+bi_weekly_variability_pd = bi_weekly_variability.toPandas()
+monthly_variability_pd = monthly_variability.toPandas()
+
+# Plotting
+fig, axs = plt.subplots(4, 2, figsize=(15, 20))
+
+# Daily Aggregation
+axs[0, 0].plot(daily_agg_pd['date'], daily_agg_pd['total_sum_balance'], label='Total Sum Balance')
+axs[0, 0].plot(daily_agg_pd['date'], daily_agg_pd['total_avg_balance'], label='Total Avg Balance')
+axs[0, 0].set_title('Daily Aggregation')
+axs[0, 0].set_xlabel('Date')
+axs[0, 0].set_ylabel('Balance')
+axs[0, 0].legend()
+
+# Weekly Aggregation
+axs[1, 0].plot(weekly_agg_pd['week'], weekly_agg_pd['total_sum_balance'], label='Total Sum Balance')
+axs[1, 0].plot(weekly_agg_pd['week'], weekly_agg_pd['total_avg_balance'], label='Total Avg Balance')
+axs[1, 0].set_title('Weekly Aggregation')
+axs[1, 0].set_xlabel('Week')
+axs[1, 0].set_ylabel('Balance')
+axs[1, 0].legend()
+
+# Bi-Weekly Aggregation
+axs[2, 0].plot(bi_weekly_agg_pd['bi_weekly_period'], bi_weekly_agg_pd['total_sum_balance'], label='Total Sum Balance')
+axs[2, 0].plot(bi_weekly_agg_pd['bi_weekly_period'], bi_weekly_agg_pd['total_avg_balance'], label='Total Avg Balance')
+axs[2, 0].set_title('Bi-Weekly Aggregation')
+axs[2, 0].set_xlabel('Bi-Weekly Period')
+axs[2, 0].set_ylabel('Balance')
+axs[2, 0].legend()
+
+# Monthly Aggregation
+axs[3, 0].plot(monthly_agg_pd['month'], monthly_agg_pd['total_sum_balance'], label='Total Sum Balance')
+axs[3, 0].plot(monthly_agg_pd['month'], monthly_agg_pd['total_avg_balance'], label='Total Avg Balance')
+axs[3, 0].set_title('Monthly Aggregation')
+axs[3, 0].set_xlabel('Month')
+axs[3, 0].set_ylabel('Balance')
+axs[3, 0].legend()
+
+# Variability Comparison
+axs[0, 1].bar(['Daily', 'Weekly', 'Bi-Weekly', 'Monthly'], [daily_variability_pd['stddev_total_sum_balance'][0], weekly_variability_pd['stddev_total_sum_balance'][0], bi_weekly_variability_pd['stddev_total_sum_balance'][0], monthly_variability_pd['stddev_total_sum_balance'][0]])
+axs[0, 1].set_title('Std Dev of Total Sum Balance')
+axs[0, 1].set_ylabel('Std Dev')
+
+axs[1, 1].bar(['Daily', 'Weekly', 'Bi-Weekly', 'Monthly'], [daily_variability_pd['stddev_avg_sum_balance'][0], weekly_variability_pd['stddev_avg_sum_balance'][0], bi_weekly_variability_pd['stddev_avg_sum_balance'][0], monthly_variability_pd['stddev_avg_sum_balance'][0]])
+axs[1, 1].set_title('Std Dev of Avg Sum Balance')
+axs[1, 1].set_ylabel('Std Dev')
+
+axs[2, 1].bar(['Daily', 'Weekly', 'Bi-Weekly', 'Monthly'], [daily_variability_pd['stddev_total_avg_balance'][0], weekly_variability_pd['stddev_total_avg_balance'][0], bi_weekly_variability_pd['stddev_total_avg_balance'][0], monthly_variability_pd['stddev_total_avg_balance'][0]])
+axs[2, 1].set_title('Std Dev of Total Avg Balance')
+axs[2, 1].set_ylabel('Std Dev')
+
+axs[3, 1].bar(['Daily', 'Weekly', 'Bi-Weekly', 'Monthly'], [daily_variability_pd['stddev_avg_avg_balance'][0], weekly_variability_pd['stddev_avg_avg_balance'][0], bi_weekly_variability_pd['stddev_avg_avg_balance'][0], monthly_variability_pd['stddev_avg_avg_balance'][0]])
+axs[3, 1].set_title('Std Dev of Avg Avg Balance')
+axs[3, 1].set_ylabel('Std Dev')
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
