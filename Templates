@@ -93,6 +93,35 @@ monthly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "year", month(col("src_
     avg("avg_balance").alias("avg_avg_balance")
 )
 
+# Filter out rows where all balance columns are 0.0
+daily_agg = daily_agg.filter(
+    (col("total_sum_balance") != 0.0) | 
+    (col("avg_sum_balance") != 0.0) | 
+    (col("total_avg_balance") != 0.0) | 
+    (col("avg_avg_balance") != 0.0)
+)
+
+weekly_agg = weekly_agg.filter(
+    (col("total_sum_balance") != 0.0) | 
+    (col("avg_sum_balance") != 0.0) | 
+    (col("total_avg_balance") != 0.0) | 
+    (col("avg_avg_balance") != 0.0)
+)
+
+bi_weekly_agg = bi_weekly_agg.filter(
+    (col("total_sum_balance") != 0.0) | 
+    (col("avg_sum_balance") != 0.0) | 
+    (col("total_avg_balance") != 0.0) | 
+    (col("avg_avg_balance") != 0.0)
+)
+
+monthly_agg = monthly_agg.filter(
+    (col("total_sum_balance") != 0.0) | 
+    (col("avg_sum_balance") != 0.0) | 
+    (col("total_avg_balance") != 0.0) | 
+    (col("avg_avg_balance") != 0.0)
+)
+
 # Calculate unique combinations after aggregation
 unique_combinations_after_daily = daily_agg.select("rlt_n_pwr_id", "account_type", "year").distinct().count()
 unique_combinations_after_weekly = weekly_agg.select("rlt_n_pwr_id", "account_type", "year").distinct().count()
