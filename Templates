@@ -94,10 +94,10 @@ monthly_agg = df.groupBy("rlt_n_pwr_id", "account_type", "year", month(col("src_
 )
 
 # Calculate unique combinations after aggregation
-unique_combinations_after_daily = daily_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
-unique_combinations_after_weekly = weekly_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
-unique_combinations_after_bi_weekly = bi_weekly_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
-unique_combinations_after_monthly = monthly_agg.select("rlt_n_pwr_id", "account_type").distinct().count()
+unique_combinations_after_daily = daily_agg.select("rlt_n_pwr_id", "account_type", "year").distinct().count()
+unique_combinations_after_weekly = weekly_agg.select("rlt_n_pwr_id", "account_type", "year").distinct().count()
+unique_combinations_after_bi_weekly = bi_weekly_agg.select("rlt_n_pwr_id", "account_type", "year").distinct().count()
+unique_combinations_after_monthly = monthly_agg.select("rlt_n_pwr_id", "account_type", "year").distinct().count()
 
 print(f"Unique combinations after daily aggregation: {unique_combinations_after_daily}")
 print(f"Unique combinations after weekly aggregation: {unique_combinations_after_weekly}")
