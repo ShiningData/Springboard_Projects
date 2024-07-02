@@ -1,3 +1,63 @@
+# Collect variability data for normalization
+daily_variability_data = daily_variability.collect()[0]
+weekly_variability_data = weekly_variability.collect()[0]
+bi_weekly_variability_data = bi_weekly_variability.collect()[0]
+monthly_variability_data = monthly_variability.collect()[0]
+
+# Normalizing variability data based on daily variability
+variability_total_sum_balance = [
+    1.0,
+    weekly_variability_data['stddev_total_sum_balance'] / daily_variability_data['stddev_total_sum_balance'], 
+    bi_weekly_variability_data['stddev_total_sum_balance'] / daily_variability_data['stddev_total_sum_balance'], 
+    monthly_variability_data['stddev_total_sum_balance'] / daily_variability_data['stddev_total_sum_balance']
+]
+
+variability_avg_sum_balance = [
+    1.0,
+    weekly_variability_data['stddev_avg_sum_balance'] / daily_variability_data['stddev_avg_sum_balance'], 
+    bi_weekly_variability_data['stddev_avg_sum_balance'] / daily_variability_data['stddev_avg_sum_balance'], 
+    monthly_variability_data['stddev_avg_sum_balance'] / daily_variability_data['stddev_avg_sum_balance']
+]
+
+variability_total_avg_balance = [
+    1.0,
+    weekly_variability_data['stddev_total_avg_balance'] / daily_variability_data['stddev_total_avg_balance'], 
+    bi_weekly_variability_data['stddev_total_avg_balance'] / daily_variability_data['stddev_total_avg_balance'], 
+    monthly_variability_data['stddev_total_avg_balance'] / daily_variability_data['stddev_total_avg_balance']
+]
+
+variability_avg_avg_balance = [
+    1.0,
+    weekly_variability_data['stddev_avg_avg_balance'] / daily_variability_data['stddev_avg_avg_balance'], 
+    bi_weekly_variability_data['stddev_avg_avg_balance'] / daily_variability_data['stddev_avg_avg_balance'], 
+    monthly_variability_data['stddev_avg_avg_balance'] / daily_variability_data['stddev_avg_avg_balance']
+]
+
+# Plotting Variability
+fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+
+variability_labels = ['Daily', 'Weekly', 'Bi-Weekly', 'Monthly']
+
+axs[0, 0].bar(variability_labels, variability_total_sum_balance)
+axs[0, 0].set_title('Normalized Std Dev of Total Sum Balance')
+axs[0, 0].set_ylabel('Normalized Std Dev')
+
+axs[0, 1].bar(variability_labels, variability_avg_sum_balance)
+axs[0, 1].set_title('Normalized Std Dev of Avg Sum Balance')
+axs[0, 1].set_ylabel('Normalized Std Dev')
+
+axs[1, 0].bar(variability_labels, variability_total_avg_balance)
+axs[1, 0].set_title('Normalized Std Dev of Total Avg Balance')
+axs[1, 0].set_ylabel('Normalized Std Dev')
+
+axs[1, 1].bar(variability_labels, variability_avg_avg_balance)
+axs[1, 1].set_title('Normalized Std Dev of Avg Avg Balance')
+axs[1, 1].set_ylabel('Normalized Std Dev')
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
+=============================================================================================================================================================================
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import to_date, col, sum as _sum, avg, stddev, weekofyear, month, year, min, lit, udf
 from pyspark.sql.types import IntegerType
