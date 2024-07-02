@@ -172,59 +172,66 @@ weekly_variability_data = weekly_variability.collect()[0]
 bi_weekly_variability_data = bi_weekly_variability.collect()[0]
 monthly_variability_data = monthly_variability.collect()[0]
 
-# Plotting
-fig, axs = plt.subplots(4, 2, figsize=(15, 20))
+# Plotting Aggregations
+fig, axs = plt.subplots(4, 1, figsize=(15, 20))
 
 # Daily Aggregation
 daily_dates = [row['date'] for row in daily_agg_data]
 daily_total_sum_balance = [row['total_sum_balance'] for row in daily_agg_data]
 daily_total_avg_balance = [row['total_avg_balance'] for row in daily_agg_data]
 
-axs[0, 0].plot(daily_dates, daily_total_sum_balance, label='Total Sum Balance')
-axs[0, 0].plot(daily_dates, daily_total_avg_balance, label='Total Avg Balance')
-axs[0, 0].set_title('Daily Aggregation')
-axs[0, 0].set_xlabel('Date')
-axs[0, 0].set_ylabel('Balance')
-axs[0, 0].legend()
+axs[0].plot(daily_dates, daily_total_sum_balance, label='Total Sum Balance')
+axs[0].plot(daily_dates, daily_total_avg_balance, label='Total Avg Balance')
+axs[0].set_title('Daily Aggregation')
+axs[0].set_xlabel('Date')
+axs[0].set_ylabel('Balance')
+axs[0].legend()
 
 # Weekly Aggregation
 weekly_weeks = [row['week'] for row in weekly_agg_data]
 weekly_total_sum_balance = [row['total_sum_balance'] for row in weekly_agg_data]
 weekly_total_avg_balance = [row['total_avg_balance'] for row in weekly_agg_data]
 
-axs[1, 0].plot(weekly_weeks, weekly_total_sum_balance, label='Total Sum Balance')
-axs[1, 0].plot(weekly_weeks, weekly_total_avg_balance, label='Total Avg Balance')
-axs[1, 0].set_title('Weekly Aggregation')
-axs[1, 0].set_xlabel('Week')
-axs[1, 0].set_ylabel('Balance')
-axs[1, 0].legend()
+axs[1].plot(weekly_weeks, weekly_total_sum_balance, label='Total Sum Balance')
+axs[1].plot(weekly_weeks, weekly_total_avg_balance, label='Total Avg Balance')
+axs[1].set_title('Weekly Aggregation')
+axs[1].set_xlabel('Week')
+axs[1].set_ylabel('Balance')
+axs[1].legend()
 
 # Bi-Weekly Aggregation
 bi_weekly_periods = [row['bi_weekly_period'] for row in bi_weekly_agg_data]
 bi_weekly_total_sum_balance = [row['total_sum_balance'] for row in bi_weekly_agg_data]
 bi_weekly_total_avg_balance = [row['total_avg_balance'] for row in bi_weekly_agg_data]
 
-axs[2, 0].plot(bi_weekly_periods, bi_weekly_total_sum_balance, label='Total Sum Balance')
-axs[2, 0].plot(bi_weekly_periods, bi_weekly_total_avg_balance, label='Total Avg Balance')
-axs[2, 0].set_title('Bi-Weekly Aggregation')
-axs[2, 0].set_xlabel('Bi-Weekly Period')
-axs[2, 0].set_ylabel('Balance')
-axs[2, 0].legend()
+axs[2].plot(bi_weekly_periods, bi_weekly_total_sum_balance, label='Total Sum Balance')
+axs[2].plot(bi_weekly_periods, bi_weekly_total_avg_balance, label='Total Avg Balance')
+axs[2].set_title('Bi-Weekly Aggregation')
+axs[2].set_xlabel('Bi-Weekly Period')
+axs[2].set_ylabel('Balance')
+axs[2].legend()
 
 # Monthly Aggregation
 monthly_months = [row['month'] for row in monthly_agg_data]
 monthly_total_sum_balance = [row['total_sum_balance'] for row in monthly_agg_data]
 monthly_total_avg_balance = [row['total_avg_balance'] for row in monthly_agg_data]
 
-axs[3, 0].plot(monthly_months, monthly_total_sum_balance, label='Total Sum Balance')
-axs[3, 0].plot(monthly_months, monthly_total_avg_balance, label='Total Avg Balance')
-axs[3, 0].set_title('Monthly Aggregation')
-axs[3, 0].set_xlabel('Month')
-axs[3, 0].set_ylabel('Balance')
-axs[3, 0].legend()
+axs[3].plot(monthly_months, monthly_total_sum_balance, label='Total Sum Balance')
+axs[3].plot(monthly_months, monthly_total_avg_balance, label='Total Avg Balance')
+axs[3].set_title('Monthly Aggregation')
+axs[3].set_xlabel('Month')
+axs[3].set_ylabel('Balance')
+axs[3].legend()
 
-# Variability Comparison
+# Adjust layout
+plt.tight_layout()
+plt.show()
+
+# Plotting Variability
+fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+
 variability_labels = ['Daily', 'Weekly', 'Bi-Weekly', 'Monthly']
+
 variability_total_sum_balance = [
     daily_variability_data['stddev_total_sum_balance'], 
     weekly_variability_data['stddev_total_sum_balance'], 
@@ -253,21 +260,21 @@ variability_avg_avg_balance = [
     monthly_variability_data['stddev_avg_avg_balance']
 ]
 
-axs[0, 1].bar(variability_labels, variability_total_sum_balance)
-axs[0, 1].set_title('Std Dev of Total Sum Balance')
+axs[0, 0].bar(variability_labels, variability_total_sum_balance)
+axs[0, 0].set_title('Std Dev of Total Sum Balance')
+axs[0, 0].set_ylabel('Std Dev')
+
+axs[0, 1].bar(variability_labels, variability_avg_sum_balance)
+axs[0, 1].set_title('Std Dev of Avg Sum Balance')
 axs[0, 1].set_ylabel('Std Dev')
 
-axs[1, 1].bar(variability_labels, variability_avg_sum_balance)
-axs[1, 1].set_title('Std Dev of Avg Sum Balance')
+axs[1, 0].bar(variability_labels, variability_total_avg_balance)
+axs[1, 0].set_title('Std Dev of Total Avg Balance')
+axs[1, 0].set_ylabel('Std Dev')
+
+axs[1, 1].bar(variability_labels, variability_avg_avg_balance)
+axs[1, 1].set_title('Std Dev of Avg Avg Balance')
 axs[1, 1].set_ylabel('Std Dev')
-
-axs[2, 1].bar(variability_labels, variability_total_avg_balance)
-axs[2, 1].set_title('Std Dev of Total Avg Balance')
-axs[2, 1].set_ylabel('Std Dev')
-
-axs[3, 1].bar(variability_labels, variability_avg_avg_balance)
-axs[3, 1].set_title('Std Dev of Avg Avg Balance')
-axs[3, 1].set_ylabel('Std Dev')
 
 # Adjust layout
 plt.tight_layout()
