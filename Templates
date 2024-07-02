@@ -276,6 +276,60 @@ axs[1, 1].bar(variability_labels, variability_avg_avg_balance)
 axs[1, 1].set_title('Std Dev of Avg Avg Balance')
 axs[1, 1].set_ylabel('Std Dev')
 
+Title: Sensitivity Analysis of Interest Change Impact on Deposit Balance
+
+Introduction:
+We conducted an analysis to determine the best aggregation level (daily, weekly, bi-weekly, and monthly) for evaluating the sensitivity of deposit balances to changes in interest rates. This analysis involved aggregating deposit data at different time intervals and evaluating data loss, variability, and the practical implications for sensitivity analysis.
+
+Methodology:
+
+Data Aggregation:
+
+Aggregated data at daily, weekly, bi-weekly, and monthly levels.
+Included the year column in groupings to account for temporal changes over multiple years.
+Filtered out rows where all balance metrics were zero to ensure meaningful analysis.
+Metrics Evaluated:
+
+Total Sum Balance: Sum of deposit balances.
+Average Sum Balance: Average of deposit balances.
+Total Average Balance: Sum of average balances.
+Average Average Balance: Average of average balances.
+Standard Deviation (Variability): Calculated for each metric to assess consistency over time.
+Comparison Criteria:
+
+Data Retention: Number of unique rlt_n_pwr_id and account_type combinations retained after aggregation.
+Variability: Standard deviation of balance metrics at each aggregation level.
+Results:
+
+Data Retention:
+
+Daily Aggregation: Retained the highest number of unique combinations, providing the most granular detail but potentially high noise.
+Weekly Aggregation: Balanced data retention and noise, with fewer unique combinations than daily but more than bi-weekly and monthly.
+Bi-Weekly Aggregation: Further reduced unique combinations, potentially smoothing out some noise but also losing more detail.
+Monthly Aggregation: Retained the least number of unique combinations, offering the most smoothed and aggregated view.
+Variability Analysis:
+
+Daily Aggregation: Highest variability due to day-to-day fluctuations, which can obscure underlying trends.
+Weekly Aggregation: Reduced variability compared to daily, capturing short-term trends without as much noise.
+Bi-Weekly Aggregation: Further reduced variability, balancing between capturing trends and smoothing out noise.
+Monthly Aggregation: Lowest variability, capturing long-term trends but potentially missing short-term fluctuations and sensitivity.
+Conclusion and Recommendation:
+Based on the analysis, we recommend using weekly aggregation for the sensitivity analysis of interest change impact on deposit balances. Here's why:
+
+Balance Between Detail and Noise: Weekly aggregation strikes a balance between retaining sufficient detail and reducing day-to-day noise. It allows us to capture short-term trends and changes without being overwhelmed by high-frequency variability.
+
+Data Retention: Weekly aggregation retains a significant number of unique combinations of rlt_n_pwr_id and account_type, ensuring that our analysis remains representative of the overall dataset.
+
+Manageable Variability: Weekly aggregation reduces the variability compared to daily aggregation, making it easier to identify meaningful trends and correlations with interest rate changes.
+
+Practical Considerations: Weekly data aligns well with many financial reporting cycles and operational decision-making processes, making it a practical choice for ongoing analysis and reporting.
+
+Next Steps:
+
+Implement weekly aggregation for future sensitivity analyses.
+Monitor results and adjust as needed based on new insights or changing business requirements.
+Consider running periodic checks with other aggregation levels to validate the consistency of findings.
+
 # Adjust layout
 plt.tight_layout()
 plt.show()
