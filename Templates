@@ -1,53 +1,219 @@
-Sure, here's a more sincere and conversational version of the response:
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, when, avg, max as spark_max, collect_list, udf
+from pyspark.sql.types import FloatType
+from pyspark.sql.window import Window
 
----
+# Initialize Spark session
+spark = SparkSession.builder.appName("AdvancedPySparkExample").getOrCreate()
 
-**Subject:** Re: Advice on Last Semester of AI Masters & Projects to Try
+# Load data into DataFrame
+transactions_df = spark.read.csv("transactions.csv", header=True, inferSchema=True)
+customers_df = spark.read.csv("customers.csv", header=True, inferSchema=True)
 
-Hi Yichen,
+# Define a UDF to calculate weighted average
+def weighted_avg(amt_list, rank_list):
+    weighted_sum = sum([amt * (1 / (rank + 1)) for amt, rank in zip(amt_list, rank_list)])
+    total_weight = sum([1 / (rank + 1) for rank in rank_list])
+    return weighted_sum / total_weight
 
-I hope you had a great 4th of July with your family!
+weighted_avg_udf = udf(weighted_avg, FloatType())
 
-Thanks for reaching out. It sounds like you're at an exciting point in your master's program. Here are my thoughts on your questions:
+# Window specification for ranking
+window_spec = Window.partitionBy("account_id").orderBy(col("transaction_date").desc())
 
-### Course Selection
-Both Fuzzy Logic and Quantum Computing are interesting fields. If you're unsure about them, think about how they might fit into your broader goals or help you discover new areas of interest.
+# Add rank to transactions
+ranked_df = transactions_df.withColumn("txn_rank", col("transaction_date").desc())
 
-### Project Focus
-Since you've worked with TensorFlow and Keras and want to dive into PyTorch, here are some ideas:
+# Aggregate data
+aggregated_df = ranked_df.groupBy("account_id").agg(
+    collect_list("amount").alias("amount_list"),
+    collect_list("txn_rank").alias("rank_list"),
+    spark_max("transaction_date").alias("last_transaction_date")
+).withColumn("weighted_avg_amount", weighted_avg_udf(col("amount_list"), col("rank_list")))
 
-1. **Beyond Deep Learning**:
-   - **Supervised/Unsupervised ML**: It's definitely worth exploring these. Techniques like decision trees, random forests, clustering, and anomaly detection can give you a broader skill set.
-   - **Graph Machine Learning**: This is a hot area with applications in social networks, recommendations, and more. Check out PyTorch Geometric.
-   - **Bayesian Methods**: These are great for dealing with uncertainty. Libraries like PyMC3 or Stan could be interesting to look into.
-   - **PyTorch Projects**: Keep building on your deep learning skills with PyTorch. It's a powerful tool and widely used.
+# Join with customer data
+final_df = aggregated_df.join(customers_df, "account_id") \
+    .select("account_id", "weighted_avg_amount", "last_transaction_date", "customer_name", "customer_email") \
+    .orderBy(col("weighted_avg_amount").desc())
 
-### Project Ideas
-For a three-month solo project, here are a few ideas:
-   - **NLP**: Try a text classification or sentiment analysis project. Hugging Face’s Transformers are great for this.
-   - **Computer Vision**: How about an image classification or object detection project? Datasets like CIFAR-10 or COCO are good starting points.
-   - **Reinforcement Learning**: Implement a simple RL algorithm for a game or simulation.
-   - **Unsupervised Learning**: Work on clustering techniques, like customer segmentation or anomaly detection.
-   - **Graph Neural Networks**: Projects like node classification or link prediction could be cool.
-   - **Bayesian Inference**: Dive into probabilistic modeling and inference, maybe for parameter estimation or predictive modeling.
+# Show final DataFrame
+final_df.show()
 
-A useful paper to check out might be:
-   - **"A Comprehensive Review on Ensemble Deep Learning: Opportunities and Challenges"**. It offers a good overview of combining different models and techniques.
+This PySpark code reads transaction and customer data into DataFrames, ranks transactions by date, and calculates a weighted average of transaction amounts for each account using a UDF. It then aggregates this data, joins it with customer information, and orders the results by the weighted average amount in descending order. Finally, it displays the processed DataFrame.
 
-### MLOps and CI/CD
-Incorporating MLOps and CI/CD into your projects can really take them to the next level:
-   - **MLOps**: Focus on reproducibility, version control, and monitoring. Tools like MLflow, Kubeflow, and DVC are great for this.
-   - **CI/CD**: Setting up CI/CD pipelines with tools like Jenkins, GitLab CI, or GitHub Actions can automate your testing and deployment processes.
+Answer:
+This PySpark code snippet performs several advanced data processing steps:
 
-### Final Thoughts
-Balancing non-DL ML techniques with your deep learning work in PyTorch will make you a well-rounded AI professional. Adding MLOps and CI/CD practices will ensure your projects are robust and scalable.
+Initialize Spark Session: A Spark session is created to enable Spark operations.
+Load Data: The code reads transaction and customer data from CSV files into DataFrames.
+Define UDF: A user-defined function (weighted_avg) is created to calculate a weighted average of transaction amounts based on their ranks.
+Window Specification: A window specification is defined to rank transactions by transaction_date within each account_id.
+Add Rank to Transactions: The code assigns a rank to transactions based on their date in descending order.
+Aggregate Data: It groups transactions by account_id, collects lists of amounts and ranks, and calculates the maximum transaction date and the weighted average amount using the UDF.
+Join with Customer Data: The aggregated transaction data is joined with customer data to include customer details.
+Select and Order Columns: The final DataFrame selects relevant columns and orders the results by the weighted average amount in descending order.
+Show Final DataFrame: The final result is displayed.
 
-If you have any more questions or need further clarification, feel free to reach out. I'm happy to help!
+============================
 
-Best,
+WITH RECURSIVE date_series AS (
+    SELECT MIN(transaction_date) AS transaction_date
+    FROM transactions
+    UNION ALL
+    SELECT DATE_ADD(transaction_date, INTERVAL 1 DAY)
+    FROM date_series
+    WHERE transaction_date < (SELECT MAX(transaction_date) FROM transactions)
+),
+ranked_transactions AS (
+    SELECT 
+        account_id,
+        transaction_date,
+        amount,
+        RANK() OVER (PARTITION BY account_id ORDER BY transaction_date DESC) AS txn_rank
+    FROM 
+        transactions
+),
+aggregated_transactions AS (
+    SELECT 
+        account_id,
+        COUNT(*) AS txn_count,
+        SUM(amount) AS total_amount,
+        AVG(amount) AS avg_amount,
+        MAX(transaction_date) AS last_transaction_date,
+        SUM(CASE WHEN transaction_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN amount ELSE 0 END) AS last_30_days_amount
+    FROM 
+        ranked_transactions
+    WHERE 
+        txn_rank <= 5
+    GROUP BY 
+        account_id
+),
+daily_balances AS (
+    SELECT 
+        d.transaction_date,
+        t.account_id,
+        COALESCE(SUM(t.amount), 0) OVER (PARTITION BY t.account_id ORDER BY d.transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_balance
+    FROM 
+        date_series d
+    LEFT JOIN 
+        transactions t
+    ON 
+        d.transaction_date = t.transaction_date
+)
+SELECT 
+    a.account_id,
+    a.txn_count,
+    a.total_amount,
+    a.avg_amount,
+    a.last_transaction_date,
+    a.last_30_days_amount,
+    c.customer_name,
+    c.customer_email,
+    (SELECT running_balance FROM daily_balances db WHERE db.account_id = a.account_id ORDER BY db.transaction_date DESC LIMIT 1) AS current_balance
+FROM 
+    aggregated_transactions a
+JOIN 
+    customers c
+ON 
+    a.account_id = c.account_id
+ORDER BY 
+    a.total_amount DESC;
 
-Engin
+This query generates a series of dates, ranks and aggregates transaction data for the most recent five transactions per account, and calculates running balances. It then combines this aggregated data with customer details, including the most recent balance, and sorts the results by total transaction amount in descending order. The use of CTEs, window functions, and subqueries enables complex data manipulation and analysis.
 
----
+This query performs several advanced SQL operations. Here is a detailed step-by-step explanation:
 
-Feel free to tweak this as needed!
+date_series CTE:
+
+This recursive CTE generates a series of dates from the minimum to the maximum transaction dates found in the transactions table.
+The initial part of the CTE SELECT MIN(transaction_date) AS transaction_date FROM transactions gets the earliest transaction date.
+The recursive part SELECT DATE_ADD(transaction_date, INTERVAL 1 DAY) FROM date_series WHERE transaction_date < (SELECT MAX(transaction_date) FROM transactions) increments the date by one day until it reaches the maximum transaction date.
+ranked_transactions CTE:
+
+Similar to the previous example, this CTE ranks transactions for each account based on the transaction date in descending order.
+RANK() OVER (PARTITION BY account_id ORDER BY transaction_date DESC) AS txn_rank assigns a rank to each transaction per account.
+aggregated_transactions CTE:
+
+This CTE aggregates transaction data, considering the most recent 5 transactions for each account.
+SUM(CASE WHEN transaction_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN amount ELSE 0 END) AS last_30_days_amount calculates the total amount of transactions in the last 30 days for each account.
+Other aggregations include the count, sum, average, and the date of the most recent transaction.
+daily_balances CTE:
+
+This CTE calculates the running balance for each account on each date in the date_series.
+COALESCE(SUM(t.amount), 0) OVER (PARTITION BY t.account_id ORDER BY d.transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_balance computes the running balance for each account by summing up transaction amounts up to the current date.
+Final SELECT:
+
+This part of the query selects the aggregated transaction data and combines it with customer information.
+It also includes a subquery (SELECT running_balance FROM daily_balances db WHERE db.account_id = a.account_id ORDER BY db.transaction_date DESC LIMIT 1) AS current_balance to get the most recent running balance for each account.
+The final result includes columns: account_id, txn_count, total_amount, avg_amount, last_transaction_date, last_30_days_amount, customer_name, customer_email, and current_balance.
+ORDER BY a.total_amount DESC sorts the results by total transaction amount in descending order.
+This query demonstrates a comprehensive use of recursive CTEs, window functions, conditional aggregation, and subqueries to derive complex analytical insights from the data.
+
+==================
+
+WITH ranked_transactions AS (
+    SELECT 
+        account_id,
+        transaction_date,
+        amount,
+        RANK() OVER (PARTITION BY account_id ORDER BY transaction_date DESC) AS txn_rank
+    FROM 
+        transactions
+),
+aggregated_transactions AS (
+    SELECT 
+        account_id,
+        COUNT(*) AS txn_count,
+        SUM(amount) AS total_amount,
+        AVG(amount) AS avg_amount,
+        MAX(transaction_date) AS last_transaction_date
+    FROM 
+        ranked_transactions
+    WHERE 
+        txn_rank <= 5
+    GROUP BY 
+        account_id
+)
+SELECT 
+    a.account_id,
+    a.txn_count,
+    a.total_amount,
+    a.avg_amount,
+    a.last_transaction_date,
+    c.customer_name,
+    c.customer_email
+FROM 
+    aggregated_transactions a
+JOIN 
+    customers c
+ON 
+    a.account_id = c.account_id
+ORDER BY 
+    a.total_amount DESC;
+
+
+Certainly! Here is a more complex SQL query that incorporates additional advanced techniques such as subqueries, window functions, conditional aggregation, and a recursive CTE. The question will ask the candidate to explain each part in detail.
+
+This query is performing several advanced SQL operations including Common Table Expressions (CTEs), window functions, and joins. Here's a step-by-step explanation of what the query is doing:
+
+ranked_transactions CTE:
+
+This CTE ranks transactions for each account based on the transaction date in descending order.
+RANK() OVER (PARTITION BY account_id ORDER BY transaction_date DESC) AS txn_rank assigns a rank to each transaction per account, with the most recent transaction getting rank 1.
+The result is a temporary table with columns: account_id, transaction_date, amount, and txn_rank.
+aggregated_transactions CTE:
+
+This CTE aggregates transaction data but only considers the most recent 5 transactions for each account (as determined by the txn_rank from the previous CTE).
+WHERE txn_rank <= 5 filters the transactions to include only the top 5 most recent transactions per account.
+COUNT(*) AS txn_count calculates the number of these transactions.
+SUM(amount) AS total_amount sums up the amounts of these transactions.
+AVG(amount) AS avg_amount computes the average transaction amount.
+MAX(transaction_date) AS last_transaction_date finds the date of the most recent transaction among the top 5.
+The result is a temporary table with columns: account_id, txn_count, total_amount, avg_amount, and last_transaction_date.
+Final SELECT:
+
+This part of the query selects the aggregated transaction data and combines it with customer information.
+JOIN customers c ON a.account_id = c.account_id joins the aggregated_transactions CTE with the customers table to get customer details (name and email).
+The final result includes columns: account_id, txn_count, total_amount, avg_amount, last_transaction_date, customer_name, and customer_email.
+ORDER BY a.total_amount DESC sorts the results by the total transaction amount in descending order, showing the customers with the highest transaction amounts first.
+This query effectively ranks transactions, aggregates data based on the most recent transactions, and combines this information with customer details, demonstrating advanced SQL techniques for data analysis.
