@@ -1,43 +1,51 @@
-import pandas as pd
-import numpy as np
+Based on the guidance provided in the image, here's a comprehensive explanation for your clients on how to use the model to match specific fields from different file types:
 
-# Function to create pointed diagnosis codes
-def create_pointed_diagnosis_codes(pointers, codes):
-    if pd.isna(pointers) or pd.isna(codes):
-        return np.nan
+---
 
-    pointers_list = [int(x) for x in str(pointers).split(",")]
-    codes_list = str(codes).split("; ")
+**Dear Clients,**
 
-    # Check if any pointer is out of the range of codes
-    if max(pointers_list) > len(codes_list):
-        try:
-            # Return the first code if there is an out-of-range pointer
-            pointed_codes = [codes_list[0]]
-            return pointed_codes
-        except IndexError:
-            return np.nan
+We understand that you need a solution to process and classify various fields from different file formats in a production system, including formats such as ACH, wire transfers, and RTP. Here’s a step-by-step guide on how you can use our model to address this need effectively:
 
-    # Select the codes based on valid pointers
-    try:
-        pointed_codes = [codes_list[pointer - 1] for pointer in pointers_list if pointer <= len(codes_list)]
-        return pointed_codes
-    except IndexError:
-        return np.nan
+### Step 1: File Format Identification
+First, it’s important to identify the type of file format you are working with. Each file format has specific fields and structures. Our system is designed to recognize and process multiple file formats.
 
-# Sample data
-data = {
-    'serviceLineDiagnosisPointers': ['1,4,6', '4,6,9', '2,3'],
-    'serviceLineDiagnosisCodes': ['G12; V34; H89; L90; P76; D34; K12; R53; U78', 'E43; G78', 'A12; B34; C56']
-}
+### Step 2: Create a Dictionary of Expected Fields
+Our model uses a predefined dictionary of expected fields for each file format. This dictionary includes all the fields we know from different systems and processes.
 
-# Create a DataFrame
-df = pd.DataFrame(data)
+### Step 3: Use the Side File
+For proper classification, a side file is necessary. This side file contains metadata and mappings for the fields. Ensure that your side file is updated and correctly formatted.
 
-# Apply the function to create the new column
-df['serviceLinedPointedDiagnosisCodes'] = df.apply(
-    lambda row: create_pointed_diagnosis_codes(row['serviceLineDiagnosisPointers'], row['serviceLineDiagnosisCodes']),
-    axis=1
-)
+### Step 4: Field Classification
+Our model employs a classifier to match and classify the fields in your files. It’s akin to the Cypher 100 for images, which can classify various fields based on our predefined dictionary.
 
-print(df)
+### Step 5: Field Translation and Scripting
+In some cases, fields may need to be translated or converted. Our model can handle such translations with appropriate scripting, ensuring the fields match the expected formats and types.
+
+### Step 6: Binary and Text Conversion
+If your files are in binary format, they need to be converted to text or other readable formats. The model can convert files to comma-separated values or other text formats as required.
+
+### Step 7: Object Detection
+Our advanced classifier can process the files not only by field detection but also by object detection within the documents. This is particularly useful for identifying objects in images or aligned text in graphics.
+
+### Step 8: Field Type Identification
+Once the fields are detected, the model can classify them into specific types, such as Field Type A, Field Type B, and so on. This classification helps in organizing and processing the data efficiently.
+
+### Example Workflow
+1. **Upload the file**: Start by uploading the file to the system.
+2. **Select file type**: Choose the correct file type from the list.
+3. **Run the classifier**: Use the classifier to process the file and detect fields.
+4. **Review results**: Check the classified fields and ensure they match your expectations.
+5. **Export data**: Export the classified data in the required format.
+
+### Conclusion
+By following these steps, you can effectively use our model to match and classify specific fields from various file types. Should you have any questions or need further assistance, please do not hesitate to reach out to our support team.
+
+Best regards,
+
+[Your Name]
+[Your Position]
+[Your Contact Information]
+
+---
+
+Feel free to customize this template as needed for your specific use case and client requirements.
