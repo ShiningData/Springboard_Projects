@@ -1,114 +1,37 @@
-import pandas as pd
-from ast import literal_eval
+# Setup PyCaret for training data
+clf_setup = setup(train_data_model, target='DenialStatus', session_id=123, silent=True, use_gpu=True)
 
-# Sample data (you should replace this with your actual dataset)
-data = pd.DataFrame({
-    'slpdc': ["['code1', 'code2', 'code3']", "['code1']", None, "['code2', 'code4']"],
-    'slpdctype': ["['type1', 'type2', 'type3']", "['type1']", None, "['type2', 'type4']"],
-    'feature1': [10, 20, 30, 40],
-    'feature2': [5, 3, 8, 2],
-    'DenialStatus': [0, 1, 0, 1]
-})
+# Compare models and select the best one
+best_model = compare_models()
 
-# Replace 0 with "Accepted" and 1 with "Denied" in the target variable
-data['DenialStatus'] = data['DenialStatus'].replace({0: 'Accepted', 1: 'Denied'})
+# Tune the best model
+tuned_model = tune_model(best_model)
 
-# Convert string representations of lists to actual lists
-data['slpdc'] = data['slpdc'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
-data['slpdctype'] = data['slpdctype'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
+# Finalize the model
+final_model = finalize_model(tuned_model)
 
-# Function to create new columns based on list length
-def expand_list_columns(df, col_name):
-    max_length = df[col_name].apply(len).max()
-    for i in range(max_length):
-        new_col_name = f"{col_name}_{i+1}"
-        df[new_col_name] = df[col_name].apply(lambda x: x[i] if i < len(x) else pd.NA)
-    return df
+# Save the model
+save_model(final_model, 'final_model')
 
-# Apply the function to 'slpdc' and 'slpdctype' columns
-data = expand_list_columns(data, 'slpdc')
-data = expand_list_columns(data, 'slpdctype')
+print("Model training and saving completed.")
 
-# Drop original list columns
-# data = data.drop(columns=['slpdc', 'slpdctype'])
+# Predict on the unseen data
+predictions = predict_model(final_model, data=unseen_data_model)
 
-==================================================
+# Add ClaimID and ServiceLineID back to the predictions
+predictions[reference_cols] = unseen_data[reference_cols]
 
-import pandas as pd
-from ast import literal_eval
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.decomposition import PCA
+# Aggregate predictions to determine the final claim label
+claim_predictions = predictions.groupby('ClaimID').agg({
+    'Label': lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
+}).reset_index()
 
-# Sample data (you should replace this with your actual dataset)
-data = pd.DataFrame({
-    'slpdc': ["['code1', 'code2', 'code3']", "['code1']", None, "['code2', 'code4']"],
-    'slpdctype': ["['type1', 'type2', 'type3']", "['type1']", None, "['type2', 'type4']"],
-    'feature1': [10, 20, 30, 40],
-    'feature2': [5, 3, 8, 2],
-    'DenialStatus': [0, 1, 0, 1]
-})
+# Merge the claim-level predictions with the original service line level data
+final_predictions = pd.merge(unseen_data, claim_predictions, on='ClaimID', suffixes=('', '_Claim'))
 
-# Replace 0 with "Accepted" and 1 with "Denied" in the target variable
-data['DenialStatus'] = data['DenialStatus'].replace({0: 'Accepted', 1: 'Denied'})
+# Save the train and unseen data with predictions
+train_data.to_csv('train_data.csv', index=False)
+unseen_data.to_csv('unseen_data.csv', index=False)
+final_predictions.to_csv('predictions.csv', index=False)
 
-# Convert string representations of lists to actual lists
-data['slpdc'] = data['slpdc'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
-data['slpdctype'] = data['slpdctype'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
-
-# Convert list columns to space-separated strings
-data['slpdc_str'] = data['slpdc'].apply(lambda x: ' '.join(x))
-data['slpdctype_str'] = data['slpdctype'].apply(lambda x: ' '.join(x))
-
-# Use CountVectorizer to transform the text data into count features
-count_vectorizer_slpdc = CountVectorizer()
-count_vectorizer_slpdctype = CountVectorizer()
-
-count_slpdc = count_vectorizer_slpdc.fit_transform(data['slpdc_str'])
-count_slpdctype = count_vectorizer_slpdctype.fit_transform(data['slpdctype_str'])
-
-# Apply PCA to reduce the dimensionality of the count features
-pca_slpdc = PCA(n_components=1)
-pca_slpdctype = PCA(n_components=1)
-
-slpdc_pca = pca_slpdc.fit_transform(count_slpdc.toarray())
-slpdctype_pca = pca_slpdctype.fit_transform(count_slpdctype.toarray())
-
-# Add the PCA features to the DataFrame
-data['slpdc_pca'] = slpdc_pca
-data['slpdctype_pca'] = slpdctype_pca
-
-# Drop original list and string columns
-# data = data.drop(columns=['slpdc', 'slpdctype', 'slpdc_str', 'slpdctype_str'])
-
-======================================================
-
-# Sample data (you should replace this with your actual dataset)
-data = pd.DataFrame({
-    'slpdc': ["['code1', 'code2', 'code3']", "['code1']", None, "['code2', 'code4']"],
-    'slpdctype': ["['type1', 'type2', 'type3']", "['type1']", None, "['type2', 'type4']"],
-    'feature1': [10, 20, 30, 40],
-    'feature2': [5, 3, 8, 2],
-    'DenialStatus': [0, 1, 0, 1]
-})
-
-# Replace 0 with "Accepted" and 1 with "Denied" in the target variable
-data['DenialStatus'] = data['DenialStatus'].replace({0: 'Accepted', 1: 'Denied'})
-
-# Convert string representations of lists to actual lists
-data['slpdc'] = data['slpdc'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
-data['slpdctype'] = data['slpdctype'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
-
-# Convert list columns to space-separated strings
-data['slpdc_str'] = data['slpdc'].apply(lambda x: ' '.join(x))
-data['slpdctype_str'] = data['slpdctype'].apply(lambda x: ' '.join(x))
-
-# Use TfidfVectorizer to transform the text data into TF-IDF features
-tfidf_vectorizer_slpdc = TfidfVectorizer()
-tfidf_vectorizer_slpdctype = TfidfVectorizer()
-
-tfidf_slpdc = tfidf_vectorizer_slpdc.fit_transform(data['slpdc_str'])
-tfidf_slpdctype = tfidf_vectorizer_slpdctype.fit_transform(data['slpdctype_str'])
-
-# Calculate the average TF-IDF score for each record
-data['slpdc_tfidf'] = tfidf_slpdc.mean(axis=1).A1
-data['slpdctype_tfidf'] = tfidf_slpdctype.mean(axis=1).A1
+print("Train, unseen data, and predictions saved.")
