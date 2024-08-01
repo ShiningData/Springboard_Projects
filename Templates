@@ -1,51 +1,114 @@
-Based on the guidance provided in the image, here's a comprehensive explanation for your clients on how to use the model to match specific fields from different file types:
+import pandas as pd
+from ast import literal_eval
 
----
+# Sample data (you should replace this with your actual dataset)
+data = pd.DataFrame({
+    'slpdc': ["['code1', 'code2', 'code3']", "['code1']", None, "['code2', 'code4']"],
+    'slpdctype': ["['type1', 'type2', 'type3']", "['type1']", None, "['type2', 'type4']"],
+    'feature1': [10, 20, 30, 40],
+    'feature2': [5, 3, 8, 2],
+    'DenialStatus': [0, 1, 0, 1]
+})
 
-**Dear Clients,**
+# Replace 0 with "Accepted" and 1 with "Denied" in the target variable
+data['DenialStatus'] = data['DenialStatus'].replace({0: 'Accepted', 1: 'Denied'})
 
-We understand that you need a solution to process and classify various fields from different file formats in a production system, including formats such as ACH, wire transfers, and RTP. Here’s a step-by-step guide on how you can use our model to address this need effectively:
+# Convert string representations of lists to actual lists
+data['slpdc'] = data['slpdc'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
+data['slpdctype'] = data['slpdctype'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
 
-### Step 1: File Format Identification
-First, it’s important to identify the type of file format you are working with. Each file format has specific fields and structures. Our system is designed to recognize and process multiple file formats.
+# Function to create new columns based on list length
+def expand_list_columns(df, col_name):
+    max_length = df[col_name].apply(len).max()
+    for i in range(max_length):
+        new_col_name = f"{col_name}_{i+1}"
+        df[new_col_name] = df[col_name].apply(lambda x: x[i] if i < len(x) else pd.NA)
+    return df
 
-### Step 2: Create a Dictionary of Expected Fields
-Our model uses a predefined dictionary of expected fields for each file format. This dictionary includes all the fields we know from different systems and processes.
+# Apply the function to 'slpdc' and 'slpdctype' columns
+data = expand_list_columns(data, 'slpdc')
+data = expand_list_columns(data, 'slpdctype')
 
-### Step 3: Use the Side File
-For proper classification, a side file is necessary. This side file contains metadata and mappings for the fields. Ensure that your side file is updated and correctly formatted.
+# Drop original list columns
+# data = data.drop(columns=['slpdc', 'slpdctype'])
 
-### Step 4: Field Classification
-Our model employs a classifier to match and classify the fields in your files. It’s akin to the Cypher 100 for images, which can classify various fields based on our predefined dictionary.
+==================================================
 
-### Step 5: Field Translation and Scripting
-In some cases, fields may need to be translated or converted. Our model can handle such translations with appropriate scripting, ensuring the fields match the expected formats and types.
+import pandas as pd
+from ast import literal_eval
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.decomposition import PCA
 
-### Step 6: Binary and Text Conversion
-If your files are in binary format, they need to be converted to text or other readable formats. The model can convert files to comma-separated values or other text formats as required.
+# Sample data (you should replace this with your actual dataset)
+data = pd.DataFrame({
+    'slpdc': ["['code1', 'code2', 'code3']", "['code1']", None, "['code2', 'code4']"],
+    'slpdctype': ["['type1', 'type2', 'type3']", "['type1']", None, "['type2', 'type4']"],
+    'feature1': [10, 20, 30, 40],
+    'feature2': [5, 3, 8, 2],
+    'DenialStatus': [0, 1, 0, 1]
+})
 
-### Step 7: Object Detection
-Our advanced classifier can process the files not only by field detection but also by object detection within the documents. This is particularly useful for identifying objects in images or aligned text in graphics.
+# Replace 0 with "Accepted" and 1 with "Denied" in the target variable
+data['DenialStatus'] = data['DenialStatus'].replace({0: 'Accepted', 1: 'Denied'})
 
-### Step 8: Field Type Identification
-Once the fields are detected, the model can classify them into specific types, such as Field Type A, Field Type B, and so on. This classification helps in organizing and processing the data efficiently.
+# Convert string representations of lists to actual lists
+data['slpdc'] = data['slpdc'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
+data['slpdctype'] = data['slpdctype'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
 
-### Example Workflow
-1. **Upload the file**: Start by uploading the file to the system.
-2. **Select file type**: Choose the correct file type from the list.
-3. **Run the classifier**: Use the classifier to process the file and detect fields.
-4. **Review results**: Check the classified fields and ensure they match your expectations.
-5. **Export data**: Export the classified data in the required format.
+# Convert list columns to space-separated strings
+data['slpdc_str'] = data['slpdc'].apply(lambda x: ' '.join(x))
+data['slpdctype_str'] = data['slpdctype'].apply(lambda x: ' '.join(x))
 
-### Conclusion
-By following these steps, you can effectively use our model to match and classify specific fields from various file types. Should you have any questions or need further assistance, please do not hesitate to reach out to our support team.
+# Use CountVectorizer to transform the text data into count features
+count_vectorizer_slpdc = CountVectorizer()
+count_vectorizer_slpdctype = CountVectorizer()
 
-Best regards,
+count_slpdc = count_vectorizer_slpdc.fit_transform(data['slpdc_str'])
+count_slpdctype = count_vectorizer_slpdctype.fit_transform(data['slpdctype_str'])
 
-[Your Name]
-[Your Position]
-[Your Contact Information]
+# Apply PCA to reduce the dimensionality of the count features
+pca_slpdc = PCA(n_components=1)
+pca_slpdctype = PCA(n_components=1)
 
----
+slpdc_pca = pca_slpdc.fit_transform(count_slpdc.toarray())
+slpdctype_pca = pca_slpdctype.fit_transform(count_slpdctype.toarray())
 
-Feel free to customize this template as needed for your specific use case and client requirements.
+# Add the PCA features to the DataFrame
+data['slpdc_pca'] = slpdc_pca
+data['slpdctype_pca'] = slpdctype_pca
+
+# Drop original list and string columns
+# data = data.drop(columns=['slpdc', 'slpdctype', 'slpdc_str', 'slpdctype_str'])
+
+======================================================
+
+# Sample data (you should replace this with your actual dataset)
+data = pd.DataFrame({
+    'slpdc': ["['code1', 'code2', 'code3']", "['code1']", None, "['code2', 'code4']"],
+    'slpdctype': ["['type1', 'type2', 'type3']", "['type1']", None, "['type2', 'type4']"],
+    'feature1': [10, 20, 30, 40],
+    'feature2': [5, 3, 8, 2],
+    'DenialStatus': [0, 1, 0, 1]
+})
+
+# Replace 0 with "Accepted" and 1 with "Denied" in the target variable
+data['DenialStatus'] = data['DenialStatus'].replace({0: 'Accepted', 1: 'Denied'})
+
+# Convert string representations of lists to actual lists
+data['slpdc'] = data['slpdc'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
+data['slpdctype'] = data['slpdctype'].apply(lambda x: literal_eval(x) if pd.notnull(x) else [])
+
+# Convert list columns to space-separated strings
+data['slpdc_str'] = data['slpdc'].apply(lambda x: ' '.join(x))
+data['slpdctype_str'] = data['slpdctype'].apply(lambda x: ' '.join(x))
+
+# Use TfidfVectorizer to transform the text data into TF-IDF features
+tfidf_vectorizer_slpdc = TfidfVectorizer()
+tfidf_vectorizer_slpdctype = TfidfVectorizer()
+
+tfidf_slpdc = tfidf_vectorizer_slpdc.fit_transform(data['slpdc_str'])
+tfidf_slpdctype = tfidf_vectorizer_slpdctype.fit_transform(data['slpdctype_str'])
+
+# Calculate the average TF-IDF score for each record
+data['slpdc_tfidf'] = tfidf_slpdc.mean(axis=1).A1
+data['slpdctype_tfidf'] = tfidf_slpdctype.mean(axis=1).A1
