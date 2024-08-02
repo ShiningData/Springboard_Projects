@@ -1,37 +1,160 @@
-# Setup PyCaret for training data
-clf_setup = setup(train_data_model, target='DenialStatus', session_id=123, silent=True, use_gpu=True)
+import os
+import shutil
+import numpy as np
+import pandas as pd
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, monotonically_increasing_id
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.linalg import DenseVector
+from catboost import CatBoostClassifier, Pool
+from pyspark.sql import Row
+from pyspark.sql.functions import rand
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, precision_recall_curve
+import matplotlib.pyplot as plt
+import shap
 
-# Compare models and select the best one
-best_model = compare_models()
+# Set up directories
+output_dir = "catboost_output"
+if os.path.exists(output_dir):
+    shutil.rmtree(output_dir)
+os.makedirs(output_dir)
 
-# Tune the best model
-tuned_model = tune_model(best_model)
+# Initialize Spark session
+spark = SparkSession.builder.appName("CatBoostPySpark").getOrCreate()
 
-# Finalize the model
-final_model = finalize_model(tuned_model)
+# Load data into a PySpark DataFrame
+data = spark.read.csv("path_to_your_data.csv", header=True, inferSchema=True)
 
-# Save the model
-save_model(final_model, 'final_model')
+# Preprocess data (example: select features and label)
+feature_columns = ['feature1', 'feature2', 'feature3']  # replace with your feature column names
+label_column = 'label'  # replace with your label column name
+group_column = 'claim_id'  # replace with your claim id column name
 
-print("Model training and saving completed.")
+# VectorAssembler to combine feature columns into a single vector column
+assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
+assembled_data = assembler.transform(data).select(col("features"), col(label_column).alias("label"), col(group_column))
 
-# Predict on the unseen data
-predictions = predict_model(final_model, data=unseen_data_model)
+# Add a random column for splitting
+assembled_data = assembled_data.withColumn("random", rand())
 
-# Add ClaimID and ServiceLineID back to the predictions
-predictions[reference_cols] = unseen_data[reference_cols]
+# Determine the split fraction
+split_fraction = 0.8
 
-# Aggregate predictions to determine the final claim label
-claim_predictions = predictions.groupby('ClaimID').agg({
-    'Label': lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
-}).reset_index()
+# Get unique claim IDs and their random values
+unique_claims = assembled_data.select(group_column, "random").distinct()
 
-# Merge the claim-level predictions with the original service line level data
-final_predictions = pd.merge(unseen_data, claim_predictions, on='ClaimID', suffixes=('', '_Claim'))
+# Determine the threshold for splitting
+threshold = unique_claims.approxQuantile("random", [split_fraction], 0.0)[0]
 
-# Save the train and unseen data with predictions
-train_data.to_csv('train_data.csv', index=False)
-unseen_data.to_csv('unseen_data.csv', index=False)
-final_predictions.to_csv('predictions.csv', index=False)
+# Split the data based on the threshold
+train_claims = unique_claims.filter(col("random") <= threshold).select(group_column)
+test_claims = unique_claims.filter(col("random") > threshold).select(group_column)
 
-print("Train, unseen data, and predictions saved.")
+# Join to get the training and testing datasets
+train_data = assembled_data.join(train_claims, on=group_column)
+test_data = assembled_data.join(test_claims, on=group_column)
+
+# Convert Spark DataFrame to CatBoost Pool
+def spark_to_catboost(data):
+    features = np.array(data.select("features").rdd.map(lambda x: x[0].toArray()).collect())
+    labels = np.array(data.select("label").rdd.map(lambda x: x[0]).collect())
+    return Pool(data=features, label=labels)
+
+train_pool = spark_to_catboost(train_data)
+test_pool = spark_to_catboost(test_data)
+
+# Initialize and train the CatBoost classifier
+model = CatBoostClassifier(iterations=100, learning_rate=0.1, depth=6, verbose=10)
+model.fit(train_pool)
+
+# Predict on the training and test sets
+y_train_pred = model.predict(train_pool)
+y_test_pred = model.predict(test_pool)
+
+# Predict probabilities for ROC and PR curves
+y_train_prob = model.predict_proba(train_pool)[:, 1]
+y_test_prob = model.predict_proba(test_pool)[:, 1]
+
+# Evaluate the model
+metrics = {
+    'accuracy': accuracy_score,
+    'precision': precision_score,
+    'recall': recall_score,
+    'f1_score': f1_score,
+    'roc_auc': roc_auc_score
+}
+
+results = {}
+for key, metric in metrics.items():
+    results[f'train_{key}'] = metric(train_pool.get_label(), y_train_pred)
+    results[f'test_{key}'] = metric(test_pool.get_label(), y_test_pred)
+
+# Save performance metrics
+results_df = pd.DataFrame([results])
+results_df.to_csv(os.path.join(output_dir, "performance_metrics.csv"), index=False)
+
+# Confusion Matrix
+conf_matrix = confusion_matrix(test_pool.get_label(), y_test_pred)
+conf_matrix_df = pd.DataFrame(conf_matrix, index=['Actual Negative', 'Actual Positive'], columns=['Predicted Negative', 'Predicted Positive'])
+conf_matrix_df.to_csv(os.path.join(output_dir, "confusion_matrix.csv"))
+
+# ROC Curve
+fpr, tpr, _ = roc_curve(test_pool.get_label(), y_test_prob)
+plt.figure()
+plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % results['test_roc_auc'])
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic')
+plt.legend(loc="lower right")
+plt.savefig(os.path.join(output_dir, "roc_curve.png"))
+
+# Precision-Recall Curve
+precision, recall, _ = precision_recall_curve(test_pool.get_label(), y_test_prob)
+plt.figure()
+plt.plot(recall, precision, label='Precision-Recall curve')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall curve')
+plt.legend(loc="lower left")
+plt.savefig(os.path.join(output_dir, "precision_recall_curve.png"))
+
+# Feature Importance
+feature_importances = model.get_feature_importance(train_pool)
+feature_importance_df = pd.DataFrame({'Feature': feature_columns, 'Importance': feature_importances})
+feature_importance_df.to_csv(os.path.join(output_dir, "feature_importance.csv"), index=False)
+
+plt.figure()
+plt.barh(feature_columns, feature_importances)
+plt.xlabel('Importance')
+plt.ylabel('Feature')
+plt.title('Feature Importance')
+plt.savefig(os.path.join(output_dir, "feature_importance.png"))
+
+# SHAP values
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(train_pool)
+
+# SHAP summary plot
+shap.summary_plot(shap_values, train_pool.get_features(), feature_names=feature_columns, show=False)
+plt.savefig(os.path.join(output_dir, "shap_summary_plot.png"))
+
+# Save prediction labeled training and test set files
+train_labeled = train_data.withColumn("predicted_label", col("label"))
+test_labeled = test_data.withColumn("predicted_label", col("label"))
+
+# Convert Spark DataFrame to Pandas for saving
+train_labeled_pd = train_labeled.toPandas()
+test_labeled_pd = test_labeled.toPandas()
+
+# Add predictions to the DataFrames
+train_labeled_pd['predicted_label'] = y_train_pred
+test_labeled_pd['predicted_label'] = y_test_pred
+
+# Save labeled datasets
+train_labeled_pd.to_csv(os.path.join(output_dir, "train_labeled.csv"), index=False)
+test_labeled_pd.to_csv(os.path.join(output_dir, "test_labeled.csv"), index=False)
+
+print("All results saved in the directory:", output_dir)
