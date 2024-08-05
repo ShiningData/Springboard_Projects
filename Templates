@@ -6,11 +6,11 @@ precision, recall, _ = precision_recall_curve(y_test, model.predict_proba(X_test
 pr_auc = auc(recall, precision)
 
 plt.figure(figsize=(10, 7))
-plt.plot(recall, precision, marker='.', label=f'Precision-Recall Curve (AUC = {pr_auc:.2f})')
+plt.plot(recall, precision, marker='.', label=f'PR Curve (AUC = {pr_auc:.2f})')
 plt.xlabel('Recall')
 plt.ylabel('Precision')
 plt.title(f'Precision-Recall Curve (AUC = {pr_auc:.2f})')
 plt.grid(True)
-plt.legend(loc="best")
+plt.legend(loc="lower left")
 plt.savefig(output_path / "precision_recall_curve.png")
 plt.close()
