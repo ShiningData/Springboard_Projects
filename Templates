@@ -1,149 +1,147 @@
-To build a CatBoost classification pipeline without using PySpark and handling class imbalance with class weights, you can use Python's data manipulation libraries such as `pandas` and `numpy`, along with CatBoost and scikit-learn for data splitting and evaluation.
-
-Here's the updated script to build the CatBoost model, handle class imbalance using class weights, and save the performance metrics and plots.
-
-### Complete Script
-
-```python
-import os
-import shutil
+import gc
 import pandas as pd
-import numpy as np
 from catboost import CatBoostClassifier, Pool
-from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, precision_recall_curve
 import matplotlib.pyplot as plt
+import seaborn as sns
 import shap
+import joblib
 
-# Set up directories
-output_dir = "catboost_output"
-if os.path.exists(output_dir):
-    shutil.rmtree(output_dir)
-os.makedirs(output_dir)
+# Assuming X_train, X_test, y_train, y_test are predefined
 
-# Load data into a Pandas DataFrame
-data = pd.read_csv("path_to_your_data.csv")
+# Define output path
+output_path = "model_output/"
 
-# Preprocess data (example: select features and label)
-feature_columns = ['feature1', 'feature2', 'feature3']  # replace with your feature column names
-label_column = 'label'  # replace with your label column name
-group_column = 'claim_id'  # replace with your claim id column name
+# Initialize CatBoostClassifier with GPU
+model = CatBoostClassifier(
+    iterations=1000,
+    learning_rate=0.1,
+    depth=6,
+    eval_metric='AUC',
+    task_type='GPU',
+    verbose=100
+)
 
-# Split data into training and testing sets, keeping claim_id's service_line_ids together
-splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-train_idx, test_idx = next(splitter.split(data, groups=data[group_column]))
+# Train the model
+model.fit(X_train, y_train, eval_set=(X_test, y_test), use_best_model=True, plot=True)
 
-train_data = data.iloc[train_idx]
-test_data = data.iloc[test_idx]
-
-# Separate features and labels
-X_train = train_data[feature_columns].values
-y_train = train_data[label_column].values
-X_test = test_data[feature_columns].values
-y_test = test_data[label_column].values
-
-# Calculate class weights to handle imbalance
-class_weights = {0: (1 / np.sum(y_train == 0)) * (len(y_train) / 2.0),
-                 1: (1 / np.sum(y_train == 1)) * (len(y_train) / 2.0)}
-
-# Initialize and train the CatBoost classifier with class weights
-model = CatBoostClassifier(iterations=100, learning_rate=0.1, depth=6, verbose=10, class_weights=class_weights)
-model.fit(X_train, y_train)
-
-# Predict on the training and test sets
+# Predictions
 y_train_pred = model.predict(X_train)
 y_test_pred = model.predict(X_test)
 
-# Predict probabilities for ROC and PR curves
-y_train_prob = model.predict_proba(X_train)[:, 1]
-y_test_prob = model.predict_proba(X_test)[:, 1]
-
-# Evaluate the model
+# Metrics
 metrics = {
-    'accuracy': accuracy_score,
-    'precision': precision_score,
-    'recall': recall_score,
-    'f1_score': f1_score,
-    'roc_auc': roc_auc_score
+    "Dataset": ["Training", "Test"],
+    "Accuracy": [accuracy_score(y_train, y_train_pred), accuracy_score(y_test, y_test_pred)],
+    "Precision": [precision_score(y_train, y_train_pred), precision_score(y_test, y_test_pred)],
+    "Recall": [recall_score(y_train, y_train_pred), recall_score(y_test, y_test_pred)],
+    "F1 Score": [f1_score(y_train, y_train_pred), f1_score(y_test, y_test_pred)],
+    "ROC-AUC": [roc_auc_score(y_train, model.predict_proba(X_train)[:, 1]), roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])]
 }
 
-results = {}
-for key, metric in metrics.items():
-    results[f'train_{key}'] = metric(y_train, y_train_pred)
-    results[f'test_{key}'] = metric(y_test, y_test_pred)
+metrics_df = pd.DataFrame(metrics)
+metrics_df.to_csv(output_path + "model_metrics.csv", index=False)
 
-# Save performance metrics
-results_df = pd.DataFrame([results])
-results_df.to_csv(os.path.join(output_dir, "performance_metrics.csv"), index=False)
-
-# Confusion Matrix
-conf_matrix = confusion_matrix(y_test, y_test_pred)
-conf_matrix_df = pd.DataFrame(conf_matrix, index=['Actual Negative', 'Actual Positive'], columns=['Predicted Negative', 'Predicted Positive'])
-conf_matrix_df.to_csv(os.path.join(output_dir, "confusion_matrix.csv"))
-
-# ROC Curve
-fpr, tpr, _ = roc_curve(y_test, y_test_prob)
+# ROC-AUC curve
+fpr, tpr, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
 plt.figure()
-plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % results['test_roc_auc'])
+plt.plot(fpr, tpr, label='ROC Curve (area = %0.2f)' % metrics_df.loc[1, "ROC-AUC"])
 plt.plot([0, 1], [0, 1], 'k--')
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-plt.title('Receiver Operating Characteristic')
+plt.title('ROC-AUC Curve')
 plt.legend(loc="lower right")
-plt.savefig(os.path.join(output_dir, "roc_curve.png"))
+plt.savefig(output_path + "roc_auc_curve.png")
+plt.close()
 
-# Precision-Recall Curve
-precision, recall, _ = precision_recall_curve(y_test, y_test_prob)
+# Precision-Recall curve
+precision, recall, _ = precision_recall_curve(y_test, model.predict_proba(X_test)[:, 1])
 plt.figure()
-plt.plot(recall, precision, label='Precision-Recall curve')
+plt.plot(recall, precision, marker='.')
 plt.xlabel('Recall')
 plt.ylabel('Precision')
-plt.title('Precision-Recall curve')
-plt.legend(loc="lower left")
-plt.savefig(os.path.join(output_dir, "precision_recall_curve.png"))
+plt.title('Precision-Recall Curve')
+plt.savefig(output_path + "precision_recall_curve.png")
+plt.close()
+
+# Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_test_pred)
+sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues")
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.savefig(output_path + "confusion_matrix.png")
+plt.close()
 
 # Feature Importance
-feature_importances = model.get_feature_importance()
-feature_importance_df = pd.DataFrame({'Feature': feature_columns, 'Importance': feature_importances})
-feature_importance_df.to_csv(os.path.join(output_dir, "feature_importance.csv"), index=False)
-
-plt.figure()
-plt.barh(feature_columns, feature_importances)
-plt.xlabel('Importance')
-plt.ylabel('Feature')
+feature_importance = model.get_feature_importance(Pool(X_train, label=y_train))
+sorted_idx = feature_importance.argsort()
+plt.figure(figsize=(10, 7))
+plt.barh(range(len(sorted_idx)), feature_importance[sorted_idx], align='center')
+plt.yticks(range(len(sorted_idx)), [X_train.columns[i] for i in sorted_idx])
+plt.xlabel('Feature Importance')
 plt.title('Feature Importance')
-plt.savefig(os.path.join(output_dir, "feature_importance.png"))
+plt.savefig(output_path + "feature_importance.png")
+plt.close()
 
 # SHAP values
 explainer = shap.TreeExplainer(model)
 shap_values = explainer.shap_values(X_train)
 
-# SHAP summary plot
-shap.summary_plot(shap_values, X_train, feature_names=feature_columns, show=False)
-plt.savefig(os.path.join(output_dir, "shap_summary_plot.png"))
+# Global SHAP Values
+plt.figure()
+shap.summary_plot(shap_values, X_train, plot_type="bar")
+plt.savefig(output_path + "shap_global_bar.png")
+plt.close()
 
-# Save prediction labeled training and test set files
-train_data['predicted_label'] = y_train_pred
-test_data['predicted_label'] = y_test_pred
+plt.figure()
+shap.summary_plot(shap_values, X_train)
+plt.savefig(output_path + "shap_global_summary.png")
+plt.close()
 
-train_data.to_csv(os.path.join(output_dir, "train_labeled.csv"), index=False)
-test_data.to_csv(os.path.join(output_dir, "test_labeled.csv"), index=False)
+# Local SHAP Values
+shap.initjs()
+for i in range(5):  # Plot for first 5 predictions
+    plt.figure()
+    shap.force_plot(explainer.expected_value, shap_values[i], X_train.iloc[i, :], matplotlib=True)
+    plt.savefig(output_path + f"shap_local_{i}.png")
+    plt.close()
 
-print("All results saved in the directory:", output_dir)
-```
+# Add predictions to train and test datasets
+X_train['Prediction'] = y_train_pred
+X_test['Prediction'] = y_test_pred
 
-### Explanation:
+# Save datasets
+X_train.to_csv(output_path + "labeled_train_set.csv", index=False)
+X_test.to_csv(output_path + "labeled_test_set.csv", index=False)
 
-1. **Setup Directories**: Create an output directory to save all results.
-2. **Load Data**: Load your data into a Pandas DataFrame.
-3. **Split Data Keeping Groups Together**: Use `GroupShuffleSplit` from `sklearn.model_selection` to split the data while keeping all service line IDs for a claim ID together.
-4. **Separate Features and Labels**: Separate the features and labels for training and testing sets.
-5. **Calculate Class Weights**: Calculate class weights to handle class imbalance.
-6. **Train CatBoost Model with Class Weights**: Train a CatBoost model using the training data and class weights.
-7. **Evaluate Model**: Calculate various performance metrics (accuracy, precision, recall, F1 score, AUC), confusion matrix, ROC curve, and precision-recall curve.
-8. **Feature Importance and SHAP Values**: Generate and save feature importance and SHAP value plots.
-9. **Save Results**: Save all results, including labeled training and test sets, to the specified directory.
+# Save model
+joblib.dump(model, output_path + "catboost_model.pkl")
 
-This approach handles the class imbalance using class weights and ensures that the data split respects the group structure of `claim_id`, keeping all related service lines together. Make sure to replace `"path_to_your_data.csv"` with the actual path to your dataset.
+# Clean up temporary files and memory
+del model, X_train, X_test, y_train, y_test, y_train_pred, y_test_pred, shap_values, explainer
+gc.collect()
+ =========================================
+
+name: catboost_model_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pip
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - catboost
+  - shap
+  - joblib
+  - pip:
+      - gc
+      - logging
+      - os
+      - pathlib
