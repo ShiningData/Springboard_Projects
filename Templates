@@ -1,22 +1,19 @@
-import time
-from sklearn.metrics import auc
+# Ensure categorical features are handled correctly
+categorical_features_indices = [X_train.columns.get_loc(col) for col in categorical_features]
 
-# Precision-Recall curve
-logger.info("Plotting Precision-Recall curve...")
-precision, recall, _ = precision_recall_curve(y_test, model.predict_proba(X_test)[:, 1])
-pr_auc = auc(recall, precision)
+# Feature Importance
+logger.info("Plotting feature importance...")
+train_pool = Pool(X_train, label=y_train, cat_features=categorical_features_indices)
+feature_importance = model.get_feature_importance(train_pool)
+sorted_idx = feature_importance.argsort()
+
+# Ensure feature names are sorted accordingly
+sorted_feature_names = [X_train.columns[i] for i in sorted_idx]
 
 plt.figure(figsize=(10, 7))
-plt.plot(recall, precision, marker='.', label=f'PR Curve (AUC = {pr_auc:.2f})')
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.title(f'Precision-Recall Curve (AUC = {pr_auc:.2f})')
-plt.grid(True)
-plt.legend(loc="lower left")
-
-# Pause to ensure rendering
-time.sleep(1)
-
-# Save the plot
-plt.savefig(output_path / "precision_recall_curve.png", bbox_inches='tight')
+plt.barh(sorted_feature_names, feature_importance[sorted_idx], align='center')
+plt.xlabel('Feature Importance')
+plt.title('Feature Importance')
+plt.tight_layout()
+plt.savefig(output_path / "feature_importance.png", bbox_inches='tight')
 plt.close()
