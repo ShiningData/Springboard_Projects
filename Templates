@@ -1,147 +1,16 @@
-import gc
-import pandas as pd
-from catboost import CatBoostClassifier, Pool
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, precision_recall_curve
-import matplotlib.pyplot as plt
-import seaborn as sns
-import shap
-import joblib
-
-# Assuming X_train, X_test, y_train, y_test are predefined
-
-# Define output path
-output_path = "model_output/"
-
-# Initialize CatBoostClassifier with GPU
-model = CatBoostClassifier(
-    iterations=1000,
-    learning_rate=0.1,
-    depth=6,
-    eval_metric='AUC',
-    task_type='GPU',
-    verbose=100
-)
-
-# Train the model
-model.fit(X_train, y_train, eval_set=(X_test, y_test), use_best_model=True, plot=True)
-
-# Predictions
-y_train_pred = model.predict(X_train)
-y_test_pred = model.predict(X_test)
-
-# Metrics
-metrics = {
-    "Dataset": ["Training", "Test"],
-    "Accuracy": [accuracy_score(y_train, y_train_pred), accuracy_score(y_test, y_test_pred)],
-    "Precision": [precision_score(y_train, y_train_pred), precision_score(y_test, y_test_pred)],
-    "Recall": [recall_score(y_train, y_train_pred), recall_score(y_test, y_test_pred)],
-    "F1 Score": [f1_score(y_train, y_train_pred), f1_score(y_test, y_test_pred)],
-    "ROC-AUC": [roc_auc_score(y_train, model.predict_proba(X_train)[:, 1]), roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])]
-}
-
-metrics_df = pd.DataFrame(metrics)
-metrics_df.to_csv(output_path + "model_metrics.csv", index=False)
-
-# ROC-AUC curve
-fpr, tpr, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
-plt.figure()
-plt.plot(fpr, tpr, label='ROC Curve (area = %0.2f)' % metrics_df.loc[1, "ROC-AUC"])
-plt.plot([0, 1], [0, 1], 'k--')
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('ROC-AUC Curve')
-plt.legend(loc="lower right")
-plt.savefig(output_path + "roc_auc_curve.png")
-plt.close()
+from sklearn.metrics import auc
 
 # Precision-Recall curve
+logger.info("Plotting Precision-Recall curve...")
 precision, recall, _ = precision_recall_curve(y_test, model.predict_proba(X_test)[:, 1])
-plt.figure()
-plt.plot(recall, precision, marker='.')
+pr_auc = auc(recall, precision)
+
+plt.figure(figsize=(10, 7))
+plt.plot(recall, precision, marker='.', label=f'Precision-Recall Curve (AUC = {pr_auc:.2f})')
 plt.xlabel('Recall')
 plt.ylabel('Precision')
-plt.title('Precision-Recall Curve')
-plt.savefig(output_path + "precision_recall_curve.png")
+plt.title(f'Precision-Recall Curve (AUC = {pr_auc:.2f})')
+plt.grid(True)
+plt.legend(loc="best")
+plt.savefig(output_path / "precision_recall_curve.png")
 plt.close()
-
-# Confusion Matrix
-conf_matrix = confusion_matrix(y_test, y_test_pred)
-sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues")
-plt.title('Confusion Matrix')
-plt.xlabel('Predicted')
-plt.ylabel('True')
-plt.savefig(output_path + "confusion_matrix.png")
-plt.close()
-
-# Feature Importance
-feature_importance = model.get_feature_importance(Pool(X_train, label=y_train))
-sorted_idx = feature_importance.argsort()
-plt.figure(figsize=(10, 7))
-plt.barh(range(len(sorted_idx)), feature_importance[sorted_idx], align='center')
-plt.yticks(range(len(sorted_idx)), [X_train.columns[i] for i in sorted_idx])
-plt.xlabel('Feature Importance')
-plt.title('Feature Importance')
-plt.savefig(output_path + "feature_importance.png")
-plt.close()
-
-# SHAP values
-explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(X_train)
-
-# Global SHAP Values
-plt.figure()
-shap.summary_plot(shap_values, X_train, plot_type="bar")
-plt.savefig(output_path + "shap_global_bar.png")
-plt.close()
-
-plt.figure()
-shap.summary_plot(shap_values, X_train)
-plt.savefig(output_path + "shap_global_summary.png")
-plt.close()
-
-# Local SHAP Values
-shap.initjs()
-for i in range(5):  # Plot for first 5 predictions
-    plt.figure()
-    shap.force_plot(explainer.expected_value, shap_values[i], X_train.iloc[i, :], matplotlib=True)
-    plt.savefig(output_path + f"shap_local_{i}.png")
-    plt.close()
-
-# Add predictions to train and test datasets
-X_train['Prediction'] = y_train_pred
-X_test['Prediction'] = y_test_pred
-
-# Save datasets
-X_train.to_csv(output_path + "labeled_train_set.csv", index=False)
-X_test.to_csv(output_path + "labeled_test_set.csv", index=False)
-
-# Save model
-joblib.dump(model, output_path + "catboost_model.pkl")
-
-# Clean up temporary files and memory
-del model, X_train, X_test, y_train, y_test, y_train_pred, y_test_pred, shap_values, explainer
-gc.collect()
- =========================================
-
-name: catboost_model_env
-channels:
-  - defaults
-  - conda-forge
-dependencies:
-  - python=3.8
-  - pip
-  - numpy
-  - pandas
-  - scikit-learn
-  - matplotlib
-  - seaborn
-  - catboost
-  - shap
-  - joblib
-  - pip:
-      - gc
-      - logging
-      - os
-      - pathlib
