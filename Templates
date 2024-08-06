@@ -14,23 +14,20 @@ df = pd.DataFrame(data)
 
 # Parse claimCreationDate to year-month format
 df['claimCreationDate'] = pd.to_datetime(df['claimCreationDate'])
-df['year_month'] = df['claimCreationDate'].dt.to_period('M')
+df['year_month'] = df['claimCreationDate'].dt.to_period('M').astype(str)
 
 # Aggregate FE_DenialStatus at claim_id level
 df['claim_FE_DenialStatus'] = df.groupby('claim_id')['FE_DenialStatus'].transform(lambda x: 'Denied' if 'Denied' in x.values else 'Accepted')
 
-# Create a plot for each year-month
-unique_year_months = df['year_month'].unique()
-num_plots = len(unique_year_months)
-fig, axes = plt.subplots(num_plots, 1, figsize=(10, 6 * num_plots))
+# Drop duplicates to get claim level data
+claim_df = df.drop_duplicates(subset=['claim_id'])
 
-for i, year_month in enumerate(unique_year_months):
-    ax = axes[i] if num_plots > 1 else axes
-    month_df = df[df['year_month'] == year_month].drop_duplicates(subset=['claim_id'])
-    sns.countplot(x='claim_FE_DenialStatus', data=month_df, ax=ax)
-    ax.set_title(f'{year_month} - Claim ID Level FE_DenialStatus')
-    ax.set_ylabel('Count')
-    ax.set_xlabel('FE_DenialStatus')
-
-plt.tight_layout()
+# Plotting
+plt.figure(figsize=(14, 8))
+sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df)
+plt.title('Distribution of Denial Status for Each Year-Month')
+plt.xlabel('Year-Month')
+plt.ylabel('Count')
+plt.xticks(rotation=45)
+plt.legend(title='FE_DenialStatus')
 plt.show()
