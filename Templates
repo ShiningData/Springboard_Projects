@@ -1,6 +1,7 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 # Sample data
 data = {
@@ -28,11 +29,16 @@ monthly_denied_cost = denied_claims.groupby('year_month')['claimTotalChargeAmt']
 # Ensure year_month is in ascending order
 monthly_denied_cost['year_month'] = pd.Categorical(monthly_denied_cost['year_month'], categories=sorted(monthly_denied_cost['year_month'].unique()), ordered=True)
 
+# Function to format the y-axis labels with commas
+def format_with_commas(x, pos):
+    return f'{int(x):,}'
+
 # Plotting
 plt.figure(figsize=(14, 8))
 sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost)
 plt.title('Total Denied Claim Amount per Month')
 plt.xlabel('Year-Month')
 plt.ylabel('Total Denied Claim Amount')
+plt.gca().yaxis.set_major_formatter(FuncFormatter(format_with_commas))
 plt.xticks(rotation=45)
 plt.show()
