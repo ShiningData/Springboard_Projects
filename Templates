@@ -7,7 +7,8 @@ data = {
     'claim_id': [1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4],
     'service_line_id': [101, 102, 103, 104, 201, 202, 203, 301, 302, 401, 402, 403, 404],
     'FE_DenialStatus': ['Accepted', 'Denied', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Denied', 'Accepted', 'Accepted', 'Denied', 'Accepted'],
-    'claimCreationDate': ['2022-01-17', '2022-01-17', '2022-01-17', '2022-01-17', '2022-02-05', '2022-02-05', '2022-02-05', '2022-03-12', '2022-03-12', '2022-03-30', '2022-03-30', '2022-03-30', '2022-03-30']
+    'claimCreationDate': ['2022-01-17', '2022-01-17', '2022-01-17', '2022-01-17', '2022-02-05', '2022-02-05', '2022-02-05', '2022-03-12', '2022-03-12', '2022-03-30', '2022-03-30', '2022-03-30', '2022-03-30'],
+    'claimTotalChargeAmt': [1000, 1000, 1000, 1000, 2000, 2000, 2000, 1500, 1500, 3000, 3000, 3000, 3000]
 }
 
 df = pd.DataFrame(data)
@@ -19,15 +20,19 @@ df['year_month'] = df['claimCreationDate'].dt.to_period('M').astype(str)
 # Aggregate FE_DenialStatus at claim_id level
 df['claim_FE_DenialStatus'] = df.groupby('claim_id')['FE_DenialStatus'].transform(lambda x: 'Denied' if 'Denied' in x.values else 'Accepted')
 
-# Drop duplicates to get claim level data
+# Drop duplicates to get claim level data and calculate total denied cost
 claim_df = df.drop_duplicates(subset=['claim_id'])
+denied_claims = claim_df[claim_df['claim_FE_DenialStatus'] == 'Denied']
+monthly_denied_cost = denied_claims.groupby('year_month')['claimTotalChargeAmt'].sum().reset_index()
+
+# Ensure year_month is in ascending order
+monthly_denied_cost['year_month'] = pd.Categorical(monthly_denied_cost['year_month'], categories=sorted(monthly_denied_cost['year_month'].unique()), ordered=True)
 
 # Plotting
 plt.figure(figsize=(14, 8))
-sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df)
-plt.title('Distribution of Denial Status for Each Year-Month')
+sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost)
+plt.title('Total Denied Claim Amount per Month')
 plt.xlabel('Year-Month')
-plt.ylabel('Count')
+plt.ylabel('Total Denied Claim Amount')
 plt.xticks(rotation=45)
-plt.legend(title='FE_DenialStatus')
 plt.show()
