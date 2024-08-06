@@ -1,19 +1,39 @@
-# Ensure categorical features are handled correctly
-categorical_features_indices = [X_train.columns.get_loc(col) for col in categorical_features]
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-# Feature Importance
-logger.info("Plotting feature importance...")
-train_pool = Pool(X_train, label=y_train, cat_features=categorical_features_indices)
-feature_importance = model.get_feature_importance(train_pool)
-sorted_idx = feature_importance.argsort()
+# Sample data
+data = {
+    'claim_id': [1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4],
+    'service_line_id': [101, 102, 103, 104, 201, 202, 203, 301, 302, 401, 402, 403, 404],
+    'FE_DenialStatus': ['Accepted', 'Denied', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Denied', 'Accepted', 'Accepted', 'Denied', 'Accepted']
+}
 
-# Ensure feature names are sorted accordingly
-sorted_feature_names = [X_train.columns[i] for i in sorted_idx]
+df = pd.DataFrame(data)
 
-plt.figure(figsize=(10, 7))
-plt.barh(sorted_feature_names, feature_importance[sorted_idx], align='center')
-plt.xlabel('Feature Importance')
-plt.title('Feature Importance')
+# Function to aggregate FE_DenialStatus at claim_id level
+def aggregate_denial_status(df):
+    df['claim_FE_DenialStatus'] = df.groupby('claim_id')['FE_DenialStatus'].transform(lambda x: 'Denied' if 'Denied' in x.values else 'Accepted')
+    return df
+
+# Aggregate FE_DenialStatus at claim_id level
+df = aggregate_denial_status(df)
+
+# Plotting
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+# Claim ID level FE_DenialStatus
+claim_df = df.drop_duplicates(subset=['claim_id'])
+sns.countplot(x='claim_FE_DenialStatus', data=claim_df, ax=axes[0])
+axes[0].set_title('Claim ID Level FE_DenialStatus')
+axes[0].set_ylabel('Count')
+axes[0].set_xlabel('FE_DenialStatus')
+
+# Service Line ID level FE_DenialStatus
+sns.countplot(x='FE_DenialStatus', data=df, ax=axes[1])
+axes[1].set_title('Service Line ID Level FE_DenialStatus')
+axes[1].set_ylabel('Count')
+axes[1].set_xlabel('FE_DenialStatus')
+
 plt.tight_layout()
-plt.savefig(output_path / "feature_importance.png", bbox_inches='tight')
-plt.close()
+plt.show()
