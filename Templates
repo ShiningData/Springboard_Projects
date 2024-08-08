@@ -1,44 +1,165 @@
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+    """
+    Preprocesses the input dataframe by dropping specified columns, filling missing values,
+    and applying column type casting.
 
-# Sample data
-data = {
-    'claim_id': [1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4],
-    'service_line_id': [101, 102, 103, 104, 201, 202, 203, 301, 302, 401, 402, 403, 404],
-    'FE_DenialStatus': ['Accepted', 'Denied', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Accepted', 'Denied', 'Accepted', 'Accepted', 'Denied', 'Accepted'],
-    'claimCreationDate': ['2022-01-17', '2022-01-17', '2022-01-17', '2022-01-17', '2022-02-05', '2022-02-05', '2022-02-05', '2022-03-12', '2022-03-12', '2022-03-30', '2022-03-30', '2022-03-30', '2022-03-30'],
-    'claimTotalChargeAmt': [1000, 1000, 1000, 1000, 2000, 2000, 2000, 1500, 1500, 3000, 3000, 3000, 3000]
-}
+    Parameters:
+    df (pd.DataFrame): The input dataframe to be preprocessed.
 
-df = pd.DataFrame(data)
+    Returns:
+    pd.DataFrame: The preprocessed dataframe.
+    """
+================
 
-# Parse claimCreationDate to year-month format
-df['claimCreationDate'] = pd.to_datetime(df['claimCreationDate'])
-df['year_month'] = df['claimCreationDate'].dt.to_period('M').astype(str)
+    """
+    Performs a stratified train-test split on the dataset, ensuring the target variable 
+    distribution is maintained across splits and groups by a specific column.
 
-# Aggregate FE_DenialStatus at claim_id level
-df['claim_FE_DenialStatus'] = df.groupby('claim_id')['FE_DenialStatus'].transform(lambda x: 'Denied' if 'Denied' in x.values else 'Accepted')
+    Parameters:
+    df (pd.DataFrame): The input dataframe to be split.
 
-# Drop duplicates to get claim level data and calculate total denied cost
-claim_df = df.drop_duplicates(subset=['claim_id'])
-denied_claims = claim_df[claim_df['claim_FE_DenialStatus'] == 'Denied']
-monthly_denied_cost = denied_claims.groupby('year_month')['claimTotalChargeAmt'].sum().reset_index()
+    Returns:
+    tuple: A tuple containing:
+        - X_train (pd.DataFrame): The training set features.
+        - X_test (pd.DataFrame): The test set features.
+        - y_train (pd.Series): The training set target variable.
+        - y_test (pd.Series): The test set target variable.
+    """
 
-# Ensure year_month is in ascending order
-monthly_denied_cost['year_month'] = pd.Categorical(monthly_denied_cost['year_month'], categories=sorted(monthly_denied_cost['year_month'].unique()), ordered=True)
+=================
 
-# Function to format the y-axis labels with commas
-def format_with_commas(x, pos):
-    return f'{int(x):,}'
+    """
+    Creates a table of evaluation metrics for a given model and saves it to a CSV file.
 
-# Plotting
-plt.figure(figsize=(14, 8))
-sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost)
-plt.title('Total Denied Claim Amount per Month')
-plt.xlabel('Year-Month')
-plt.ylabel('Total Denied Claim Amount')
-plt.gca().yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-plt.xticks(rotation=45)
-plt.show()
+    Parameters:
+    X_train (pd.DataFrame): The training set features.
+    X_test (pd.DataFrame): The test set features.
+    y_train (pd.Series): The true labels for the training set.
+    y_train_pred (pd.Series): The predicted labels for the training set.
+    y_test (pd.Series): The true labels for the test set.
+    y_test_pred (pd.Series): The predicted labels for the test set.
+    model: The trained model used for predictions.
+
+    Returns:
+    pd.DataFrame: A dataframe containing the evaluation metrics.
+    """
+
+=============================
+
+    """
+    Creates and saves tables of train and test set results with actual, predicted, and 
+    predicted probabilities for each class.
+
+    Parameters:
+    X_train (pd.DataFrame): The training set features.
+    X_test (pd.DataFrame): The test set features.
+    y_train (pd.Series): The true labels for the training set.
+    y_test (pd.Series): The true labels for the test set.
+    y_train_pred (pd.Series): The predicted labels for the training set.
+    y_test_pred (pd.Series): The predicted labels for the test set.
+    y_train_pred_proba (np.ndarray): The predicted probabilities for each class for the training set.
+    y_test_pred_proba (np.ndarray): The predicted probabilities for each class for the test set.
+
+    Returns:
+    None: The function saves the train and test results as CSV files.
+    """
+
+=======================
+
+    """
+    Creates and saves a ROC curve plot for the given model's predictions.
+
+    Parameters:
+    model: The trained model used for predictions.
+    y_data (pd.Series): The true labels for the dataset.
+    x_data (pd.DataFrame): The dataset features.
+    metrics_df (pd.DataFrame): The dataframe containing evaluation metrics.
+    metrics_index (int): The index to retrieve the ROC-AUC value from metrics_df.
+    file_path (str): The file path to save the ROC curve plot.
+
+    Returns:
+    None: The function saves the ROC curve plot as an image file.
+    """
+
+=====================
+
+    """
+    Creates and saves a Precision-Recall curve plot for the given model's predictions.
+
+    Parameters:
+    model: The trained model used for predictions.
+    y_data (pd.Series): The true labels for the dataset.
+    x_data (pd.DataFrame): The dataset features.
+    file_path (str): The file path to save the Precision-Recall curve plot.
+
+    Returns:
+    None: The function saves the Precision-Recall curve plot as an image file.
+    """
+
+=================
+
+    """
+    Creates and saves a confusion matrix plot for the given model's predictions.
+
+    Parameters:
+    y_data (pd.Series): The true labels for the dataset.
+    y_pred (pd.Series): The predicted labels for the dataset.
+    file_path (str): The file path to save the confusion matrix plot.
+
+    Returns:
+    None: The function saves the confusion matrix plot as an image file.
+    """
+
+=================
+
+    """
+    Creates and saves a feature importance plot for the given model.
+
+    Parameters:
+    model: The trained model used to compute feature importance.
+    X_data (pd.DataFrame): The dataset features.
+    y_data (pd.Series): The true labels for the dataset.
+    file_path (str): The file path to save the feature importance plot.
+    categorical_cols (list): List of categorical feature column names.
+
+    Returns:
+    None: The function saves the feature importance plot as an image file.
+    """
+
+=====================
+
+    """
+    Creates and saves global SHAP plots (bar plot and summary plot) for the given model.
+
+    Parameters:
+    model: The trained model used for generating SHAP values.
+    X_data (pd.DataFrame): The dataset features.
+    global_bar_file (str): The file path to save the SHAP global bar plot.
+    global_summary_file (str): The file path to save the SHAP global summary plot.
+
+    Returns:
+    explainer: The SHAP TreeExplainer object.
+    shap_values: The SHAP values for the dataset.
+    """
+
+===================
+
+    """
+    Creates and saves a SHAP force plot for a specific instance in the dataset.
+
+    Parameters:
+    X_data (pd.DataFrame): The dataset containing the features.
+    sl_index (int): The index of the specific instance to plot.
+    explainer (shap.Explainer): The SHAP explainer object used to compute SHAP values.
+    shap_values (np.array): The SHAP values for the instances in X_data.
+
+    Returns:
+    None: The function saves the plot as an image file.
+    """
+
+================
+
+
+
+
+
+
