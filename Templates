@@ -3,33 +3,30 @@ import seaborn as sns
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
-# Assuming 'monthly_denied_cost' DataFrame is already defined
+# Assuming 'claim_df' DataFrame is already defined
 
-# Sort data in descending order
-monthly_denied_cost = monthly_denied_cost.sort_values(by='claimTotalChargeAmt', ascending=False)
+# Calculate count of denied and accepted claims per month
+monthly_claim_counts = claim_df.groupby(['year_month', 'claim_FE_DenialStatus']).size().unstack(fill_value=0)
 
-# Calculate cumulative percentage
-monthly_denied_cost['cum_percentage'] = monthly_denied_cost['claimTotalChargeAmt'].cumsum() / monthly_denied_cost['claimTotalChargeAmt'].sum() * 100
+# Calculate the denied-to-accepted claim ratio
+monthly_claim_counts['denied_to_accepted_ratio'] = monthly_claim_counts['Denied'] / monthly_claim_counts['Accepted']
 
-# Plotting the Pareto Chart
+# Plotting the distribution of denial status
 fig, ax1 = plt.subplots(figsize=(14, 8))
 
-# Bar plot for the total denied claim amount
-sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost, ax=ax1, color='skyblue')
-ax1.set_title('Pareto Chart of Denied Claim Amount per Month')
+sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df, ax=ax1)
+ax1.set_title('Distribution of Denial Status and Denied-to-Accepted Ratio for Each Year-Month')
 ax1.set_xlabel('Year-Month')
-ax1.set_ylabel('Total Denied Claim Amount')
+ax1.set_ylabel('Count')
 ax1.yaxis.set_major_formatter(FuncFormatter(format_with_commas))
 ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
+ax1.legend(title='Denial Status')
 
-# Line plot for the cumulative percentage
+# Plotting the denied-to-accepted ratio on a secondary y-axis
 ax2 = ax1.twinx()
-ax2.plot(monthly_denied_cost['year_month'], monthly_denied_cost['cum_percentage'], color='red', marker='o', linestyle='-', linewidth=2)
-ax2.set_ylabel('Cumulative Percentage (%)')
-ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{int(x)}%'))
-
-# Set the y-axis limit for cumulative percentage
-ax2.set_ylim([0, 100])
+ax2.plot(monthly_claim_counts.index, monthly_claim_counts['denied_to_accepted_ratio'], color='red', marker='o', linestyle='-', linewidth=2)
+ax2.set_ylabel('Denied-to-Accepted Claim Ratio')
+ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{x:.2f}'))
 
 # Show plot
 plt.show()
