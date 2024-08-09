@@ -25,23 +25,25 @@ claim_df['year_month'] = pd.Categorical(
 plt.figure(figsize=(14, 8))
 ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df)
 
-# Add Denied to Accepted Ratio above each month
-for p in ax.patches:
-    height = p.get_height()
-    width = p.get_width()
-    x = p.get_x()
-    
-    # Find the corresponding month
-    year_month = p.get_x() + p.get_width() / 2
-    month_data = claim_df[claim_df['year_month'] == ax.get_xticklabels()[int(x + width / 2)].get_text()]
+# Add Denied to Accepted Ratio between the bars
+for i, label in enumerate(ax.get_xticklabels()):
+    month_data = claim_df[claim_df['year_month'] == label.get_text()]
     
     # Calculate the ratio
     denied_count = month_data[month_data['claim_FE_DenialStatus'] == 'Denied'].shape[0]
     accepted_count = month_data[month_data['claim_FE_DenialStatus'] == 'Accepted'].shape[0]
     ratio = denied_count / accepted_count if accepted_count != 0 else 0
     
+    # Get the positions of the bars
+    denied_bar = ax.patches[i]  # The denied bar
+    accepted_bar = ax.patches[i + len(ax.get_xticklabels())]  # The accepted bar (shift by number of categories)
+    
+    # Calculate the middle position between the two bars
+    middle_x = (denied_bar.get_x() + accepted_bar.get_x()) / 2 + denied_bar.get_width() / 2
+    middle_y = max(denied_bar.get_height(), accepted_bar.get_height()) + 500  # Position above the higher bar
+    
     # Place the ratio text
-    ax.text(p.get_x() + p.get_width() / 2, height + 500, f'{ratio:.2f}', ha="center", fontsize=10)
+    ax.text(middle_x, middle_y, f'{ratio:.2f}', ha="center", fontsize=10)
 
 plt.title('Distribution of Denial Status for Each Year-Month')
 plt.xlabel('Year-Month')
