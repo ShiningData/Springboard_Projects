@@ -9,30 +9,30 @@ specific_month_data = claim_df[claim_df['year_month'] == '2022-01']
 # Sort the claim amounts in descending order
 sorted_data = specific_month_data.sort_values(by='claimTotalChargeAmt', ascending=False)
 
-# Calculate the cumulative sum and cumulative percentage
-sorted_data['cumulative_sum'] = sorted_data['claimTotalChargeAmt'].cumsum()
-sorted_data['cumulative_perc'] = 100 * sorted_data['cumulative_sum'] / sorted_data['claimTotalChargeAmt'].sum()
+# Calculate the cumulative count and cumulative percentage of claim count
+sorted_data['cumulative_count'] = range(1, len(sorted_data) + 1)
+sorted_data['cumulative_perc'] = 100 * sorted_data['cumulative_count'] / sorted_data['cumulative_count'].max()
 
 # Plotting the Pareto chart with only the cumulative line
 fig, ax1 = plt.subplots(figsize=(14, 8))
 
-# Plot the cumulative claim amount on the left y-axis
-ax1.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_sum'], color='b', linewidth=2)
+# Plot the cumulative claim count on the left y-axis
+ax1.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_count'], color='b', linewidth=2)
 ax1.set_xlabel('Claim Amounts (Descending Order)')
-ax1.set_ylabel('Cumulative Claim Amount', color='b')
+ax1.set_ylabel('Cumulative Claim Count', color='b')
 ax1.tick_params(axis='y', labelcolor='b')
 ax1.invert_xaxis()  # Invert the x-axis to have highest claim amount on the left
-ax1.set_ylim(0, sorted_data['cumulative_sum'].max() * 1.1)
+ax1.set_ylim(0, sorted_data['cumulative_count'].max() * 1.1)
 
-# Create a second y-axis for the cumulative percentage
+# Create a second y-axis for the cumulative percentage of claim count
 ax2 = ax1.twinx()
 ax2.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_perc'], color='r', linewidth=2)
-ax2.set_ylabel('Cumulative Percentage (%)', color='r')
+ax2.set_ylabel('Cumulative Percentage of Claim Count (%)', color='r')
 ax2.tick_params(axis='y', labelcolor='r')
 ax2.set_ylim([0, 110])  # Extend the y-axis slightly beyond 100% for better visualization
 
 # Adding title
-plt.title('Pareto Analysis - Cumulative Claim Amount and Percentage for January 2022')
+plt.title('Pareto Analysis - Cumulative Claim Count and Percentage for January 2022')
 
 # Show grid for better readability
 plt.grid(True)
