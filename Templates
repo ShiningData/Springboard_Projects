@@ -16,21 +16,23 @@ sorted_data['cumulative_perc'] = 100 * sorted_data['cumulative_sum'] / sorted_da
 # Plotting the Pareto chart with only the cumulative line
 fig, ax1 = plt.subplots(figsize=(14, 8))
 
-# Plot the cumulative percentage line (ROC-AUC style)
+# Plot the cumulative claim amount on the left y-axis
+ax1.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_sum'], color='b', linewidth=2)
+ax1.set_xlabel('Claim Amounts (Descending Order)')
+ax1.set_ylabel('Cumulative Claim Amount', color='b')
+ax1.tick_params(axis='y', labelcolor='b')
+ax1.invert_xaxis()  # Invert the x-axis to have highest claim amount on the left
+ax1.set_ylim(0, sorted_data['cumulative_sum'].max() * 1.1)
+
+# Create a second y-axis for the cumulative percentage
 ax2 = ax1.twinx()
 ax2.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_perc'], color='r', linewidth=2)
 ax2.set_ylabel('Cumulative Percentage (%)', color='r')
 ax2.tick_params(axis='y', labelcolor='r')
 ax2.set_ylim([0, 110])  # Extend the y-axis slightly beyond 100% for better visualization
 
-# Set the left y-axis for the claim amounts
-ax1.set_xlabel('Claims Ordered by Amount (Descending)')
-ax1.set_ylabel('Claim Amount')
-ax1.tick_params(axis='y')
-ax1.set_ylim([0, sorted_data['claimTotalChargeAmt'].max() * 1.1])
-
 # Adding title
-plt.title('Pareto Analysis - Cumulative Percentage of Claim Amounts for January 2022')
+plt.title('Pareto Analysis - Cumulative Claim Amount and Percentage for January 2022')
 
 # Show grid for better readability
 plt.grid(True)
