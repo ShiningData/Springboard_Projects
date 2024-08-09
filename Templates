@@ -39,16 +39,12 @@ for i, bar in enumerate(ax.patches):
         middle_x = (denied_bar.get_x() + accepted_bar.get_x() + denied_bar.get_width()) / 2
 
         # Determine the height for placing the text
-        max_height = max(denied_bar.get_height(), accepted_bar.get_height())
-        text_y = max_height + (ax.get_ylim()[1] * 0.05)  # Position slightly above the highest bar
+        text_y = max(denied_bar.get_height(), accepted_bar.get_height()) * 1.05  # Slightly above the highest bar
 
         # Calculate the ratio
         ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
 
-        # Ensure the text doesn't go out of bounds
-        text_y = min(text_y, ax.get_ylim()[1] * 0.95)  # Set a maximum height to keep text within the frame
-
-        # Place the ratio text as percentage, in red color
+        # Place the ratio text above the bars, centered
         ax.text(middle_x, text_y, f'{ratio:.1f}%', ha='center', fontsize=10, color='red')
 
 plt.title('Distribution of Denial Status for Each Year-Month')
