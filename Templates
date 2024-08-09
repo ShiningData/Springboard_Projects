@@ -1,52 +1,60 @@
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
-# Function to aggregate FE_DenialStatus at claim id level
-def aggregate_denial_status(df):
-    df['claim_FE_DenialStatus'] = df.groupby('claimUniqueId')['FE_DenialStatus'].transform(
-        lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
-    )
-    return df
+# Parse claimCreationDate to year-month format
+df['claimCreationDate'] = pd.to_datetime(df['claimCreationDate'])
+df['year_month'] = df['claimCreationDate'].dt.to_period('M')
 
-# Aggregate FE_DenialStatus at claim id level
-df_new = aggregate_denial_status(df)
+# Aggregate FE_DenialStatus at Claim ID Level
+df['claim_FE_DenialStatus'] = df.groupby('claimUniqueId')['FE_DenialStatus'].transform(
+    lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
+)
 
-# Format numbers with commas
-def format_with_commas(x, pos):
-    return f'{int(x):,}'
+# Drop duplicates to get Claim Level data
+claim_df = df.drop_duplicates(subset=['claimUniqueId'])
 
-claim_df = df_new.drop_duplicates(subset=['claimUniqueId'])
-
-# Calculate Denied to Accepted Ratio
-claim_denied_count = claim_df[claim_df['claim_FE_DenialStatus'] == 'Denied'].shape[0]
-claim_accepted_count = claim_df[claim_df['claim_FE_DenialStatus'] == 'Accepted'].shape[0]
-claim_ratio = claim_denied_count / claim_accepted_count if claim_accepted_count != 0 else 0
-
-service_denied_count = claim_df[claim_df['FE_DenialStatus'] == 'Denied'].shape[0]
-service_accepted_count = claim_df[claim_df['FE_DenialStatus'] == 'Accepted'].shape[0]
-service_ratio = service_denied_count / service_accepted_count if service_accepted_count != 0 else 0
+# Set year_month as a categorical variable for ordered plotting
+claim_df['year_month'] = pd.Categorical(
+    claim_df['year_month'],
+    categories=sorted(claim_df['year_month'].unique()),
+    ordered=True
+)
 
 # Plotting
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+plt.figure(figsize=(14, 8))
+ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df, order=claim_df['year_month'].cat.categories, palette=['blue', 'orange'])
 
-# Claim ID Level FE_DenialStatus
-sns.countplot(x='claim_FE_DenialStatus', data=claim_df, ax=axes[0], order=['Accepted', 'Denied'], palette=['blue', 'orange'])
-axes[0].set_title("Claim ID Level Denial Status")
-axes[0].set_xlabel("Denial Status")
-axes[0].set_ylabel("Count")
-axes[0].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-axes[0].text(0.95, 0.95, f'Ratio: {100*claim_ratio:.2f}%', transform=axes[0].transAxes, ha='right', va='top',
-             fontsize=12, color='red', bbox=dict(facecolor='white', alpha=0.01))
+# Adjust y-axis limits to create space for text
+ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
 
-# Service Line ID Level FE_DenialStatus
-sns.countplot(x='FE_DenialStatus', data=claim_df, ax=axes[1], order=['Accepted', 'Denied'], palette=['blue', 'orange'])
-axes[1].set_title("Service Line Level Denial Status")
-axes[1].set_xlabel("Denial Status")
-axes[1].set_ylabel("Count")
-axes[1].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-axes[1].text(0.95, 0.95, f'Ratio: {100*service_ratio:.2f}%', transform=axes[1].transAxes, ha='right', va='top',
-             fontsize=12, color='red', bbox=dict(facecolor='white', alpha=0.01))
+# Add Denied to Accepted Ratio between the bars as percentages, in red color
+for i, bar in enumerate(ax.patches):
+    if i % 2 == 1:  # Adjust this to point to the second (Denied) bar
+        denied_bar = bar
+        accepted_bar = ax.patches[i - 1]
 
+        # Calculate the middle position between the two bars
+        middle_x = (denied_bar.get_x() + denied_bar.get_width() / 2) + (accepted_bar.get_x() + accepted_bar.get_width() / 2) / 2
+
+        # Determine the height for placing the text
+        middle_y = max(denied_bar.get_height(), accepted_bar.get_height()) * 1.05  # Position above the highest bar
+
+        # Calculate the ratio
+        ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
+
+        # Ensure the text doesn't go out of bounds
+        middle_y = min(middle_y, ax.get_ylim()[1] * 0.9)  # Set a maximum height to keep text within the frame
+
+        # Place the ratio text as percentage, in red color
+        ax.text(middle_x, middle_y, f'{ratio:.1f}%', ha='center', fontsize=10, color='red')
+
+plt.title('Distribution of Denial Status for Each Year-Month')
+plt.xlabel('Year-Month')
+plt.ylabel('Count')
+plt.xticks(rotation=45)
+plt.gca().yaxis.set_major_formatter(FuncFormatter(format_with_commas))
+plt.legend(title='Denial Status')
 plt.tight_layout()
 plt.show()
