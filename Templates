@@ -13,19 +13,27 @@ sorted_data = specific_month_data.sort_values(by='claimTotalChargeAmt', ascendin
 sorted_data['cumulative_sum'] = sorted_data['claimTotalChargeAmt'].cumsum()
 sorted_data['cumulative_perc'] = 100 * sorted_data['cumulative_sum'] / sorted_data['claimTotalChargeAmt'].sum()
 
-# Plotting the Pareto chart (Cumulative Percentage Line only)
-plt.figure(figsize=(14, 8))
+# Plotting the Pareto chart (Single Cumulative Percentage Line)
+fig, ax1 = plt.subplots(figsize=(14, 8))
 
-# Plot the cumulative percentage
-plt.plot(sorted_data.index, sorted_data['cumulative_perc'], color='r', marker='o')
+# Plot the cumulative percentage line
+ax1.plot(sorted_data.index, sorted_data['cumulative_perc'], color='r', marker='o')
 
-# Adding titles and labels
+# Set up the left y-axis for claim amounts (not displayed but referenced)
+ax1.set_xlabel('Claims Ordered by Amount (Descending)')
+ax1.set_ylabel('Cumulative Percentage (%)', color='r')
+ax1.tick_params(axis='y', labelcolor='r')
+
+# Add grid for better readability
+ax1.grid(True)
+
+# Create a second y-axis for the claim amounts
+ax2 = ax1.twinx()
+ax2.set_ylabel('Claim Amount')
+ax2.set_yticks([])  # Hide tick labels on the right y-axis since we're focusing on the cumulative percentage
+
+# Adding title
 plt.title('Pareto Analysis - Cumulative Percentage of Claim Amounts for January 2022')
-plt.xlabel('Claims Ordered by Amount (Descending)')
-plt.ylabel('Cumulative Percentage (%)')
-
-# Show grid for better readability
-plt.grid(True)
 
 # Show the plot
 plt.show()
