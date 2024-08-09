@@ -24,6 +24,10 @@ ax1.tick_params(axis='y', labelcolor='b')
 ax1.invert_xaxis()  # Invert the x-axis to have highest claim amount on the left
 ax1.set_ylim(0, sorted_data['cumulative_amount'].max() * 1.1)
 
+# Format the x and y-axis with commas
+ax1.get_yaxis().set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:,}".format(int(x))))
+ax1.get_xaxis().set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:,}".format(int(x))))
+
 # Create a second y-axis for the cumulative percentage of claim count
 ax2 = ax1.twinx()
 ax2.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_perc_count'], color='r', linewidth=2)
@@ -34,8 +38,11 @@ ax2.set_ylim([0, 110])  # Extend the y-axis slightly beyond 100% for better visu
 # Adding title
 plt.title('Pareto Analysis - Cumulative Claim Amount and Percentage for January 2022')
 
-# Show grid for better readability
-plt.grid(True)
+# Hide the grid and other elements for a clean plot
+plt.grid(False)
+ax1.xaxis.label.set_visible(False)
+ax1.yaxis.label.set_visible(False)
+ax2.yaxis.label.set_visible(False)
 
 # Show the plot
 plt.show()
