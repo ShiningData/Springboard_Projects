@@ -1,48 +1,51 @@
+import seaborn as sns
 import matplotlib.pyplot as plt
-import pandas as pd
 
-# Assuming the data is already in `claim_df` with 'year_month' and 'claimTotalChargeAmt'
+# Function to aggregate FE_DenialStatus at claim id level
+def aggregate_denial_status(df):
+    df['claim_FE_DenialStatus'] = df.groupby('claimUniqueId')['FE_DenialStatus'].transform(
+        lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
+    )
+    return df
 
-# Filter the data for the specific month
-specific_month_data = claim_df[claim_df['year_month'] == '2022-01']
+# Aggregate FE_DenialStatus at claim id level
+df_new = aggregate_denial_status(df)
 
-# Sort the claim amounts in descending order
-sorted_data = specific_month_data.sort_values(by='claimTotalChargeAmt', ascending=False)
+# Format numbers with commas
+def format_with_commas(x, pos):
+    return f'{int(x):,}'
 
-# Calculate the cumulative claim amount and cumulative percentage of claim count
-sorted_data['cumulative_amount'] = sorted_data['claimTotalChargeAmt'].cumsum()
-sorted_data['cumulative_perc_count'] = 100 * (sorted_data.index + 1) / len(sorted_data)
+claim_df = df_new.drop_duplicates(subset=['claimUniqueId'])
 
-# Plotting the Pareto chart with only the cumulative line
-fig, ax1 = plt.subplots(figsize=(14, 8))
+# Calculate Denied to Accepted Ratio
+claim_denied_count = claim_df[claim_df['claim_FE_DenialStatus'] == 'Denied'].shape[0]
+claim_accepted_count = claim_df[claim_df['claim_FE_DenialStatus'] == 'Accepted'].shape[0]
+claim_ratio = claim_denied_count / claim_accepted_count if claim_accepted_count != 0 else 0
 
-# Plot the cumulative claim amount on the left y-axis
-ax1.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_amount'], color='b', linewidth=2)
-ax1.set_xlabel('Claim Amounts (Descending Order)')
-ax1.set_ylabel('Cumulative Claim Amount', color='b')
-ax1.tick_params(axis='y', labelcolor='b')
-ax1.invert_xaxis()  # Invert the x-axis to have highest claim amount on the left
-ax1.set_ylim(0, sorted_data['cumulative_amount'].max() * 1.1)
+service_denied_count = claim_df[claim_df['FE_DenialStatus'] == 'Denied'].shape[0]
+service_accepted_count = claim_df[claim_df['FE_DenialStatus'] == 'Accepted'].shape[0]
+service_ratio = service_denied_count / service_accepted_count if service_accepted_count != 0 else 0
 
-# Format the x and y-axis with commas
-ax1.get_yaxis().set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:,}".format(int(x))))
-ax1.get_xaxis().set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:,}".format(int(x))))
+# Plotting
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-# Create a second y-axis for the cumulative percentage of claim count
-ax2 = ax1.twinx()
-ax2.plot(sorted_data['claimTotalChargeAmt'], sorted_data['cumulative_perc_count'], color='r', linewidth=2)
-ax2.set_ylabel('Cumulative Percentage of Claim Count (%)', color='r')
-ax2.tick_params(axis='y', labelcolor='r')
-ax2.set_ylim([0, 110])  # Extend the y-axis slightly beyond 100% for better visualization
+# Claim ID Level FE_DenialStatus
+sns.countplot(x='claim_FE_DenialStatus', data=claim_df, ax=axes[0], order=['Accepted', 'Denied'], palette=['blue', 'orange'])
+axes[0].set_title("Claim ID Level Denial Status")
+axes[0].set_xlabel("Denial Status")
+axes[0].set_ylabel("Count")
+axes[0].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
+axes[0].text(0.95, 0.95, f'Ratio: {100*claim_ratio:.2f}%', transform=axes[0].transAxes, ha='right', va='top',
+             fontsize=12, color='red', bbox=dict(facecolor='white', alpha=0.01))
 
-# Adding title
-plt.title('Pareto Analysis - Cumulative Claim Amount and Percentage for January 2022')
+# Service Line ID Level FE_DenialStatus
+sns.countplot(x='FE_DenialStatus', data=claim_df, ax=axes[1], order=['Accepted', 'Denied'], palette=['blue', 'orange'])
+axes[1].set_title("Service Line Level Denial Status")
+axes[1].set_xlabel("Denial Status")
+axes[1].set_ylabel("Count")
+axes[1].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
+axes[1].text(0.95, 0.95, f'Ratio: {100*service_ratio:.2f}%', transform=axes[1].transAxes, ha='right', va='top',
+             fontsize=12, color='red', bbox=dict(facecolor='white', alpha=0.01))
 
-# Hide the grid and other elements for a clean plot
-plt.grid(False)
-ax1.xaxis.label.set_visible(False)
-ax1.yaxis.label.set_visible(False)
-ax2.yaxis.label.set_visible(False)
-
-# Show the plot
+plt.tight_layout()
 plt.show()
