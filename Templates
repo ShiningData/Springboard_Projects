@@ -1,60 +1,10 @@
-import shap
-import matplotlib.pyplot as plt
-import logging
-
-def create_global_shap_plots(
-    model,
-    X_data,
-    global_bar_file,
-    global_summary_file,
-    class_0_beeswarm_file,
-    class_1_beeswarm_file,
-):
-    """
-    Creates and saves global SHAP plots (bar plot, summary plot, and beeswarm plots) for the given model.
-    
-    Parameters:
-    model: The trained model used for generating SHAP values.
-    X_data (pd.DataFrame): The dataset features.
-    global_bar_file (str): The file path to save the SHAP global bar plot.
-    global_summary_file (str): The file path to save the SHAP global summary plot.
-    class_0_beeswarm_file (str): The file path to save the SHAP beeswarm plot for class 0.
-    class_1_beeswarm_file (str): The file path to save the SHAP beeswarm plot for class 1.
-
-    Returns:
-    explainer: The SHAP TreeExplainer object.
-    shap_values: The SHAP values for the dataset.
-    """
-    logging.info("Creating SHAP Global Bar Plot...")
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_data)
-
-    # Global SHAP Values
-    plt.figure(figsize=(12, 8))
-    plt.title('Shapley Global Bar Plot')
-    plt.tight_layout()
-    shap.summary_plot(shap_values, X_data, plot_type="bar")
-    plt.savefig(f"report_dir/{global_bar_file}", bbox_inches="tight")
-    plt.close()
-
-    logging.info("Creating SHAP Global Summary...")
-    plt.figure(figsize=(12, 8))
-    shap.summary_plot(shap_values, X_data)
-    plt.savefig(f"report_dir/{global_summary_file}", bbox_inches="tight")
-    plt.close()
-
-    # SHAP Beeswarm Plot for Class 0
-    logging.info("Creating SHAP Beeswarm Plot for Class 0...")
-    plt.figure(figsize=(12, 8))
-    shap.summary_plot(shap_values[0], X_data, plot_type="dot")
-    plt.savefig(f"report_dir/{class_0_beeswarm_file}", bbox_inches="tight")
-    plt.close()
-
-    # SHAP Beeswarm Plot for Class 1
-    logging.info("Creating SHAP Beeswarm Plot for Class 1...")
-    plt.figure(figsize=(12, 8))
-    shap.summary_plot(shap_values[1], X_data, plot_type="dot")
-    plt.savefig(f"report_dir/{class_1_beeswarm_file}", bbox_inches="tight")
-    plt.close()
-
-    return explainer, shap_values
+rrent Model	New Model
+Target Variable Distribution: No measures are taken to control the distribution of claim id and service line grouping in both the training and test sets, leading to inconsistencies.	Target Variable Distribution: Claim id and associated service lines are grouped, with the target variable stratified and sampled in both the training and test sets to maintain consistent distribution.
+Feature Engineering: Both Subscriber and Patient age and gender features are utilized without alignment with business requirements.	Feature Engineering: Subscriber/Patient age and gender features are used, along with actual person features during the hospital visit. Age over 89 is flagged as 199 per business requirements.
+Hyperparameter Tuning: No hyperparameter optimization is included in the training pipeline, with parameters hard-coded into the codebase.	Hyperparameter Tuning: Integrated hyperparameter optimization is employed in the training pipeline to determine the best parameters for each client’s data.
+Model Interpretability: Feature importance plots are the only tools available, which limits interpretability to a single model aspect.	Model Interpretability: Both global and local SHAP model interpretations are integrated, enhancing interpretability at both the feature importance level and for individual predictions.
+Performance Metrics: The evaluation threshold for model performance metrics is set at approximately 0.16, which may have skewed the prediction accuracy.	Performance Metrics: The evaluation threshold is set to a default of 0.50, with plans to apply precision-recall optimization if appropriate.
+Data Sampling: Advanced data sampling techniques were not applied.	Data Sampling: State-of-the-art data sampling algorithms are planned for implementation.
+External Data Integration: The model pipeline integrates constant HCPCS and MUE files, which may not enhance predictive performance.	External Data Integration: The new model pipeline excludes HCPCS and MUE file integration.
+Feature Selection: Not all relevant features are included, with some significant ones missing.	Feature Selection: Sessions with Jerry and Pamela contribute to the creation of new datasets and the development of a robust preprocessing pipeline.
+Documentation: Structured documentation is lacking, hindering effective monitoring of model development progress.	Documentation: Both Confluence and the codebase are thoroughly documented to ensure effective monitoring and tracking of the model development process.
