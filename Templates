@@ -32,7 +32,7 @@ ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df,
 ax.set_ylim(0, ax.get_ylim()[1] * 1.15)
 
 # Add Denied to Accepted Ratio above the denied bar
-for i in range(1, len(ax.patches), 2):  # This iterates over the "Denied" bars
+for i in range(1, len(ax.patches), 2):  # This iterates over the "Denied" (orange) bars
     denied_bar = ax.patches[i]
     accepted_bar = ax.patches[i - 1]
     
@@ -42,7 +42,7 @@ for i in range(1, len(ax.patches), 2):  # This iterates over the "Denied" bars
     # Calculate the ratio
     ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
     
-    # Place the text above the denied bar
+    # Place the text above the denied (orange) bar
     ax.text(denied_bar.get_x() + denied_bar.get_width() / 2, height, f'{ratio:.1f}%', 
             ha='center', va='bottom', fontsize=12, color='red')
 
