@@ -1,10 +1,32 @@
-rrent Model	New Model
-Target Variable Distribution: No measures are taken to control the distribution of claim id and service line grouping in both the training and test sets, leading to inconsistencies.	Target Variable Distribution: Claim id and associated service lines are grouped, with the target variable stratified and sampled in both the training and test sets to maintain consistent distribution.
-Feature Engineering: Both Subscriber and Patient age and gender features are utilized without alignment with business requirements.	Feature Engineering: Subscriber/Patient age and gender features are used, along with actual person features during the hospital visit. Age over 89 is flagged as 199 per business requirements.
-Hyperparameter Tuning: No hyperparameter optimization is included in the training pipeline, with parameters hard-coded into the codebase.	Hyperparameter Tuning: Integrated hyperparameter optimization is employed in the training pipeline to determine the best parameters for each client’s data.
-Model Interpretability: Feature importance plots are the only tools available, which limits interpretability to a single model aspect.	Model Interpretability: Both global and local SHAP model interpretations are integrated, enhancing interpretability at both the feature importance level and for individual predictions.
-Performance Metrics: The evaluation threshold for model performance metrics is set at approximately 0.16, which may have skewed the prediction accuracy.	Performance Metrics: The evaluation threshold is set to a default of 0.50, with plans to apply precision-recall optimization if appropriate.
-Data Sampling: Advanced data sampling techniques were not applied.	Data Sampling: State-of-the-art data sampling algorithms are planned for implementation.
-External Data Integration: The model pipeline integrates constant HCPCS and MUE files, which may not enhance predictive performance.	External Data Integration: The new model pipeline excludes HCPCS and MUE file integration.
-Feature Selection: Not all relevant features are included, with some significant ones missing.	Feature Selection: Sessions with Jerry and Pamela contribute to the creation of new datasets and the development of a robust preprocessing pipeline.
-Documentation: Structured documentation is lacking, hindering effective monitoring of model development progress.	Documentation: Both Confluence and the codebase are thoroughly documented to ensure effective monitoring and tracking of the model development process.
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+from matplotlib.ticker import FuncFormatter
+
+# Assuming 'monthly_denied_cost' DataFrame is already defined
+
+# Sort data in descending order
+monthly_denied_cost = monthly_denied_cost.sort_values(by='claimTotalChargeAmt', ascending=False)
+
+# Calculate cumulative percentage
+monthly_denied_cost['cum_percentage'] = monthly_denied_cost['claimTotalChargeAmt'].cumsum() / monthly_denied_cost['claimTotalChargeAmt'].sum() * 100
+
+# Plotting the Pareto Chart
+fig, ax1 = plt.subplots(figsize=(14, 8))
+
+# Bar plot for the total denied claim amount
+sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost, ax=ax1)
+ax1.set_title('Pareto Chart of Denied Claim Amount per Month')
+ax1.set_xlabel('Year-Month')
+ax1.set_ylabel('Total Denied Claim Amount')
+ax1.yaxis.set_major_formatter(FuncFormatter(format_with_commas))
+ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
+
+# Line plot for the cumulative percentage
+ax2 = ax1.twinx()
+ax2.plot(monthly_denied_cost['year_month'], monthly_denied_cost['cum_percentage'], color='red', marker='o')
+ax2.set_ylabel('Cumulative Percentage (%)')
+ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{int(x)}%'))
+
+# Show plot
+plt.show()
