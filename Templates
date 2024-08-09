@@ -43,8 +43,8 @@ for i in range(1, len(ax.patches), 2):  # This iterates over the "Denied" (orang
     ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
     
     # Place the text above the denied (orange) bar
-    ax.text(denied_bar.get_x() + denied_bar.get_width() / 2, height, f'{ratio:.1f}%', 
-            ha='center', va='bottom', fontsize=12, color='red')
+    ax.text(denied_bar.get_x() + denied_bar.get_width() / 2, denied_bar.get_height() * 1.02, 
+            f'{ratio:.1f}%', ha='center', va='bottom', fontsize=12, color='red')
 
 plt.title('Distribution of Denial Status for Each Year-Month')
 plt.xlabel('Year-Month')
