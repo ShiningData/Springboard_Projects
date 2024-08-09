@@ -3,7 +3,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
-# Assuming `df` is already defined and contains your data
 # Parse claimCreationDate to year-month format
 df['claimCreationDate'] = pd.to_datetime(df['claimCreationDate'])
 df['year_month'] = df['claimCreationDate'].dt.to_period('M')
@@ -29,24 +28,24 @@ ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df,
                    order=claim_df['year_month'].cat.categories, palette=['blue', 'orange'])
 
 # Adjust y-axis limits to create space for text
-ax.set_ylim(0, ax.get_ylim()[1] * 1.2)
+ax.set_ylim(0, ax.get_ylim()[1] * 1.15)
 
-# Add Denied to Accepted Ratio between the bars as percentages, in red color
-for i in range(0, len(ax.patches), 2):  # Looping through each pair of bars (Accepted and Denied)
+# Add Denied to Accepted Ratio above the bars
+for i in range(0, len(ax.patches), 2):
     accepted_bar = ax.patches[i]
     denied_bar = ax.patches[i + 1]
     
     # Calculate the middle position between the two bars
     middle_x = (accepted_bar.get_x() + denied_bar.get_x() + denied_bar.get_width()) / 2
     
-    # Determine the height for placing the text
-    text_y = max(accepted_bar.get_height(), denied_bar.get_height()) * 1.05  # Slightly above the higher bar
+    # Calculate the height for placing the text
+    text_y = max(accepted_bar.get_height(), denied_bar.get_height()) * 1.03  # Slightly above the higher bar
     
     # Calculate the ratio
     ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
     
     # Place the ratio text above the bars, centered
-    ax.text(middle_x, text_y, f'{ratio:.1f}%', ha='center', fontsize=10, color='red')
+    ax.text(middle_x, text_y, f'{ratio:.1f}%', ha='center', va='bottom', fontsize=12, color='red')
 
 plt.title('Distribution of Denial Status for Each Year-Month')
 plt.xlabel('Year-Month')
