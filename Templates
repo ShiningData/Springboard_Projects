@@ -3,30 +3,42 @@ import seaborn as sns
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
-# Assuming 'claim_df' DataFrame is already defined
+# Function to calculate denied-to-accepted ratio
+def calculate_ratio(df, status_column, unique_id_column):
+    status_counts = df.groupby(status_column)[unique_id_column].nunique()
+    ratio = status_counts.get('Denied', 0) / status_counts.get('Accepted', 1)
+    return ratio
 
-# Calculate count of denied and accepted claims per month
-monthly_claim_counts = claim_df.groupby(['year_month', 'claim_FE_DenialStatus']).size().unstack(fill_value=0)
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-# Calculate the denied-to-accepted claim ratio
-monthly_claim_counts['denied_to_accepted_ratio'] = monthly_claim_counts['Denied'] / monthly_claim_counts['Accepted']
+# Claim ID Level FE_DenialStatus
+claim_df = df.drop_duplicates(subset=['claimUniqueId'])
+sns.countplot(x='FE_DenialStatus', data=claim_df, ax=axes[0])
+axes[0].set_title('Claim ID Level Denial Status')
+axes[0].set_ylabel('Count')
+axes[0].set_xlabel('Denial Status')
+axes[0].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
 
-# Plotting the distribution of denial status
-fig, ax1 = plt.subplots(figsize=(14, 8))
-
-sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df, ax=ax1)
-ax1.set_title('Distribution of Denial Status and Denied-to-Accepted Ratio for Each Year-Month')
-ax1.set_xlabel('Year-Month')
-ax1.set_ylabel('Count')
-ax1.yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
-ax1.legend(title='Denial Status')
-
-# Plotting the denied-to-accepted ratio on a secondary y-axis
-ax2 = ax1.twinx()
-ax2.plot(monthly_claim_counts.index, monthly_claim_counts['denied_to_accepted_ratio'], color='red', marker='o', linestyle='-', linewidth=2)
+# Calculate and plot the denied-to-accepted ratio for Claim ID Level
+ratio_claim = calculate_ratio(claim_df, 'FE_DenialStatus', 'claimUniqueId')
+ax2 = axes[0].twinx()
+ax2.plot(['Accepted', 'Denied'], [0, ratio_claim], color='red', marker='o', linestyle='-', linewidth=2)
 ax2.set_ylabel('Denied-to-Accepted Claim Ratio')
 ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{x:.2f}'))
 
-# Show plot
+# Service Line ID Level FE_DenialStatus
+sns.countplot(x='FE_DenialStatus', data=df, ax=axes[1])
+axes[1].set_title('Service Line Level Denial Status')
+axes[1].set_ylabel('Count')
+axes[1].set_xlabel('Denial Status')
+axes[1].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
+
+# Calculate and plot the denied-to-accepted ratio for Service Line Level
+ratio_service = calculate_ratio(df, 'FE_DenialStatus', 'claimUniqueId')
+ax3 = axes[1].twinx()
+ax3.plot(['Accepted', 'Denied'], [0, ratio_service], color='red', marker='o', linestyle='-', linewidth=2)
+ax3.set_ylabel('Denied-to-Accepted Claim Ratio')
+ax3.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{x:.2f}'))
+
+plt.tight_layout()
 plt.show()
