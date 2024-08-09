@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 
 # Assuming the data is already in `claim_df` with 'year_month' and 'claimTotalChargeAmt'
 
@@ -14,23 +13,19 @@ sorted_data = specific_month_data.sort_values(by='claimTotalChargeAmt', ascendin
 sorted_data['cumulative_sum'] = sorted_data['claimTotalChargeAmt'].cumsum()
 sorted_data['cumulative_perc'] = 100 * sorted_data['cumulative_sum'] / sorted_data['claimTotalChargeAmt'].sum()
 
-# Plotting the Pareto chart
-fig, ax1 = plt.subplots(figsize=(14, 8))
+# Plotting the Pareto chart (Cumulative Percentage Line only)
+plt.figure(figsize=(14, 8))
 
-# Bar plot for the claim amounts
-sns.barplot(x=sorted_data.index, y=sorted_data['claimTotalChargeAmt'], ax=ax1, color='b')
-ax1.set_xlabel('Claims')
-ax1.set_ylabel('Claim Amount', color='b')
-ax1.tick_params(axis='y', labelcolor='b')
+# Plot the cumulative percentage
+plt.plot(sorted_data.index, sorted_data['cumulative_perc'], color='r', marker='o')
 
-# Line plot for the cumulative percentage
-ax2 = ax1.twinx()
-ax2.plot(sorted_data.index, sorted_data['cumulative_perc'], color='r', marker='o')
-ax2.set_ylabel('Cumulative Percentage', color='r')
-ax2.tick_params(axis='y', labelcolor='r')
+# Adding titles and labels
+plt.title('Pareto Analysis - Cumulative Percentage of Claim Amounts for January 2022')
+plt.xlabel('Claims Ordered by Amount (Descending)')
+plt.ylabel('Cumulative Percentage (%)')
 
-# Adding title
-plt.title('Pareto Analysis of Claim Amounts for January 2022')
+# Show grid for better readability
+plt.grid(True)
 
 # Show the plot
 plt.show()
