@@ -1,5 +1,6 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 # Function to aggregate FE_DenialStatus at claim id level
 def aggregate_denial_status(df):
