@@ -2,50 +2,51 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 
-# Function to aggregate FE_DenialStatus at claim id level
-def aggregate_denial_status(df):
-    df['claim_FE_DenialStatus'] = df.groupby('claimUniqueId')['FE_DenialStatus'].transform(
-        lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
-    )
-    return df
+# Parse claimCreationDate to year-month format
+df['claimCreationDate'] = pd.to_datetime(df['claimCreationDate'])
+df['year_month'] = df['claimCreationDate'].dt.to_period('M')
 
 # Aggregate FE_DenialStatus at claim id level
-df = aggregate_denial_status(df)
+df['claim_FE_DenialStatus'] = df.groupby('claimUniqueId')['FE_DenialStatus'].transform(
+    lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
+)
 
-def format_with_commas(x, pos):
-    return f'{int(x):,}'
+# Drop duplicates to get claim level data
+claim_df = df.drop_duplicates(subset=['claimUniqueId'])
 
-# Calculate Denied to Accepted Ratio
-claim_denied_count = claim_df[claim_df['claim_FE_DenialStatus'] == 'Denied'].shape[0]
-claim_accepted_count = claim_df[claim_df['claim_FE_DenialStatus'] == 'Accepted'].shape[0]
-claim_ratio = claim_denied_count / claim_accepted_count if claim_accepted_count != 0 else 0
-
-service_denied_count = data_df[data_df['FE_DenialStatus'] == 'Denied'].shape[0]
-service_accepted_count = data_df[data_df['FE_DenialStatus'] == 'Accepted'].shape[0]
-service_ratio = service_denied_count / service_accepted_count if service_accepted_count != 0 else 0
+# Set year_month as a categorical variable for ordered plotting
+claim_df['year_month'] = pd.Categorical(
+    claim_df['year_month'],
+    categories=sorted(claim_df['year_month'].unique()),
+    ordered=True
+)
 
 # Plotting
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+plt.figure(figsize=(14, 8))
+ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df)
 
-# Claim ID Level FE_DenialStatus
-sns.countplot(x='claim_FE_DenialStatus', data=claim_df, ax=axes[0])
-axes[0].set_title('Claim ID Level Denial Status')
-axes[0].set_ylabel('Count')
-axes[0].set_xlabel('Denial Status')
-axes[0].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-axes[0].text(0.95, 0.95, f'Ratio: {claim_ratio:.2f}', 
-             transform=axes[0].transAxes, ha='right', va='top', 
-             fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+# Add Denied to Accepted Ratio above each month
+for p in ax.patches:
+    height = p.get_height()
+    width = p.get_width()
+    x = p.get_x()
+    
+    # Find the corresponding month
+    year_month = p.get_x() + p.get_width() / 2
+    month_data = claim_df[claim_df['year_month'] == ax.get_xticklabels()[int(x + width / 2)].get_text()]
+    
+    # Calculate the ratio
+    denied_count = month_data[month_data['claim_FE_DenialStatus'] == 'Denied'].shape[0]
+    accepted_count = month_data[month_data['claim_FE_DenialStatus'] == 'Accepted'].shape[0]
+    ratio = denied_count / accepted_count if accepted_count != 0 else 0
+    
+    # Place the ratio text
+    ax.text(p.get_x() + p.get_width() / 2, height + 500, f'{ratio:.2f}', ha="center", fontsize=10)
 
-# Service Line ID Level FE_DenialStatus
-sns.countplot(x='FE_DenialStatus', data=data_df, ax=axes[1])
-axes[1].set_title('Service Line Level Denial Status')
-axes[1].set_ylabel('Count')
-axes[1].set_xlabel('Denial Status')
-axes[1].yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-axes[1].text(0.95, 0.95, f'Ratio: {service_ratio:.2f}', 
-             transform=axes[1].transAxes, ha='right', va='top', 
-             fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
-
-plt.tight_layout()
+plt.title('Distribution of Denial Status for Each Year-Month')
+plt.xlabel('Year-Month')
+plt.ylabel('Count')
+plt.xticks(rotation=45)
+plt.gca().yaxis.set_major_formatter(FuncFormatter(format_with_commas))
+plt.legend(title='Denial Status')
 plt.show()
