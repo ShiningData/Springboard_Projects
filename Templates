@@ -27,28 +27,29 @@ plt.figure(figsize=(14, 8))
 ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df, order=claim_df['year_month'].cat.categories, palette=['blue', 'orange'])
 
 # Adjust y-axis limits to create space for text
-ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
+ax.set_ylim(0, ax.get_ylim()[1] * 1.2)
 
 # Add Denied to Accepted Ratio between the bars as percentages, in red color
 for i, bar in enumerate(ax.patches):
-    if i % 2 == 1:  # Adjust this to point to the second (Denied) bar
+    if i % 2 == 1:  # This condition points to the second (Denied) bar
         denied_bar = bar
         accepted_bar = ax.patches[i - 1]
 
         # Calculate the middle position between the two bars
-        middle_x = (denied_bar.get_x() + denied_bar.get_width() / 2) + (accepted_bar.get_x() + accepted_bar.get_width() / 2) / 2
+        middle_x = (denied_bar.get_x() + accepted_bar.get_x() + denied_bar.get_width()) / 2
 
         # Determine the height for placing the text
-        middle_y = max(denied_bar.get_height(), accepted_bar.get_height()) * 1.05  # Position above the highest bar
+        max_height = max(denied_bar.get_height(), accepted_bar.get_height())
+        text_y = max_height + (ax.get_ylim()[1] * 0.05)  # Position slightly above the highest bar
 
         # Calculate the ratio
         ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
 
         # Ensure the text doesn't go out of bounds
-        middle_y = min(middle_y, ax.get_ylim()[1] * 0.9)  # Set a maximum height to keep text within the frame
+        text_y = min(text_y, ax.get_ylim()[1] * 0.95)  # Set a maximum height to keep text within the frame
 
         # Place the ratio text as percentage, in red color
-        ax.text(middle_x, middle_y, f'{ratio:.1f}%', ha='center', fontsize=10, color='red')
+        ax.text(middle_x, text_y, f'{ratio:.1f}%', ha='center', fontsize=10, color='red')
 
 plt.title('Distribution of Denial Status for Each Year-Month')
 plt.xlabel('Year-Month')
