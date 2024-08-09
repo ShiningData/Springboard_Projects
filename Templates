@@ -15,7 +15,7 @@ monthly_denied_cost['cum_percentage'] = monthly_denied_cost['claimTotalChargeAmt
 fig, ax1 = plt.subplots(figsize=(14, 8))
 
 # Bar plot for the total denied claim amount
-sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost, ax=ax1)
+sns.barplot(x='year_month', y='claimTotalChargeAmt', data=monthly_denied_cost, ax=ax1, color='skyblue')
 ax1.set_title('Pareto Chart of Denied Claim Amount per Month')
 ax1.set_xlabel('Year-Month')
 ax1.set_ylabel('Total Denied Claim Amount')
@@ -24,9 +24,12 @@ ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
 
 # Line plot for the cumulative percentage
 ax2 = ax1.twinx()
-ax2.plot(monthly_denied_cost['year_month'], monthly_denied_cost['cum_percentage'], color='red', marker='o')
+ax2.plot(monthly_denied_cost['year_month'], monthly_denied_cost['cum_percentage'], color='red', marker='o', linestyle='-', linewidth=2)
 ax2.set_ylabel('Cumulative Percentage (%)')
 ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{int(x)}%'))
+
+# Set the y-axis limit for cumulative percentage
+ax2.set_ylim([0, 100])
 
 # Show plot
 plt.show()
