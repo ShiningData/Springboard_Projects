@@ -1,56 +1,33 @@
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+from pycaret.classification import load_model, predict_model
 
-# Assuming `df` is already defined and contains your data
-# Parse claimCreationDate to year-month format
-df['claimCreationDate'] = pd.to_datetime(df['claimCreationDate'])
-df['year_month'] = df['claimCreationDate'].dt.to_period('M')
+# Load the saved PyCaret model, which includes all preprocessing steps
+model = load_model('your_model_name')
 
-# Aggregate FE_DenialStatus at Claim ID Level
-df['claim_FE_DenialStatus'] = df.groupby('claimUniqueId')['FE_DenialStatus'].transform(
-    lambda x: 'Denied' if 'Denied' in x.values else 'Accepted'
-)
+# Load the dataset for prediction
+data = pd.read_csv('your_data_file.csv')
 
-# Drop duplicates to get Claim Level data
-claim_df = df.drop_duplicates(subset=['claimUniqueId'])
+# Use PyCaret's predict_model function to make predictions
+predictions = predict_model(model, data=data)
 
-# Set year_month as a categorical variable for ordered plotting
-claim_df['year_month'] = pd.Categorical(
-    claim_df['year_month'],
-    categories=sorted(claim_df['year_month'].unique()),
-    ordered=True
-)
+# Function to determine the node level for each prediction
+def get_node_level(row):
+    # We extract the decision tree model from the pipeline
+    decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
+    node_indicator = decision_tree_model.decision_path([row.drop(['Prediction', 'Score'])])[0]
+    node_index = node_indicator.indices
+    return len(node_index)  # The depth level where the prediction was made
 
-# Plotting
-plt.figure(figsize=(14, 8))
-ax = sns.countplot(x='year_month', hue='claim_FE_DenialStatus', data=claim_df, 
-                   order=claim_df['year_month'].cat.categories, palette=['blue', 'orange'])
+# Extract the decision tree classifier from the PyCaret model pipeline
+decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
 
-# Adjust y-axis limits to create space for text
-ax.set_ylim(0, ax.get_ylim()[1] * 1.15)
+# Add a 'Node_Level' column based on the prediction paths
+predictions['Node_Level'] = predictions.drop(['Prediction', 'Score'], axis=1).apply(get_node_level, axis=1)
 
-# Add Denied to Accepted Ratio above the denied bar
-for i in range(1, len(ax.patches), 2):  # This iterates over the "Denied" (orange) bars
-    denied_bar = ax.patches[i]
-    accepted_bar = ax.patches[i - 1]
-    
-    # Calculate the height for placing the text, slightly above the denied bar
-    height = denied_bar.get_height() * 1.05
-    
-    # Calculate the ratio
-    ratio = (denied_bar.get_height() / accepted_bar.get_height()) * 100 if accepted_bar.get_height() != 0 else 0
-    
-    # Place the text above the denied (orange) bar
-    ax.text(denied_bar.get_x() + denied_bar.get_width() / 2, denied_bar.get_height() * 1.02, 
-            f'{ratio:.1f}%', ha='center', va='bottom', fontsize=12, color='red')
+# Add a 'Max_Depth_Level' column with the maximum depth level of the tree
+predictions['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
 
-plt.title('Distribution of Denial Status for Each Year-Month')
-plt.xlabel('Year-Month')
-plt.ylabel('Count')
-plt.xticks(rotation=45)
-plt.gca().yaxis.set_major_formatter(FuncFormatter(format_with_commas))
-plt.legend(title='Denial Status')
-plt.tight_layout()
-plt.show()
+# Save the predictions with the node level and max depth level
+predictions.to_csv('predictions_with_node_and_max_depth_levels.csv', index=False)
+
+print("Predictions with node levels and max depth levels saved to 'predictions_with_node_and_max_depth_levels.csv'")
