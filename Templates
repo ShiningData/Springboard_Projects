@@ -1,51 +1,29 @@
-import pandas as pd
-from pycaret.classification import load_model, predict_model
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import OneHotEncoder
+Here’s how you could explain the metrics and plots in the context of your claim denial predictor model:
 
-# Load the saved PyCaret model
-model = load_model('your_model_name')
+ 1. Accuracy
+- Definition: Accuracy is the percentage of claims that the model correctly predicts as either denied or accepted out of all claims.
+- Interpretation: If your model processes 100 claims and correctly predicts 85 of them (whether they’ll be denied or accepted), the accuracy would be 85%. While accuracy is a good overall measure, it’s important to remember that if most claims are accepted, the model might appear accurate simply by predicting acceptance most of the time. It doesn’t necessarily mean the model is good at catching denied claims.
 
-# Load the dataset for prediction
-data = pd.read_csv('your_data_file.csv')
+ 2. Precision
+- Definition: Precision tells us how many of the claims predicted as denied were actually denied.
+- Interpretation: Imagine your model predicts that 20 claims will be denied, and 15 of those claims actually are denied. The precision would be 75%. High precision means the model is good at not falsely labeling accepted claims as denied, reducing unnecessary rework and appeals.
 
-# Use OneHotEncoder to ensure we handle categorical variables like in training
-encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
-encoded_data = pd.DataFrame(encoder.fit_transform(data.select_dtypes(include=['object'])))
-encoded_data.columns = encoder.get_feature_names_out(data.select_dtypes(include=['object']).columns)
+ 3. Recall
+- Definition: Recall measures how well the model identifies all claims that should be denied.
+- Interpretation: If there are 30 claims in the data that should be denied, and your model correctly identifies 25 of them, the recall is about 83%. High recall is crucial in ensuring that claims likely to be denied are flagged early, preventing surprise denials and potential financial losses for providers.
 
-# Add any non-categorical columns back to the dataframe
-non_categorical_data = data.select_dtypes(exclude=['object']).reset_index(drop=True)
-encoded_data = pd.concat([non_categorical_data, encoded_data], axis=1)
+ 4. F1 Score
+- Definition: The F1 score balances precision and recall, providing a single metric that reflects the model’s overall performance in identifying denied claims.
+- Interpretation: If your model has high precision (it’s accurate when it says a claim will be denied) and high recall (it catches most of the denied claims), the F1 score will be high. This indicates the model is not only good at predicting denials but also at ensuring most denials are caught, balancing the need to avoid false denials with the need to catch true denials.
 
-# Ensure the encoded data has the same columns as the model expects
-# Reindex to ensure all columns expected by the model are present
-expected_features = predict_model(model, data=data).drop(columns=['Prediction', 'Score']).columns
-encoded_data = encoded_data.reindex(columns=expected_features, fill_value=0)
+ 5. Global SHAP Summary Plot
+- Definition: The global SHAP summary plot shows which factors (like payer entity, provider entity, revenue/diagnosis codes, or patient information) are most influential in the model’s predictions across all claims.
+- Interpretation: This plot acts like a leaderboard, showing which features (e.g., specific diagnosis codes or payer entities) most heavily influence whether a claim is predicted to be denied or accepted. If a feature like "payer entity" is at the top, it means that the entity paying the claim significantly impacts the likelihood of denial. The color and direction show whether certain conditions (e.g., specific codes) increase or decrease the likelihood of a claim being denied.
 
-# Extract the decision tree classifier from the PyCaret model pipeline
-decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
+ 6. Local SHAP Plot
+- Definition: The local SHAP plot explains why the model made a specific prediction for an individual claim, detailing how each feature contributed to the decision.
+- Interpretation: For a particular claim, the local SHAP plot might show that the model predicted a denial because the payer entity is known for stricter approval criteria, the diagnosis code is high-risk, and the patient information indicates a complex case. This helps the billing department understand exactly why a claim is flagged for denial, enabling them to address potential issues before submission.
 
-# Function to determine the node level for each prediction
-def get_node_level(row):
-    row = row.values.reshape(1, -1)  # Reshape the row to match the expected input format
-    node_indicator = decision_tree_model.decision_path(row)
-    node_index = node_indicator.indices
-    return len(node_index)  # The depth level where the prediction was made
-
-# Apply the node level function to the encoded data
-encoded_data['Node_Level'] = encoded_data.apply(get_node_level, axis=1)
-
-# Add a 'Max_Depth_Level' column with the maximum depth level of the tree
-encoded_data['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
-
-# Use PyCaret's predict_model to make predictions (this applies the necessary preprocessing)
-predictions = predict_model(model, data=data)
-
-# Combine the node levels with the original predictions
-final_predictions = pd.concat([predictions, encoded_data[['Node_Level', 'Max_Depth_Level']]], axis=1)
-
-# Save the final predictions with node levels and max depth levels
-final_predictions.to_csv('predictions_with_node_and_max_depth_levels.csv', index=False)
-
-print("Predictions with node levels and max depth levels saved to 'predictions_with_node_and_max_depth_levels.csv'")
+ Key Points to Emphasize:
+- These metrics and plots help the team understand not just how often the model is correct, but why it makes its decisions, helping to ensure claims are processed accurately and efficiently.
+- This transparency is crucial for improving the model and ensuring trust, as it shows the reasoning behind each prediction.
