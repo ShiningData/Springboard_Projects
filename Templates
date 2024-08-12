@@ -1,6 +1,7 @@
 import pandas as pd
 from pycaret.classification import load_model, predict_model
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import LabelEncoder
 
 # Load the saved PyCaret model
 model = load_model('your_model_name')
@@ -14,11 +15,17 @@ predictions = predict_model(model, data=data)
 # Extract the decision tree classifier from the PyCaret model pipeline
 decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
 
-# Retrieve the preprocessed data used by PyCaret internally
-preprocessed_data = model.named_steps['preprocessor'].transform(data)
+# Prepare the data for node level calculation
+# Since we may still have categorical variables, manually encode these
+encoded_data = data.copy()
+label_encoders = {}
+for column in encoded_data.select_dtypes(include=['object']).columns:
+    le = LabelEncoder()
+    encoded_data[column] = le.fit_transform(encoded_data[column])
+    label_encoders[column] = le
 
-# Convert the preprocessed data into a DataFrame
-preprocessed_df = pd.DataFrame(preprocessed_data, columns=model.named_steps['preprocessor'].get_feature_names_out())
+# Ensure that the encoded data matches the model's expected input format
+preprocessed_data = encoded_data[predictions.drop(columns=['Prediction', 'Score']).columns]
 
 # Function to determine the node level for each prediction
 def get_node_level(row):
@@ -27,13 +34,13 @@ def get_node_level(row):
     return len(node_index)  # The depth level where the prediction was made
 
 # Apply the node level function to the preprocessed data
-preprocessed_df['Node_Level'] = preprocessed_df.apply(get_node_level, axis=1)
+preprocessed_data['Node_Level'] = preprocessed_data.apply(get_node_level, axis=1)
 
 # Add a 'Max_Depth_Level' column with the maximum depth level of the tree
-preprocessed_df['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
+preprocessed_data['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
 
-# Merge the predictions with the node levels
-final_predictions = pd.concat([predictions, preprocessed_df[['Node_Level', 'Max_Depth_Level']]], axis=1)
+# Combine the node levels with the original predictions
+final_predictions = pd.concat([predictions, preprocessed_data[['Node_Level', 'Max_Depth_Level']]], axis=1)
 
 # Save the final predictions with node levels and max depth levels
 final_predictions.to_csv('predictions_with_node_and_max_depth_levels.csv', index=False)
