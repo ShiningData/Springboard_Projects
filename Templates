@@ -3,22 +3,25 @@ from pycaret.classification import load_model, predict_model
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import OneHotEncoder
 
-# Load the saved PyCaret model, which includes all preprocessing steps
+# Load the saved PyCaret model
 model = load_model('your_model_name')
 
 # Load the dataset for prediction
 data = pd.read_csv('your_data_file.csv')
 
-# Use PyCaret's predict_model function to apply preprocessing and get predictions
-predictions = predict_model(model, data=data)
+# Use OneHotEncoder to ensure we handle categorical variables like in training
+encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
+encoded_data = pd.DataFrame(encoder.fit_transform(data.select_dtypes(include=['object'])))
+encoded_data.columns = encoder.get_feature_names_out(data.select_dtypes(include=['object']).columns)
 
-# Apply one-hot encoding to categorical variables
-encoded_data = pd.get_dummies(data)
+# Add any non-categorical columns back to the dataframe
+non_categorical_data = data.select_dtypes(exclude=['object']).reset_index(drop=True)
+encoded_data = pd.concat([non_categorical_data, encoded_data], axis=1)
 
-# Ensure that the encoded data matches the model's expected input format
-# We need to align the columns with those used by the model
-preprocessed_columns = predictions.drop(columns=['Prediction', 'Score']).columns
-encoded_data = encoded_data.reindex(columns=preprocessed_columns, fill_value=0)
+# Ensure the encoded data has the same columns as the model expects
+# Reindex to ensure all columns expected by the model are present
+expected_features = predict_model(model, data=data).drop(columns=['Prediction', 'Score']).columns
+encoded_data = encoded_data.reindex(columns=expected_features, fill_value=0)
 
 # Extract the decision tree classifier from the PyCaret model pipeline
 decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
@@ -35,6 +38,9 @@ encoded_data['Node_Level'] = encoded_data.apply(get_node_level, axis=1)
 
 # Add a 'Max_Depth_Level' column with the maximum depth level of the tree
 encoded_data['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
+
+# Use PyCaret's predict_model to make predictions (this applies the necessary preprocessing)
+predictions = predict_model(model, data=data)
 
 # Combine the node levels with the original predictions
 final_predictions = pd.concat([predictions, encoded_data[['Node_Level', 'Max_Depth_Level']]], axis=1)
