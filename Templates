@@ -1,26 +1,24 @@
 import pandas as pd
-from pycaret.classification import load_model, setup, predict_model
+from pycaret.classification import load_model, predict_model
 from sklearn.tree import DecisionTreeClassifier
 
-# Load the saved PyCaret model, which includes all preprocessing steps
+# Load the saved PyCaret model
 model = load_model('your_model_name')
 
 # Load the dataset for prediction
 data = pd.read_csv('your_data_file.csv')
 
-# Re-run the setup to preprocess the new data in the same way as the training data
-# Since PyCaret handles this internally, we'll set up with the same features
-# This assumes that you have the same configuration available.
-s = setup(data=data, target='your_target_column', silent=True, preprocess=True)
-
-# Use PyCaret's predict_model function to make predictions
+# Use PyCaret's predict_model function to make predictions (this applies the necessary preprocessing)
 predictions = predict_model(model, data=data)
 
 # Extract the decision tree classifier from the PyCaret model pipeline
 decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
 
-# Preprocess the data using the PyCaret pipeline setup
-preprocessed_data = s['X'].values
+# Retrieve the preprocessed data used by PyCaret internally
+preprocessed_data = model.named_steps['preprocessor'].transform(data)
+
+# Convert the preprocessed data into a DataFrame
+preprocessed_df = pd.DataFrame(preprocessed_data, columns=model.named_steps['preprocessor'].get_feature_names_out())
 
 # Function to determine the node level for each prediction
 def get_node_level(row):
@@ -28,13 +26,16 @@ def get_node_level(row):
     node_index = node_indicator.indices
     return len(node_index)  # The depth level where the prediction was made
 
-# Add a 'Node_Level' column based on the prediction paths
-predictions['Node_Level'] = pd.DataFrame(preprocessed_data).apply(get_node_level, axis=1)
+# Apply the node level function to the preprocessed data
+preprocessed_df['Node_Level'] = preprocessed_df.apply(get_node_level, axis=1)
 
 # Add a 'Max_Depth_Level' column with the maximum depth level of the tree
-predictions['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
+preprocessed_df['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
 
-# Save the predictions with the node level and max depth level
-predictions.to_csv('predictions_with_node_and_max_depth_levels.csv', index=False)
+# Merge the predictions with the node levels
+final_predictions = pd.concat([predictions, preprocessed_df[['Node_Level', 'Max_Depth_Level']]], axis=1)
+
+# Save the final predictions with node levels and max depth levels
+final_predictions.to_csv('predictions_with_node_and_max_depth_levels.csv', index=False)
 
 print("Predictions with node levels and max depth levels saved to 'predictions_with_node_and_max_depth_levels.csv'")
