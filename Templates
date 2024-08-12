@@ -1,46 +1,43 @@
 import pandas as pd
 from pycaret.classification import load_model, predict_model
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 
-# Load the saved PyCaret model
+# Load the saved PyCaret model, which includes all preprocessing steps
 model = load_model('your_model_name')
 
 # Load the dataset for prediction
 data = pd.read_csv('your_data_file.csv')
 
-# Use PyCaret's predict_model function to make predictions (this applies the necessary preprocessing)
+# Use PyCaret's predict_model function to apply preprocessing and get predictions
 predictions = predict_model(model, data=data)
+
+# Apply one-hot encoding to categorical variables
+encoded_data = pd.get_dummies(data)
+
+# Ensure that the encoded data matches the model's expected input format
+# We need to align the columns with those used by the model
+preprocessed_columns = predictions.drop(columns=['Prediction', 'Score']).columns
+encoded_data = encoded_data.reindex(columns=preprocessed_columns, fill_value=0)
 
 # Extract the decision tree classifier from the PyCaret model pipeline
 decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
 
-# Prepare the data for node level calculation
-# Since we may still have categorical variables, manually encode these
-encoded_data = data.copy()
-label_encoders = {}
-for column in encoded_data.select_dtypes(include=['object']).columns:
-    le = LabelEncoder()
-    encoded_data[column] = le.fit_transform(encoded_data[column])
-    label_encoders[column] = le
-
-# Ensure that the encoded data matches the model's expected input format
-preprocessed_data = encoded_data[predictions.drop(columns=['Prediction', 'Score']).columns]
-
 # Function to determine the node level for each prediction
 def get_node_level(row):
-    node_indicator = decision_tree_model.decision_path([row])[0]
+    row = row.values.reshape(1, -1)  # Reshape the row to match the expected input format
+    node_indicator = decision_tree_model.decision_path(row)
     node_index = node_indicator.indices
     return len(node_index)  # The depth level where the prediction was made
 
-# Apply the node level function to the preprocessed data
-preprocessed_data['Node_Level'] = preprocessed_data.apply(get_node_level, axis=1)
+# Apply the node level function to the encoded data
+encoded_data['Node_Level'] = encoded_data.apply(get_node_level, axis=1)
 
 # Add a 'Max_Depth_Level' column with the maximum depth level of the tree
-preprocessed_data['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
+encoded_data['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
 
 # Combine the node levels with the original predictions
-final_predictions = pd.concat([predictions, preprocessed_data[['Node_Level', 'Max_Depth_Level']]], axis=1)
+final_predictions = pd.concat([predictions, encoded_data[['Node_Level', 'Max_Depth_Level']]], axis=1)
 
 # Save the final predictions with node levels and max depth levels
 final_predictions.to_csv('predictions_with_node_and_max_depth_levels.csv', index=False)
