@@ -1,5 +1,5 @@
 import pandas as pd
-from pycaret.classification import load_model, predict_model
+from pycaret.classification import load_model, setup, predict_model
 from sklearn.tree import DecisionTreeClassifier
 
 # Load the saved PyCaret model, which includes all preprocessing steps
@@ -8,14 +8,19 @@ model = load_model('your_model_name')
 # Load the dataset for prediction
 data = pd.read_csv('your_data_file.csv')
 
+# Re-run the setup to preprocess the new data in the same way as the training data
+# Since PyCaret handles this internally, we'll set up with the same features
+# This assumes that you have the same configuration available.
+s = setup(data=data, target='your_target_column', silent=True, preprocess=True)
+
 # Use PyCaret's predict_model function to make predictions
 predictions = predict_model(model, data=data)
 
 # Extract the decision tree classifier from the PyCaret model pipeline
 decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
 
-# Preprocess the data using the PyCaret pipeline before applying get_node_level
-preprocessed_data = model.named_steps['preprocessor'].transform(data)
+# Preprocess the data using the PyCaret pipeline setup
+preprocessed_data = s['X'].values
 
 # Function to determine the node level for each prediction
 def get_node_level(row):
