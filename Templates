@@ -1,5 +1,6 @@
 import pandas as pd
 from pycaret.classification import load_model, predict_model
+from sklearn.tree import DecisionTreeClassifier
 
 # Load the saved PyCaret model, which includes all preprocessing steps
 model = load_model('your_model_name')
@@ -10,19 +11,20 @@ data = pd.read_csv('your_data_file.csv')
 # Use PyCaret's predict_model function to make predictions
 predictions = predict_model(model, data=data)
 
-# Function to determine the node level for each prediction
-def get_node_level(row):
-    # We extract the decision tree model from the pipeline
-    decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
-    node_indicator = decision_tree_model.decision_path([row.drop(['Prediction', 'Score'])])[0]
-    node_index = node_indicator.indices
-    return len(node_index)  # The depth level where the prediction was made
-
 # Extract the decision tree classifier from the PyCaret model pipeline
 decision_tree_model = [step for step in model.named_steps.values() if isinstance(step, DecisionTreeClassifier)][0]
 
+# Preprocess the data using the PyCaret pipeline before applying get_node_level
+preprocessed_data = model.named_steps['preprocessor'].transform(data)
+
+# Function to determine the node level for each prediction
+def get_node_level(row):
+    node_indicator = decision_tree_model.decision_path([row])[0]
+    node_index = node_indicator.indices
+    return len(node_index)  # The depth level where the prediction was made
+
 # Add a 'Node_Level' column based on the prediction paths
-predictions['Node_Level'] = predictions.drop(['Prediction', 'Score'], axis=1).apply(get_node_level, axis=1)
+predictions['Node_Level'] = pd.DataFrame(preprocessed_data).apply(get_node_level, axis=1)
 
 # Add a 'Max_Depth_Level' column with the maximum depth level of the tree
 predictions['Max_Depth_Level'] = decision_tree_model.tree_.max_depth
