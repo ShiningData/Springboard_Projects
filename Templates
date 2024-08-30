@@ -1,34 +1,58 @@
-Here’s a revised version of your email:
+import spacy
+from spacy.matcher import Matcher
 
----
+# Load spaCy model
+nlp = spacy.load("en_core_web_sm")
 
-Subject: Follow-up on Model Testing Results and Training Data Labels
+# Initialize the matcher
+matcher = Matcher(nlp.vocab)
 
-Dear [Client's Name],
+# Example pattern to match addresses like "123 Main St"
+pattern = [
+    {"IS_DIGIT": True},  # Matches street number
+    {"LOWER": {"REGEX": "^[a-z]+$"}},  # Matches street name
+    {"LOWER": {"IN": ["st", "street", "ave", "avenue", "blvd", "boulevard", "road", "rd", "lane", "ln"]}}  # Matches street type
+]
 
-I hope this message finds you well. After conducting an in-depth analysis of the three cases you presented in your previous email, I would like to share my findings:
+# Add the pattern to the matcher
+matcher.add("ADDRESS_PATTERN", [pattern])
 
-1. Model Behavior Analysis: I ran the model against the three specific cases you provided. Interestingly, for the first case (Business Mismatched Name), while you observed unexpected behavior (CRC3100), the model on my end predicted the expected outcome. However, for the other two cases, the results were consistent with your observations, and the model performed as expected.
+def extract_addresses(text):
+    # Process the text with spaCy
+    doc = nlp(text)
+    
+    # Find matches in the text
+    matches = matcher(doc)
+    
+    # Extract the matched spans
+    addresses = []
+    for match_id, start, end in matches:
+        span = doc[start:end]
+        addresses.append(span.text)
+    
+    return addresses
 
-2. Training Data Coverage: I also examined the training dataset, which contains 56,496 records, to see if similar cases to the ones you highlighted were present. Unfortunately, the training data did not contain identical instances to these cases, which may explain the model's behavior. The model is inclined to generalize based on the most similar cases it has seen before. This is why we emphasized the need for more data during the training phase last year. The model's performance will improve as it is exposed to more representative data during production, so I do not have significant concerns regarding this aspect moving forward.
+# Example text with addresses
+text = "I live at 123 Main St, and my office is located at 456 Elm Ave."
 
-3. Labeling Concerns: One issue that I believe needs further attention is the accuracy of the training data labels. I raised this concern previously with a member of your team, Andrea, before the legal matters arose. My recent analysis suggests that some of the labels provided by the previous vendor, Giact, may not be correctly assigned. Here are some specific observations:
-   - CRC1100 (Match Pass): Some cases labeled as CRC1100 exhibit multiple mismatches, or the OverallScoreMatch is notably low (below 70), including cases with a score of 0.
-   - CRC3100 (Name Mismatch): Cases with multiple mismatches are being labeled as CRC3100 instead of CRC3400 (Multiple Mismatch).
-   - CRC3200 (Tax ID Mismatch): Some cases labeled as CRC1100 actually have a high OverallScoreMatch (above 90) and do not meet the expected mismatch criteria.
-   - CRC3300 (DOB Mismatch): Similarly, some cases labeled as CRC3300 should likely be classified under CRC3400 due to multiple mismatches.
-   - CRC3400 (Multiple Mismatch): In some cases, only a single feature mismatch is labeled as CRC3400, while it would be more appropriate to assign a more specific mismatch code, such as CRC2200 (Phone Mismatch).
-   - CRC4100 (Decline): There are instances where all matches are positive, and the OverallScoreMatch is above 90, but the case is still labeled as CRC4100 instead of CRC1100.
+# Extract addresses
+addresses = extract_addresses(text)
 
-These inconsistencies in labeling could be influencing the model's ability to learn and make accurate predictions. Therefore, we recommend conducting a reverse engineering analysis on the training data. A domain expert should review each request and assess whether the CRC codes are appropriately assigned. If discrepancies are found, we would appreciate receiving the corrected labels, as well as any additional instances you may test. We can then retrain the model with the new data and expect more accurate and consistent predictions as a result.
+# Print the extracted addresses
+print(addresses)
+['123 Main St', '456 Elm Ave']
 
-Thank you for your attention to this matter. Please feel free to reach out if you have any questions or require further clarification.
 
-Best regards,  
-[Your Full Name]  
-Lead Data Scientist  
-[Your Company Name]  
+Explanation:
+Pattern Matching: 
+The pattern is designed to match sequences like "123 Main St". The first part looks for a digit (street number), the second part matches the street name (assuming it's a single word), and the third part matches common street types like "St", "Ave", etc.
+Customization: You can extend or modify the pattern to match more complex address structures, including multi-word street names, apartment numbers, zip codes, etc.
 
----
+Limitations:
+Complex Addresses: This method might miss complex addresses or addresses in non-standard formats.
+False Positives: The matcher might incorrectly label non-address sequences as addresses, depending on the text's structure.
 
-This version improves the clarity and professionalism of your message while maintaining the key points you want to convey. Let me know if you'd like any further adjustments!
+Advanced Approach:
+For more robust extraction, especially if addresses vary significantly in structure, consider training a custom NER model on annotated address data. This approach would involve labeling a training dataset with addresses and using spaCy's training tools to create a specialized model.
+
+This script should help you get started with extracting addresses using spaCy in Python. Adjust the patterns according to the specific formats you expect in your data.
