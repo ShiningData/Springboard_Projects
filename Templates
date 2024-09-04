@@ -1,199 +1,126 @@
-def validate_model_prediction(
-  prediction,
-  total_count,
-  NameMtch,
-  BusNameMtch,
-  AddressMtch, 
-  CityMtch,
-  StateMtch,
-  ZipMtch,
-  HmPhoneMtch,
-  WkPhoneMtch,
-  SSNMtch,
-  DOBMtch
-  ):
-    # Group the keys into categories (each group represents one mismatch category)
-    mismatch_keys = [
-      ["NameMtch"],
-      ["BusNameMtch"],
-      ["AddressMtch", "CityMtch", "StateMtch", "ZipMtch"],
-      ["HmPhoneMtch", "WkPhoneMtch"], 
-      ["SSNMtch"],
-      ["DOBMatch"]
-    ]
+def check_any_match(*columns):
+    """Helper function to check if any of the match columns is 'N' or 'C'."""
+    return any(c in ['N', 'C'] for c in columns)
 
-    # Sum the mismatches per category
-    total_count = sum(count_mismatch_category(category) for category in mismatch_keys)
+def check_mismatch_conditions(prediction, total_count, NameMtch, BusNameMtch, SSNMtch, DOBMtch, 
+                              AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+    """Check mismatch conditions based on the prediction and total count."""
+    # Define category checks
+    address_check = check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch)
+    phone_check = check_any_match(HmPhoneMtch, WkPhoneMtch)
+    identity_check = check_any_match(NameMtch, BusNameMtch)
+    ssn_check = SSNMtch in ['N', 'C']
+    dob_check = DOBMtch in ['N', 'C']
 
-    # Helper function to check if any of the match columns is 'N' or 'C'
-    def check_any_match(*columns):
-        return any(c in ['N', 'C'] for c in columns)
-
-    # Condition for prediction "CRC1100"
+    # CRC1100 conditions
     if prediction == "CRC1100":
         if total_count == 0:
             return 'CRC1100'
-        elif total_count == 1:
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
-            if check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2100'
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-        elif total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-
-    # Condition for prediction "CRC3100"
-    elif prediction == "CRC3100":
         if total_count == 1:
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
-            if check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2100'
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-        elif total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-
-    # Condition for prediction "CRC3200"
-    elif prediction == "CRC3200":
-        if total_count == 1:
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
-            if check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2100'
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-        elif total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-
-    # Condition for prediction "CRC3300"
-    elif prediction == "CRC3300":
-        if total_count == 1:
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2100'
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-        elif total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-
-    # Condition for prediction "CRC2100"
-    elif prediction == "CRC2100":
-        if total_count == 1:
-            if check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2100'
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-        elif total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-
-    # Condition for prediction "CRC2200"
-    elif prediction == "CRC2200":
-        if total_count == 1:
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
-            if check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2100'
-        elif total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-
-    # Condition for prediction "CRC3400"
-    elif prediction == "CRC3400":
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
         if total_count > 1:
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-        if total_count == 1:
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
 
-    # Condition for prediction "CRC4100"
-    elif prediction == "CRC4100":
+    # CRC3100 conditions
+    if prediction == "CRC3100":
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
         if total_count > 1:
-            if check_any_match(NameMtch, BusNameMtch) and check_any_match(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if SSNMtch in ['N', 'C'] and check_any_match(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC4100'
-            if check_any_match(DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3400'
-        if total_count == 1:
-            if check_any_match(HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2200'
-            if check_any_match(NameMtch, BusNameMtch):
-                return 'CRC3100'
-            if SSNMtch in ['N', 'C']:
-                return 'CRC3200'
-            if DOBMtch in ['N', 'C']:
-                return 'CRC3300'
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
 
-    # Default fallback if no conditions matched
+    # CRC3200 conditions
+    if prediction == "CRC3200":
+        if total_count == 1:
+            return handle_single_mismatch(False, ssn_check, dob_check, address_check, phone_check, identity_check)
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+
+    # CRC3300 conditions
+    if prediction == "CRC3300":
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+
+    # CRC2100 conditions
+    if prediction == "CRC2100":
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+
+    # CRC2200 conditions
+    if prediction == "CRC2200":
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+
+    # CRC3400 conditions
+    if prediction == "CRC3400":
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+
+    # CRC4100 conditions
+    if prediction == "CRC4100":
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+
+    # Default return the prediction if no conditions are met
     return prediction
+
+def handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check):
+    """Handle the case where total_count == 1."""
+    if identity_check:
+        return 'CRC3100'
+    if ssn_check:
+        return 'CRC3200'
+    if dob_check:
+        return 'CRC3300'
+    if address_check:
+        return 'CRC2100'
+    if phone_check:
+        return 'CRC2200'
+
+def handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check):
+    """Handle the case where total_count > 1."""
+    if identity_check and (ssn_check or dob_check or address_check or phone_check):
+        return 'CRC4100'
+    if ssn_check and (identity_check or dob_check or address_check or phone_check):
+        return 'CRC4100'
+    if dob_check and (address_check or phone_check):
+        return 'CRC3400'
+
+def validate_model_prediction(
+    prediction,
+    total_count,
+    NameMtch,
+    BusNameMtch,
+    AddressMtch,
+    CityMtch,
+    StateMtch,
+    ZipMtch,
+    HmPhoneMtch,
+    WkPhoneMtch,
+    SSNMtch,
+    DOBMtch,
+):
+    """Main function to validate the model prediction."""
+    return check_mismatch_conditions(
+        prediction,
+        total_count,
+        NameMtch,
+        BusNameMtch,
+        SSNMtch,
+        DOBMtch,
+        AddressMtch,
+        CityMtch,
+        StateMtch,
+        ZipMtch,
+        HmPhoneMtch,
+        WkPhoneMtch,
+    )
