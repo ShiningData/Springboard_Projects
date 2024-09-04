@@ -1,5 +1,29 @@
-def validate_model_prediction(prediction, total_count, NameMtch, FNameMtch, LNameMtch, BusNameMtch, AddressMtch, CityMtch, 
-                              StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch, SSNMtch, DOBMtch, OverallMtchScore):
+def validate_model_prediction(
+  prediction,
+  total_count,
+  NameMtch,
+  BusNameMtch,
+  AddressMtch, 
+  CityMtch,
+  StateMtch,
+  ZipMtch,
+  HmPhoneMtch,
+  WkPhoneMtch,
+  SSNMtch,
+  DOBMtch
+  ):
+    # Group the keys into categories (each group represents one mismatch category)
+    mismatch_keys = [
+      ["NameMtch"],
+      ["BusNameMtch"],
+      ["AddressMtch", "CityMtch", "StateMtch", "ZipMtch"],
+      ["HmPhoneMtch", "WkPhoneMtch"], 
+      ["SSNMtch"],
+      ["DOBMatch"]
+    ]
+
+    # Sum the mismatches per category
+    total_count = sum(count_mismatch_category(category) for category in mismatch_keys)
 
     # Helper function to check if any of the match columns is 'N' or 'C'
     def check_any_match(*columns):
