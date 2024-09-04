@@ -2,6 +2,51 @@ def check_any_match(*columns):
     """Helper function to check if any of the match columns is 'N' or 'C'."""
     return any(c in ['N', 'C'] for c in columns)
 
+def handle_crc1100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
+    """Handle conditions specific to CRC1100."""
+    if total_count == 0:
+        return 'CRC1100'
+    if total_count == 1:
+        return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    if total_count > 1:
+        return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    return 'CRC1100'
+
+def handle_crc3100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
+    """Handle conditions specific to CRC3100."""
+    if total_count == 1:
+        return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    if total_count > 1:
+        return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    return 'CRC3100'
+
+def handle_crc3200_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
+    """Handle conditions specific to CRC3200."""
+    if total_count == 1:
+        return handle_single_mismatch(False, ssn_check, dob_check, address_check, phone_check, identity_check)
+    if total_count > 1:
+        return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    return 'CRC3200'
+
+def handle_crc_conditions(prediction, total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
+    """Handle conditions for predictions CRC3300, CRC2100, CRC2200, CRC3400, CRC4100."""
+    if prediction in ["CRC3300", "CRC2100", "CRC2200"]:
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    if prediction == "CRC3400":
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    if prediction == "CRC4100":
+        if total_count > 1:
+            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        if total_count == 1:
+            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+    return prediction
+
 def check_mismatch_conditions(prediction, total_count, NameMtch, BusNameMtch, SSNMtch, DOBMtch, 
                               AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
     """Check mismatch conditions based on the prediction and total count."""
@@ -12,66 +57,16 @@ def check_mismatch_conditions(prediction, total_count, NameMtch, BusNameMtch, SS
     ssn_check = SSNMtch in ['N', 'C']
     dob_check = DOBMtch in ['N', 'C']
 
-    # CRC1100 conditions
+    # Handle conditions by prediction
     if prediction == "CRC1100":
-        if total_count == 0:
-            return 'CRC1100'
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # CRC3100 conditions
+        return handle_crc1100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
     if prediction == "CRC3100":
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # CRC3200 conditions
+        return handle_crc3100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
     if prediction == "CRC3200":
-        if total_count == 1:
-            return handle_single_mismatch(False, ssn_check, dob_check, address_check, phone_check, identity_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
+        return handle_crc3200_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
 
-    # CRC3300 conditions
-    if prediction == "CRC3300":
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # CRC2100 conditions
-    if prediction == "CRC2100":
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # CRC2200 conditions
-    if prediction == "CRC2200":
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # CRC3400 conditions
-    if prediction == "CRC3400":
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # CRC4100 conditions
-    if prediction == "CRC4100":
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # Default return the prediction if no conditions are met
-    return prediction
+    # General conditions for CRC3300, CRC2100, CRC2200, CRC3400, CRC4100
+    return handle_crc_conditions(prediction, total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
 
 def handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check):
     """Handle the case where total_count == 1."""
