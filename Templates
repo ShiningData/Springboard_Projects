@@ -1,121 +1,157 @@
-def check_any_match(*columns):
-    """Helper function to check if any of the match columns is 'N' or 'C'."""
-    return any(c in ['N', 'C'] for c in columns)
-
-def handle_crc1100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
-    """Handle conditions specific to CRC1100."""
-    if total_count == 0:
-        return 'CRC1100'
-    if total_count == 1:
-        return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    if total_count > 1:
-        return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    return 'CRC1100'
-
-def handle_crc3100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
-    """Handle conditions specific to CRC3100."""
-    if total_count == 1:
-        return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    if total_count > 1:
-        return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    return 'CRC3100'
-
-def handle_crc3200_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
-    """Handle conditions specific to CRC3200."""
-    if total_count == 1:
-        return handle_single_mismatch(False, ssn_check, dob_check, address_check, phone_check, identity_check)
-    if total_count > 1:
-        return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    return 'CRC3200'
-
-def handle_crc_conditions(prediction, total_count, identity_check, ssn_check, dob_check, address_check, phone_check):
-    """Handle conditions for predictions CRC3300, CRC2100, CRC2200, CRC3400, CRC4100."""
-    if prediction in ["CRC3300", "CRC2100", "CRC2200"]:
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    if prediction == "CRC3400":
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    if prediction == "CRC4100":
-        if total_count > 1:
-            return handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-        if total_count == 1:
-            return handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check)
-    return prediction
-
-def check_mismatch_conditions(prediction, total_count, NameMtch, BusNameMtch, SSNMtch, DOBMtch, 
-                              AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-    """Check mismatch conditions based on the prediction and total count."""
-    # Define category checks
-    address_check = check_any_match(AddressMtch, CityMtch, StateMtch, ZipMtch)
-    phone_check = check_any_match(HmPhoneMtch, WkPhoneMtch)
-    identity_check = check_any_match(NameMtch, BusNameMtch)
-    ssn_check = SSNMtch in ['N', 'C']
-    dob_check = DOBMtch in ['N', 'C']
-
-    # Handle conditions by prediction
-    if prediction == "CRC1100":
-        return handle_crc1100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
-    if prediction == "CRC3100":
-        return handle_crc3100_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
-    if prediction == "CRC3200":
-        return handle_crc3200_conditions(total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
-
-    # General conditions for CRC3300, CRC2100, CRC2200, CRC3400, CRC4100
-    return handle_crc_conditions(prediction, total_count, identity_check, ssn_check, dob_check, address_check, phone_check)
-
-def handle_single_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check):
-    """Handle the case where total_count == 1."""
-    if identity_check:
-        return 'CRC3100'
-    if ssn_check:
-        return 'CRC3200'
-    if dob_check:
-        return 'CRC3300'
-    if address_check:
-        return 'CRC2100'
-    if phone_check:
-        return 'CRC2200'
-
-def handle_multiple_mismatch(identity_check, ssn_check, dob_check, address_check, phone_check):
-    """Handle the case where total_count > 1."""
-    if identity_check and (ssn_check or dob_check or address_check or phone_check):
-        return 'CRC4100'
-    if ssn_check and (identity_check or dob_check or address_check or phone_check):
-        return 'CRC4100'
-    if dob_check and (address_check or phone_check):
-        return 'CRC3400'
-
-def validate_model_prediction(
-    prediction,
-    total_count,
-    NameMtch,
-    BusNameMtch,
-    AddressMtch,
-    CityMtch,
-    StateMtch,
-    ZipMtch,
-    HmPhoneMtch,
-    WkPhoneMtch,
-    SSNMtch,
-    DOBMtch,
-):
-    """Main function to validate the model prediction."""
-    return check_mismatch_conditions(
-        prediction,
-        total_count,
-        NameMtch,
-        BusNameMtch,
-        SSNMtch,
-        DOBMtch,
-        AddressMtch,
-        CityMtch,
-        StateMtch,
-        ZipMtch,
-        HmPhoneMtch,
-        WkPhoneMtch,
-    )
+add-trailing-comma==0.6.1
+ansi2html==1.8.0
+anyio==3.6.2
+asttokens==2.0.8
+attrs==22.2.0
+backcall==0.2.0
+black==22.10.0
+category-encoders==2.5.1.post0
+certifi==2022.12.7
+cfgy==1.2.1
+charset-normalizer==2.1.1
+classify-normalizer==1.3.0
+click==8.1.3
+cloudpickle==2.2.0
+comm==0.1.2
+contourpy==1.0.7
+cycler==0.11.0
+Cython==0.29.33
+dash==2.7.0
+dash-core-components==2.0.0
+dash-html-components==2.0.0
+dash-table==5.0.0
+debugpy==1.6.3
+decorator==5.1.1
+Deprecated==1.2.13
+deprecation==2.1.0
+distlib==0.3.6
+dnspython==2.2.1
+email-validator==1.3.1
+end-of-file==1.0.2
+exceptiongroup==1.1.0
+executing==1.2.0
+fastapi==0.88.0
+fastjsonschema==2.16.2
+filelock==3.8.0
+flake8==5.0.4
+Flask==2.2.2
+Flask-Cors==3.1.1
+fonttools==4.38.0
+greenlet==2.0.1
+h11==0.14.0
+httptools==0.5.0
+identify==2.5.5
+idna==3.4
+imbalanced-learn==0.9.1
+importlib-metadata==5.0.0
+iniconfig==1.1.1
+ipykernel==6.16.2
+ipython==8.6.0
+ipywidgets==8.0.3
+itsdangerous==2.1.2
+jedi==0.18.1
+Jinja2==3.1.2
+joblib==1.2.0
+jsonschema==4.16.0
+jsonschema-specifications==2022.8.27
+jupyter_client==7.4.8
+jupyter_core==4.11.2
+jupyterlab-widgets==3.0.3
+kaleido==0.2.1
+kiwisolver==1.4.4
+lightgbm==3.3.2
+llvmlite==0.39.1
+MarkupSafe==2.1.1
+matplotlib==3.6.2
+matplotlib-inline==0.1.6
+mccabe==0.7.0
+mypy==0.982
+mypy-extensions==0.4.3
+nbformat==5.7.0
+nest-asyncio==1.5.6
+nodeenv==1.7.0
+numba==0.56.4
+numpy==1.23.4
+orjson==3.8.3
+packaging==21.3
+pandas==1.5.1
+parse==1.19.0
+passlib==1.7.4
+pathspec==0.10.2
+patcy==1.1.0
+pexpect==4.8.0
+pickleshare==0.7.5
+Pillow==9.3.0
+pip-system-certs==2.2.0
+platformdirs==2.5.4
+plotly==5.11.0
+plotly-resampler==0.7.2
+pluggy==1.0.0
+pmdarima==2.0.2
+pre-commit==2.20.0
+pre-commit-hooks==4.4.0
+prompt-toolkit==3.0.31
+psutil==5.9.4
+psycopg2-binary==2.9.5
+pure-eval==0.2.2
+pycaret==2.3.10
+pycodestyle==2.9.1
+pydantic==1.10.2
+pyflakes==2.5.0
+Pygments==2.13.0
+PyJWT==2.6.0
+PyMuPDF==1.21.1
+PyPDF2==2.11.0
+pyod==1.0.5
+pyparsing==3.0.9
+python-dateutil==2.8.2
+python-dotenv==0.21.0
+python-multipart==0.0.5
+pytz==2022.6
+PyYAML==6.0
+pyzmq==24.0.1
+referencing==0.28.0
+reorder-python-imports==3.10.0
+requests==2.28.1
+retrying==1.3.4
+rpds-py==0.6.4
+ruamel.yaml==0.17.21
+ruamel.yaml.clib==0.2.7
+scikit-base==0.4.0
+scikit-plot==0.3.7
+scipy==1.9.3
+seaborn==0.12.1
+shellcheck-py==0.9.0.1
+six==1.16.0
+sktime==0.14.0
+sniffio==1.3.0
+SQLAlchemy==1.4.42
+sqlalchemy2-stubs==0.14.0
+stack-data==0.6.2
+starlette==0.21.0
+statsmodels==0.13.2
+tbats==1.1.0
+tenacity==8.1.0
+threadpoolctl==3.1.0
+tokenize-rt==4.2.2
+tornado==6.2
+tqdm==4.64.1
+trace-updater==0.5.0
+traitlets==5.5.0
+tsdownsample==0.4.2
+typing_extensions==4.4.0
+tzdata==2022.6
+ujson==5.5.0
+urllib3==1.26.12
+uvicorn==0.20.0
+virtualenv==20.16.7
+watchfiles==0.17.0
+wcwidth==0.2.5
+websockets==10.4
+Werkzeug==2.2.2
+widgetsnbextension==4.0.3
+wrapt==1.14.1
+wurlitzer==3.0.2
+xxhash==3.1.0
+yellowbrick==1.5
+zipp==3.10.0
