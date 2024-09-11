@@ -89,3 +89,27 @@ with open(model_filename, 'rb') as f:
 loaded_preds = loaded_model.predict(X_test)
 print("Classification Report for Loaded Model:")
 print(classification_report(y_test, loaded_preds))
+
+
+=====================
+
+To evaluate model predictions without actual target values, you can follow these steps:
+
+1. **Predict with the model**: Use the trained model to make predictions on the new dataset. Since there is no target variable in the new data, you will be focusing on prediction probabilities and predicted classes.
+
+   ```python
+   predictions = model.predict(new_data)
+   probabilities = model.predict_proba(new_data)
+   ```
+
+2. **Analyze predicted probabilities**: Since you don’t have the actual target, you can analyze the confidence of the predictions by inspecting the prediction probabilities. Higher confidence levels in predictions (e.g., probabilities close to 1 for a specific class) can give some insight into the model’s certainty.
+
+3. **Leverage Unsupervised Validation**:
+   - **Cluster Analysis**: You can apply unsupervised clustering techniques (e.g., k-means) to see if your predicted classes form distinct clusters. This can give you a sense of whether the predictions group well, providing a sanity check on the predictions.
+   - **Outlier Detection**: Apply techniques like isolation forests or autoencoders to detect any unusual or outlier cases in the new data. You can assess whether the model's predictions for these outliers differ significantly.
+
+4. **Business or domain rules**: If there are any business rules, domain knowledge, or known patterns, you can compare the model’s predictions against these rules. For example, if certain features suggest that a specific class is more likely, you can check if the model aligns with these expectations.
+
+5. **Confidence-based flagging**: If prediction probabilities are low or ambiguous (close to 0.5 for several classes), you can flag those instances for further investigation or manual review.
+
+By focusing on the model's prediction certainty, clustering, and domain rules, you can still gather useful insights from the predictions even without having the actual target variable.
