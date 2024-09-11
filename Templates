@@ -1,5 +1,91 @@
-Here’s a professional response that merges the content from all speakers:
+import pandas as pd
+import catboost as cb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+import optuna
+import pickle
 
-"With the current allocation of 1 vCPU and 6GB of memory, we are encountering several limitations. Firstly, processing large datasets, particularly during exploratory data analysis (EDA), becomes unmanageable due to memory constraints, as the data often exceeds available capacity. Additionally, we are unable to prototype GPU-based models as the notebook environment does not support GPU selection. Furthermore, memory limitations are particularly evident when converting large datasets from sources such as Hadoop, CSV, or Neo4j into graph structures using libraries like NetworkX or iGraph, where handling hundreds of thousands of data records requires significantly higher memory capacity."
+# Load your dataset (replace with your actual dataset)
+# Assuming your dataset is in a pandas dataframe called df
+df = pd.read_csv('your_data.csv')
 
-This response consolidates all points and conveys the challenges in a concise and professional tone.
+# Features and target
+X = df.drop(columns=['customerResultCode'])
+y = df['customerResultCode']
+
+# Split the data into training and test sets (stratified to handle imbalance)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+# Identify categorical feature indices
+categorical_features_indices = [i for i, col in enumerate(X.columns) if X[col].dtype == 'object']
+
+# Objective function for Optuna
+def objective(trial):
+    param = {
+        'iterations': trial.suggest_int('iterations', 500, 1000),
+        'depth': trial.suggest_int('depth', 4, 10),
+        'learning_rate': trial.suggest_float('learning_rate', 1e-3, 1e-1, log=True),
+        'l2_leaf_reg': trial.suggest_float('l2_leaf_reg', 1e-3, 10),
+        'border_count': trial.suggest_int('border_count', 32, 255),
+        'loss_function': 'MultiClass',
+        'eval_metric': 'MultiClass',
+        'random_seed': 42,
+        'auto_class_weights': 'Balanced',  # Handle imbalance
+        'cat_features': categorical_features_indices
+    }
+    
+    # Train the model with these parameters
+    model = cb.CatBoostClassifier(**param)
+    model.fit(X_train, y_train, eval_set=(X_test, y_test), verbose=0, early_stopping_rounds=100)
+    
+    # Get predictions and score
+    preds = model.predict(X_test)
+    score = classification_report(y_test, preds, output_dict=True)
+    
+    # Returning the macro average f1-score as the objective
+    return score['macro avg']['f1-score']
+
+# Hyperparameter optimization with Optuna
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=30)
+
+# Best parameters from the study
+best_params = study.best_params
+print("Best parameters: ", best_params)
+
+# Retrain the model using the best hyperparameters
+best_model = cb.CatBoostClassifier(
+    iterations=best_params['iterations'],
+    depth=best_params['depth'],
+    learning_rate=best_params['learning_rate'],
+    l2_leaf_reg=best_params['l2_leaf_reg'],
+    border_count=best_params['border_count'],
+    loss_function='MultiClass',
+    eval_metric='MultiClass',
+    random_seed=42,
+    auto_class_weights='Balanced',
+    cat_features=categorical_features_indices
+)
+
+# Fit the best model
+best_model.fit(X_train, y_train, eval_set=(X_test, y_test), verbose=100, early_stopping_rounds=100)
+
+# Save the model as a pickle file
+model_filename = 'catboost_multiclass_model_no_pool.pkl'
+with open(model_filename, 'wb') as f:
+    pickle.dump(best_model, f)
+
+print(f"Model saved as {model_filename}")
+
+# Final predictions and evaluation
+final_preds = best_model.predict(X_test)
+print(classification_report(y_test, final_preds))
+
+# Load the model from the pickle file
+with open(model_filename, 'rb') as f:
+    loaded_model = pickle.load(f)
+
+# You can now use the loaded_model to make predictions
+loaded_preds = loaded_model.predict(X_test)
+print("Classification Report for Loaded Model:")
+print(classification_report(y_test, loaded_preds))
