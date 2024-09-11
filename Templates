@@ -1,65 +1,63 @@
 def validate_model_prediction(model_prediction, total_count, NameMtch, FNameMtch, LNameMtch, BusNameMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch, SSNMtch, DOBMtch, OverallMtchScore):
+    
+    def is_match_n_or_c(*features):
+        """Return True if any feature is 'N' or 'C'."""
+        return any(feature in ['N', 'C'] for feature in features)
 
-    def match_conditions(features_to_check, *args):
-        """Check if any of the given features are 'N' or 'C'."""
-        return any(feature in ['N', 'C'] for feature in features_to_check) and all(feature not in ['N', 'C'] for feature in args)
+    def is_all_valid(*features):
+        """Return True if all features are not 'N' or 'C'."""
+        return all(feature not in ['N', 'C'] for feature in features)
 
-    def case_crc3100():
-        if match_conditions([NameMtch, BusNameMtch], SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+    def handle_total_count_zero():
+        """Handle the case when total_count is 0."""
+        return 'CRC1100'
+
+    def handle_crc1100_with_count_1():
+        """Handle specific cases for CRC1100 when total_count is 1."""
+        if is_match_n_or_c(NameMtch, BusNameMtch) and is_all_valid(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
             return 'CRC3100'
-        return None
-
-    def case_crc3200():
-        if match_conditions([SSNMtch], NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+        elif is_match_n_or_c(SSNMtch) and is_all_valid(NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
             return 'CRC3200'
-        return None
-
-    def case_crc3300():
-        if match_conditions([DOBMtch], NameMtch, SSNMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+        elif is_match_n_or_c(DOBMtch) and is_all_valid(NameMtch, SSNMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
             return 'CRC3300'
-        return None
-
-    def case_crc2100():
-        if match_conditions([AddressMtch, CityMtch, StateMtch, ZipMtch], NameMtch, SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch):
+        elif is_match_n_or_c(AddressMtch, CityMtch, StateMtch, ZipMtch) and is_all_valid(NameMtch, SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch):
             return 'CRC2100'
-        return None
-
-    def case_crc2200():
-        if match_conditions([HmPhoneMtch, WkPhoneMtch], NameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch):
+        elif is_match_n_or_c(HmPhoneMtch, WkPhoneMtch) and is_all_valid(NameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch):
             return 'CRC2200'
-        return None
+        return 'CRC1100'
 
-    def case_crc4100():
-        if match_conditions([NameMtch, BusNameMtch], SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch) or \
-           match_conditions([SSNMtch], NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+    def handle_crc1100_with_count_greater_than_1():
+        """Handle cases for CRC1100 when total_count is greater than 1."""
+        if is_match_n_or_c(NameMtch, BusNameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
             return 'CRC4100'
-        return None
-
-    def case_crc3400():
-        if sum([DOBMtch in ['N', 'C'], match_conditions([AddressMtch, CityMtch, StateMtch, ZipMtch]), match_conditions([HmPhoneMtch, WkPhoneMtch])]) >= 2:
+        elif is_match_n_or_c(SSNMtch) and is_match_n_or_c(NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC4100'
+        elif sum([DOBMtch in ['N', 'C'], is_match_n_or_c(AddressMtch, CityMtch, StateMtch, ZipMtch), is_match_n_or_c(HmPhoneMtch, WkPhoneMtch)]) >= 2:
             return 'CRC3400'
-        return None
+        return 'CRC1100'
 
-    def resolve_cases_for_total_count_1():
-        return case_crc3100() or case_crc3200() or case_crc3300() or case_crc2100() or case_crc2200() or model_prediction
+    def handle_other_predictions_with_count_1():
+        """Handle cases for CRC3400 or CRC4100 when total_count is 1."""
+        return handle_crc1100_with_count_1()
 
-    def resolve_cases_for_total_count_greater_than_1():
-        return case_crc4100() or case_crc3400() or model_prediction
+    def handle_other_predictions_with_count_greater_than_1():
+        """Handle cases for CRC3400 or CRC4100 when total_count is greater than 1."""
+        return handle_crc1100_with_count_greater_than_1()
 
-    # Main function logic based on model_prediction and total_count
+    # Main logic to process predictions
     if model_prediction == "CRC1100":
         if total_count == 0:
-            return 'CRC1100'
+            return handle_total_count_zero()
         elif total_count == 1:
-            return resolve_cases_for_total_count_1()
+            return handle_crc1100_with_count_1()
         elif total_count > 1:
-            return resolve_cases_for_total_count_greater_than_1()
+            return handle_crc1100_with_count_greater_than_1()
 
-    elif model_prediction == "CRC3400" or model_prediction == "CRC4100":
+    elif model_prediction in ["CRC3400", "CRC4100"]:
         if total_count == 1:
-            return resolve_cases_for_total_count_1()
+            return handle_other_predictions_with_count_1()
         elif total_count > 1:
-            return resolve_cases_for_total_count_greater_than_1()
+            return handle_other_predictions_with_count_greater_than_1()
 
-    # Default fallback if no condition matches
+    # Default fallback if no conditions match
     return model_prediction
