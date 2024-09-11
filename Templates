@@ -1,74 +1,52 @@
 def validate_model_prediction(model_prediction, total_count, NameMtch, FNameMtch, LNameMtch, BusNameMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch, SSNMtch, DOBMtch, OverallMtchScore):
-    
     def all_others_not_n_or_c(*args):
         return all(feature not in ['N', 'C'] for feature in args)
 
-    # Check model prediction CRC1100
+    def is_any_feature_n_or_c(*args):
+        return any(feature in ['N', 'C'] for feature in args)
+
+    def case_total_count_1():
+        if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and all_others_not_n_or_c(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC3100'
+        elif SSNMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC3200'
+        elif DOBMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, SSNMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC3300'
+        elif is_any_feature_n_or_c(AddressMtch, CityMtch, StateMtch, ZipMtch) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC2100'
+        elif is_any_feature_n_or_c(HmPhoneMtch, WkPhoneMtch) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch):
+            return 'CRC2200'
+        return model_prediction
+
+    def case_total_count_greater_than_1():
+        if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and is_any_feature_n_or_c(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC4100'
+        elif SSNMtch in ['N', 'C'] and is_any_feature_n_or_c(NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
+            return 'CRC4100'
+        elif sum([DOBMtch in ['N', 'C'], is_any_feature_n_or_c(AddressMtch, CityMtch, StateMtch, ZipMtch), is_any_feature_n_or_c(HmPhoneMtch, WkPhoneMtch)]) >= 2 and all_others_not_n_or_c(NameMtch, SSNMtch):
+            return 'CRC3400'
+        return model_prediction
+
+    # Handle model prediction cases
     if model_prediction == "CRC1100":
         if total_count == 0:
             return 'CRC1100'
-        
         elif total_count == 1:
-            if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and all_others_not_n_or_c(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3100'
-            elif SSNMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3200'
-            elif DOBMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, SSNMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3300'
-            elif any(feature in ['N', 'C'] for feature in [AddressMtch, CityMtch, StateMtch, ZipMtch]) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2100'
-            elif any(feature in ['N', 'C'] for feature in [HmPhoneMtch, WkPhoneMtch]) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2200'
-        
+            return case_total_count_1()
         elif total_count > 1:
-            if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and any(feature in ['N', 'C'] for feature in [SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch]):
-                return 'CRC4100'
-            elif SSNMtch in ['N', 'C'] and any(feature in ['N', 'C'] for feature in [NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch]):
-                return 'CRC4100'
-            elif sum([DOBMtch in ['N', 'C'], any(feature in ['N', 'C'] for feature in [AddressMtch, CityMtch, StateMtch, ZipMtch]), any(feature in ['N', 'C'] for feature in [HmPhoneMtch, WkPhoneMtch])]) >= 2 and all_others_not_n_or_c(NameMtch, SSNMtch):
-                return 'CRC3400'
-    
-    # Check model prediction CRC3400
-    if model_prediction == "CRC3400":
-        if total_count > 1:
-            if sum([DOBMtch in ['N', 'C'], any(feature in ['N', 'C'] for feature in [AddressMtch, CityMtch, StateMtch, ZipMtch]), any(feature in ['N', 'C'] for feature in [HmPhoneMtch, WkPhoneMtch])]) >= 2 and all_others_not_n_or_c(NameMtch, SSNMtch):
-                return 'CRC3400'
-            elif (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and any(feature in ['N', 'C'] for feature in [SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch]):
-                return 'CRC4100'
-            elif SSNMtch in ['N', 'C'] and any(feature in ['N', 'C'] for feature in [NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch]):
-                return 'CRC4100'
-        elif total_count == 1:
-            if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and all_others_not_n_or_c(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3100'
-            elif SSNMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3200'
-            elif DOBMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, SSNMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3300'
-            elif any(feature in ['N', 'C'] for feature in [AddressMtch, CityMtch, StateMtch, ZipMtch]) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2100'
-            elif any(feature in ['N', 'C'] for feature in [HmPhoneMtch, WkPhoneMtch]) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2200'
+            return case_total_count_greater_than_1()
 
-    # Check model prediction CRC4100
-    if model_prediction == "CRC4100":
+    elif model_prediction == "CRC3400":
         if total_count > 1:
-            if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and any(feature in ['N', 'C'] for feature in [SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch]):
-                return 'CRC4100'
-            elif SSNMtch in ['N', 'C'] and any(feature in ['N', 'C'] for feature in [NameMtch, BusNameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch]):
-                return 'CRC4100'
-            elif sum([DOBMtch in ['N', 'C'], any(feature in ['N', 'C'] for feature in [AddressMtch, CityMtch, StateMtch, ZipMtch]), any(feature in ['N', 'C'] for feature in [HmPhoneMtch, WkPhoneMtch])]) >= 2:
-                return 'CRC3400'
+            return case_total_count_greater_than_1()
         elif total_count == 1:
-            if (NameMtch in ['N', 'C'] or BusNameMtch == 'N') and all_others_not_n_or_c(SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3100'
-            elif SSNMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3200'
-            elif DOBMtch in ['N', 'C'] and all_others_not_n_or_c(NameMtch, SSNMtch, AddressMtch, CityMtch, StateMtch, ZipMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC3300'
-            elif any(feature in ['N', 'C'] for feature in [AddressMtch, CityMtch, StateMtch, ZipMtch]) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch):
-                return 'CRC2100'
-            elif any(feature in ['N', 'C'] for feature in [HmPhoneMtch, WkPhoneMtch]) and all_others_not_n_or_c(NameMtch, SSNMtch, DOBMtch, AddressMtch, CityMtch, StateMtch, ZipMtch):
-                return 'CRC2200'
+            return case_total_count_1()
+
+    elif model_prediction == "CRC4100":
+        if total_count > 1:
+            return case_total_count_greater_than_1()
+        elif total_count == 1:
+            return case_total_count_1()
 
     # Default fallback if no condition matches
     return model_prediction
