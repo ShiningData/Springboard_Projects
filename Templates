@@ -1,3 +1,55 @@
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import roc_curve, precision_recall_curve
+import matplotlib.pyplot as plt
+
+# Convert categorical target variable to integer labels
+le = LabelEncoder()
+y_train_encoded = le.fit_transform(y_train)
+y_val_encoded = le.transform(y_val)
+y_test_encoded = le.transform(y_test)
+
+# Updated ROC-AUC and Precision-Recall plotting functions
+def plot_roc_curve(y_true, y_pred_proba, n_classes, file_name):
+    fpr = dict()
+    tpr = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve((y_true == i).astype(int), y_pred_proba[:, i])
+        plt.plot(fpr[i], tpr[i], label=f'Class {le.inverse_transform([i])[0]}')
+    plt.plot([0, 1], [0, 1], 'k--', label='Random Guess')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC AUC Curve')
+    plt.legend()
+    plt.savefig(file_name)
+    plt.clf()
+
+def plot_precision_recall_curve(y_true, y_pred_proba, n_classes, file_name):
+    precision = dict()
+    recall = dict()
+    for i in range(n_classes):
+        precision[i], recall[i], _ = precision_recall_curve((y_true == i).astype(int), y_pred_proba[:, i])
+        plt.plot(recall[i], precision[i], label=f'Class {le.inverse_transform([i])[0]}')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend()
+    plt.savefig(file_name)
+    plt.clf()
+
+# Use the encoded test labels
+test_preds_proba = best_model.predict_proba(X_test)
+
+# Generate the plots with encoded test labels
+plot_roc_curve(y_test_encoded, test_preds_proba, n_classes=len(le.classes_), file_name='roc_auc_curve.png')
+plot_precision_recall_curve(y_test_encoded, test_preds_proba, n_classes=len(le.classes_), file_name='precision_recall_curve.png')
+
+print("ROC AUC and Precision-Recall curves saved as 'roc_auc_curve.png' and 'precision_recall_curve.png'.")
+
+==================
+
+
+
+
 import pandas as pd
 import catboost as cb
 from sklearn.model_selection import train_test_split
