@@ -1,20 +1,22 @@
 import pandas as pd
 import catboost as cb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score, classification_report
 import optuna
 import pickle
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, precision_recall_curve
 
 # Load your dataset (replace with your actual dataset)
-# Assuming your dataset is in a pandas dataframe called df
 df = pd.read_csv('your_data.csv')
 
 # Features and target
 X = df.drop(columns=['customerResultCode'])
 y = df['customerResultCode']
 
-# Split the data into training and test sets (stratified to handle imbalance)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+# Split the data into training, validation, and test sets
+X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, stratify=y, random_state=42)
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=42)
 
 # Identify categorical feature indices
 categorical_features_indices = [i for i, col in enumerate(X.columns) if X[col].dtype == 'object']
@@ -30,19 +32,16 @@ def objective(trial):
         'loss_function': 'MultiClass',
         'eval_metric': 'MultiClass',
         'random_seed': 42,
-        'auto_class_weights': 'Balanced',  # Handle imbalance
+        'auto_class_weights': 'Balanced',
         'cat_features': categorical_features_indices
     }
     
-    # Train the model with these parameters
     model = cb.CatBoostClassifier(**param)
-    model.fit(X_train, y_train, eval_set=(X_test, y_test), verbose=0, early_stopping_rounds=100)
+    model.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=0, early_stopping_rounds=100)
     
-    # Get predictions and score
-    preds = model.predict(X_test)
-    score = classification_report(y_test, preds, output_dict=True)
+    preds = model.predict(X_val)
+    score = classification_report(y_val, preds, output_dict=True)
     
-    # Returning the macro average f1-score as the objective
     return score['macro avg']['f1-score']
 
 # Hyperparameter optimization with Optuna
@@ -53,7 +52,11 @@ study.optimize(objective, n_trials=30)
 best_params = study.best_params
 print("Best parameters: ", best_params)
 
-# Retrain the model using the best hyperparameters
+# Save best hyperparameters as a table
+best_params_df = pd.DataFrame([best_params])
+best_params_df.to_csv('best_params.csv', index=False)
+
+# Retrain the model with the best hyperparameters
 best_model = cb.CatBoostClassifier(
     iterations=best_params['iterations'],
     depth=best_params['depth'],
@@ -67,49 +70,83 @@ best_model = cb.CatBoostClassifier(
     cat_features=categorical_features_indices
 )
 
-# Fit the best model
-best_model.fit(X_train, y_train, eval_set=(X_test, y_test), verbose=100, early_stopping_rounds=100)
+best_model.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=100, early_stopping_rounds=100)
 
-# Save the model as a pickle file
-model_filename = 'catboost_multiclass_model_no_pool.pkl'
+# Save the model
+model_filename = 'catboost_multiclass_model.pkl'
 with open(model_filename, 'wb') as f:
     pickle.dump(best_model, f)
 
-print(f"Model saved as {model_filename}")
+# Metrics calculation function
+def get_metrics(y_true, y_pred, average='macro'):
+    accuracy = accuracy_score(y_true, y_pred)
+    precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average=average)
+    return accuracy, precision, recall, f1
 
-# Final predictions and evaluation
-final_preds = best_model.predict(X_test)
-print(classification_report(y_test, final_preds))
+# Training set predictions and metrics
+train_preds = best_model.predict(X_train)
+train_accuracy, train_precision, train_recall, train_f1 = get_metrics(y_train, train_preds)
 
-# Load the model from the pickle file
-with open(model_filename, 'rb') as f:
-    loaded_model = pickle.load(f)
+# Test set predictions and metrics
+test_preds = best_model.predict(X_test)
+test_accuracy, test_precision, test_recall, test_f1 = get_metrics(y_test, test_preds)
 
-# You can now use the loaded_model to make predictions
-loaded_preds = loaded_model.predict(X_test)
-print("Classification Report for Loaded Model:")
-print(classification_report(y_test, loaded_preds))
+# Metrics for training and test sets
+metrics_data = {
+    'Set': ['Train', 'Test'],
+    'Accuracy': [train_accuracy, test_accuracy],
+    'Precision': [train_precision, test_precision],
+    'Recall': [train_recall, test_recall],
+    'F1-Score': [train_f1, test_f1]
+}
 
+metrics_df = pd.DataFrame(metrics_data)
+metrics_df.to_csv('model_metrics.csv', index=False)
+print("Model metrics saved to 'model_metrics.csv'.")
 
-=====================
+# Generate ROC-AUC and Precision-Recall curves
+def plot_roc_curve(y_true, y_pred_proba, n_classes, file_name):
+    fpr = dict()
+    tpr = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve((y_true == i).astype(int), y_pred_proba[:, i])
+        plt.plot(fpr[i], tpr[i], label=f'Class {i}')
+    plt.plot([0, 1], [0, 1], 'k--', label='Random Guess')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC AUC Curve')
+    plt.legend()
+    plt.savefig(file_name)
+    plt.clf()
 
-To evaluate model predictions without actual target values, you can follow these steps:
+def plot_precision_recall_curve(y_true, y_pred_proba, n_classes, file_name):
+    precision = dict()
+    recall = dict()
+    for i in range(n_classes):
+        precision[i], recall[i], _ = precision_recall_curve((y_true == i).astype(int), y_pred_proba[:, i])
+        plt.plot(recall[i], precision[i], label=f'Class {i}')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend()
+    plt.savefig(file_name)
+    plt.clf()
 
-1. **Predict with the model**: Use the trained model to make predictions on the new dataset. Since there is no target variable in the new data, you will be focusing on prediction probabilities and predicted classes.
+# Probabilities for test set (needed for ROC AUC and Precision-Recall curves)
+test_preds_proba = best_model.predict_proba(X_test)
 
-   ```python
-   predictions = model.predict(new_data)
-   probabilities = model.predict_proba(new_data)
-   ```
+# ROC-AUC Plot
+plot_roc_curve(y_test, test_preds_proba, n_classes=len(y.unique()), file_name='roc_auc_curve.png')
 
-2. **Analyze predicted probabilities**: Since you don’t have the actual target, you can analyze the confidence of the predictions by inspecting the prediction probabilities. Higher confidence levels in predictions (e.g., probabilities close to 1 for a specific class) can give some insight into the model’s certainty.
+# Precision-Recall Curve Plot
+plot_precision_recall_curve(y_test, test_preds_proba, n_classes=len(y.unique()), file_name='precision_recall_curve.png')
 
-3. **Leverage Unsupervised Validation**:
-   - **Cluster Analysis**: You can apply unsupervised clustering techniques (e.g., k-means) to see if your predicted classes form distinct clusters. This can give you a sense of whether the predictions group well, providing a sanity check on the predictions.
-   - **Outlier Detection**: Apply techniques like isolation forests or autoencoders to detect any unusual or outlier cases in the new data. You can assess whether the model's predictions for these outliers differ significantly.
+print("ROC AUC and Precision-Recall curves saved as 'roc_auc_curve.png' and 'precision_recall_curve.png'.")
 
-4. **Business or domain rules**: If there are any business rules, domain knowledge, or known patterns, you can compare the model’s predictions against these rules. For example, if certain features suggest that a specific class is more likely, you can check if the model aligns with these expectations.
+==============
 
-5. **Confidence-based flagging**: If prediction probabilities are low or ambiguous (close to 0.5 for several classes), you can flag those instances for further investigation or manual review.
-
-By focusing on the model's prediction certainty, clustering, and domain rules, you can still gather useful insights from the predictions even without having the actual target variable.
+catboost==1.2.1
+optuna==3.3.0
+pandas==2.0.3
+scikit-learn==1.3.0
+matplotlib==3.6.2
