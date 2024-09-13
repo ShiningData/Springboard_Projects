@@ -1,43 +1,31 @@
-import pickle
-import pandas as pd
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
-from sklearn.preprocessing import label_binarize
-from sklearn.utils.multiclass import unique_labels
-
-# Load the saved CatBoost model
-with open('catboost_model.pkl', 'rb') as model_file:
-    model = pickle.load(model_file)
-
-# Load your table with actual and predicted values
-# Replace 'your_data.csv' with the path to your data file
-df = pd.read_csv('your_data.csv')
-
-# Assume 'actual' and 'predicted' are the column names in your table
-y_true = df['actual']
-y_pred = df['predicted']
-
-# Calculate accuracy
-accuracy = accuracy_score(y_true, y_pred)
-print(f'Accuracy: {accuracy:.4f}')
-
-# Calculate precision, recall, F1 score
-precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted')
-print(f'Precision: {precision:.4f}')
-print(f'Recall: {recall:.4f}')
-print(f'F1 Score: {f1:.4f}')
-
-# Calculate AUC
-# Get unique classes
-classes = unique_labels(y_true, y_pred)
-n_classes = len(classes)
-
-# Binarize the output
-y_true_bin = label_binarize(y_true, classes=classes)
-y_pred_bin = label_binarize(y_pred, classes=classes)
-
-# Compute AUC for each class
-try:
-    auc = roc_auc_score(y_true_bin, y_pred_bin, average='weighted', multi_class='ovr')
-    print(f'AUC: {auc:.4f}')
-except ValueError as e:
-    print(f'Error calculating AUC: {e}')
+# Hyperopt search space for binary classification
+space = {
+    # Number of iterations (trees), sampled between 100 and 1000 with steps of 50
+    'iterations': hp.quniform('iterations', 100, 1000, 50),
+    
+    # Maximum tree depth, sampled as integers between 3 and 10
+    'depth': hp.quniform('depth', 3, 10, 1),
+    
+    # Learning rate, sampled from a log-uniform distribution for fine control
+    'learning_rate': hp.loguniform('learning_rate', -5, -1),  # between 0.0067 and 0.367
+    
+    # L2 regularization, sampled from a log-uniform distribution
+    'l2_leaf_reg': hp.loguniform('l2_leaf_reg', -3, 2),  # between 0.0498 and 7.39
+    
+    # Number of splits on numerical features, sampled between 32 and 255
+    'border_count': hp.quniform('border_count', 32, 255, 1),
+    
+    # Scale position weight for handling class imbalance, sampled between 1 and 10
+    'scale_pos_weight': hp.quniform('scale_pos_weight', 1, 10, 1),
+    
+    # Subsample rate for each tree, sampled from a uniform distribution between 0.5 and 1.0
+    'subsample': hp.uniform('subsample', 0.5, 1.0),
+    
+    # Bagging temperature (controls diversity of trees in the ensemble)
+    'bagging_temperature': hp.uniform('bagging_temperature', 0.0, 1.0),
+    
+    # Fixed parameters for CatBoost
+    'random_seed': 42,
+    'loss_function': 'Logloss',  # For binary classification
+    'eval_metric': 'AUC'  # To optimize the AUC due to class imbalance
+}
