@@ -2,6 +2,7 @@ import pickle
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
 from sklearn.preprocessing import label_binarize
+from sklearn.utils.multiclass import unique_labels
 
 # Load the saved CatBoost model
 with open('catboost_model.pkl', 'rb') as model_file:
@@ -26,11 +27,17 @@ print(f'Recall: {recall:.4f}')
 print(f'F1 Score: {f1:.4f}')
 
 # Calculate AUC
+# Get unique classes
+classes = unique_labels(y_true, y_pred)
+n_classes = len(classes)
+
 # Binarize the output
-n_classes = len(pd.unique(y_true))
-y_true_bin = label_binarize(y_true, classes=range(n_classes))
-y_pred_bin = label_binarize(y_pred, classes=range(n_classes))
+y_true_bin = label_binarize(y_true, classes=classes)
+y_pred_bin = label_binarize(y_pred, classes=classes)
 
 # Compute AUC for each class
-auc = roc_auc_score(y_true_bin, y_pred_bin, average='weighted', multi_class='ovr')
-print(f'AUC: {auc:.4f}')
+try:
+    auc = roc_auc_score(y_true_bin, y_pred_bin, average='weighted', multi_class='ovr')
+    print(f'AUC: {auc:.4f}')
+except ValueError as e:
+    print(f'Error calculating AUC: {e}')
