@@ -1,180 +1,36 @@
-import pandas as pd
-import catboost as cb
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score, classification_report
-import optuna
 import pickle
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import roc_curve, precision_recall_curve
+import pandas as pd
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
+from sklearn.preprocessing import label_binarize
 
-# Load your dataset (replace with your actual dataset)
+# Load the saved CatBoost model
+with open('catboost_model.pkl', 'rb') as model_file:
+    model = pickle.load(model_file)
+
+# Load your table with actual and predicted values
+# Replace 'your_data.csv' with the path to your data file
 df = pd.read_csv('your_data.csv')
 
-# Features and target
-X = df.drop(columns=['customerResultCode'])
-y = df['customerResultCode']
+# Assume 'actual' and 'predicted' are the column names in your table
+y_true = df['actual']
+y_pred = df['predicted']
 
-# Split the data into training, validation, and test sets
-X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, stratify=y, random_state=42)
-X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=42)
+# Calculate accuracy
+accuracy = accuracy_score(y_true, y_pred)
+print(f'Accuracy: {accuracy:.4f}')
 
-# Identify categorical feature indices
-categorical_features_indices = [i for i, col in enumerate(X.columns) if X[col].dtype == 'object']
+# Calculate precision, recall, F1 score
+precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted')
+print(f'Precision: {precision:.4f}')
+print(f'Recall: {recall:.4f}')
+print(f'F1 Score: {f1:.4f}')
 
-# Label encode the target variable (to handle object type)
-le = LabelEncoder()
-y_train_encoded = le.fit_transform(y_train)
-y_val_encoded = le.transform(y_val)
-y_test_encoded = le.transform(y_test)
+# Calculate AUC
+# Binarize the output
+n_classes = len(pd.unique(y_true))
+y_true_bin = label_binarize(y_true, classes=range(n_classes))
+y_pred_bin = label_binarize(y_pred, classes=range(n_classes))
 
-# Objective function for Optuna
-def objective(trial):
-    param = {
-        'iterations': trial.suggest_int('iterations', 500, 1000),
-        'depth': trial.suggest_int('depth', 4, 10),
-        'learning_rate': trial.suggest_float('learning_rate', 1e-3, 1e-1, log=True),
-        'l2_leaf_reg': trial.suggest_float('l2_leaf_reg', 1e-3, 10),
-        'border_count': trial.suggest_int('border_count', 32, 255),
-        'loss_function': 'MultiClass',
-        'eval_metric': 'MultiClass',
-        'random_seed': 42,
-        'auto_class_weights': 'Balanced',  # Handle class imbalance
-        'cat_features': categorical_features_indices
-    }
-    
-    model = cb.CatBoostClassifier(**param)
-    model.fit(X_train, y_train_encoded, eval_set=(X_val, y_val_encoded), verbose=0, early_stopping_rounds=100)
-    
-    preds = model.predict(X_val)
-    score = classification_report(y_val_encoded, preds, output_dict=True)
-    
-    return score['macro avg']['f1-score']
-
-# Hyperparameter optimization with Optuna
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=30)
-
-# Best parameters from the study
-best_params = study.best_params
-print("Best parameters: ", best_params)
-
-# Save best hyperparameters as a table
-best_params_df = pd.DataFrame([best_params])
-best_params_df.to_csv('best_params.csv', index=False)
-
-# Retrain the model with the best hyperparameters
-best_model = cb.CatBoostClassifier(
-    iterations=best_params['iterations'],
-    depth=best_params['depth'],
-    learning_rate=best_params['learning_rate'],
-    l2_leaf_reg=best_params['l2_leaf_reg'],
-    border_count=best_params['border_count'],
-    loss_function='MultiClass',
-    eval_metric='MultiClass',
-    random_seed=42,
-    auto_class_weights='Balanced',
-    cat_features=categorical_features_indices
-)
-
-best_model.fit(X_train, y_train_encoded, eval_set=(X_val, y_val_encoded), verbose=100, early_stopping_rounds=100)
-
-# Save the model
-model_filename = 'catboost_multiclass_model.pkl'
-with open(model_filename, 'wb') as f:
-    pickle.dump(best_model, f)
-
-# Function to save actual, predicted values, and prediction probabilities as CSV
-def save_actual_vs_prediction_csv(X, y_true, y_pred, y_pred_proba, filename):
-    # Inverse transform the integer labels back to original class labels
-    y_true_classes = le.inverse_transform(y_true)
-    y_pred_classes = le.inverse_transform(y_pred)
-    
-    # Create a DataFrame with actual, predicted values, and probabilities for each class
-    result_df = pd.DataFrame({
-        'Actual': y_true_classes,
-        'Predicted': y_pred_classes
-    })
-    
-    # Add prediction probabilities for each class
-    for i, class_name in enumerate(le.classes_):
-        result_df[f'Prob_{class_name}'] = y_pred_proba[:, i]
-    
-    # Save to CSV
-    result_df.to_csv(filename, index=False)
-    print(f'{filename} saved.')
-
-# Predictions and probabilities for training and test sets
-train_preds = best_model.predict(X_train)
-train_preds_proba = best_model.predict_proba(X_train)
-
-test_preds = best_model.predict(X_test)
-test_preds_proba = best_model.predict_proba(X_test)
-
-# Save train and test actual vs predicted values and probabilities
-save_actual_vs_prediction_csv(X_train, y_train_encoded, train_preds, train_preds_proba, 'trainset_actual_vs_predicted.csv')
-save_actual_vs_prediction_csv(X_test, y_test_encoded, test_preds, test_preds_proba, 'testset_actual_vs_predicted.csv')
-
-# Metrics calculation function
-def get_metrics(y_true, y_pred, average='macro'):
-    accuracy = accuracy_score(y_true, y_pred)
-    precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average=average)
-    return accuracy, precision, recall, f1
-
-# Training set metrics
-train_accuracy, train_precision, train_recall, train_f1 = get_metrics(y_train_encoded, train_preds)
-
-# Test set metrics
-test_accuracy, test_precision, test_recall, test_f1 = get_metrics(y_test_encoded, test_preds)
-
-# Metrics for training and test sets
-metrics_data = {
-    'Set': ['Train', 'Test'],
-    'Accuracy': [train_accuracy, test_accuracy],
-    'Precision': [train_precision, test_precision],
-    'Recall': [train_recall, test_recall],
-    'F1-Score': [train_f1, test_f1]
-}
-
-metrics_df = pd.DataFrame(metrics_data)
-metrics_df.to_csv('model_metrics.csv', index=False)
-print("Model metrics saved to 'model_metrics.csv'.")
-
-# ROC-AUC and Precision-Recall curves plotting functions
-def plot_roc_curve(y_true, y_pred_proba, n_classes, file_name):
-    fpr = dict()
-    tpr = dict()
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve((y_true == i).astype(int), y_pred_proba[:, i])
-        plt.plot(fpr[i], tpr[i], label=f'Class {le.inverse_transform([i])[0]}')
-    plt.plot([0, 1], [0, 1], 'k--', label='Random Guess')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC AUC Curve')
-    plt.legend()
-    plt.savefig(file_name)
-    plt.clf()
-
-def plot_precision_recall_curve(y_true, y_pred_proba, n_classes, file_name):
-    precision = dict()
-    recall = dict()
-    for i in range(n_classes):
-        precision[i], recall[i], _ = precision_recall_curve((y_true == i).astype(int), y_pred_proba[:, i])
-        plt.plot(recall[i], precision[i], label=f'Class {le.inverse_transform([i])[0]}')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend()
-    plt.savefig(file_name)
-    plt.clf()
-
-# Probabilities for test set (needed for ROC AUC and Precision-Recall curves)
-test_preds_proba = best_model.predict_proba(X_test)
-
-# ROC-AUC Plot
-plot_roc_curve(y_test_encoded, test_preds_proba, n_classes=len(le.classes_), file_name='roc_auc_curve.png')
-
-# Precision-Recall Curve Plot
-plot_precision_recall_curve(y_test_encoded, test_preds_proba, n_classes=len(le.classes_), file_name='precision_recall_curve.png')
-
-print("ROC AUC and Precision-Recall curves saved as 'roc_auc_curve.png' and 'precision_recall_curve.png'.")
+# Compute AUC for each class
+auc = roc_auc_score(y_true_bin, y_pred_bin, average='weighted', multi_class='ovr')
+print(f'AUC: {auc:.4f}')
