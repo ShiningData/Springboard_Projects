@@ -1,6 +1,50 @@
-from hyperopt import fmin, tpe, Trials, STATUS_OK
+from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
 import catboost as cb
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import f1_score
+from sklearn.model_selection import train_test_split
+import numpy as np
+
+# Assuming you have your data split into X_train, y_train, X_val, y_val
+# For this example, we'll use sklearn's train_test_split to simulate it
+
+# Example dataset (replace with your actual dataset)
+# X, y = your_dataset_here
+# X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Define categorical features index for CatBoost (replace this with actual categorical feature indices)
+categorical_features_indices = []  # Example: [0, 2, 5] if these columns are categorical
+
+# Hyperopt search space for binary classification optimizing for F1-Score
+space = {
+    # Number of iterations (trees), sampled between 100 and 1000 with steps of 50
+    'iterations': hp.quniform('iterations', 100, 1000, 50),
+    
+    # Maximum tree depth, sampled as integers between 3 and 10
+    'depth': hp.quniform('depth', 3, 10, 1),
+    
+    # Learning rate, sampled from a log-uniform distribution for fine control
+    'learning_rate': hp.loguniform('learning_rate', -5, -1),  # between 0.0067 and 0.367
+    
+    # L2 regularization, sampled from a log-uniform distribution
+    'l2_leaf_reg': hp.loguniform('l2_leaf_reg', -3, 2),  # between 0.0498 and 7.39
+    
+    # Number of splits on numerical features, sampled between 32 and 255
+    'border_count': hp.quniform('border_count', 32, 255, 1),
+    
+    # Scale position weight for handling class imbalance, sampled between 1 and 10
+    'scale_pos_weight': hp.quniform('scale_pos_weight', 1, 10, 1),
+    
+    # Subsample rate for each tree, sampled from a uniform distribution between 0.5 and 1.0
+    'subsample': hp.uniform('subsample', 0.5, 1.0),
+    
+    # Bagging temperature (controls diversity of trees in the ensemble)
+    'bagging_temperature': hp.uniform('bagging_temperature', 0.0, 1.0),
+    
+    # Fixed parameters for CatBoost
+    'random_seed': 42,
+    'loss_function': 'Logloss',  # For binary classification
+    'eval_metric': 'F1'  # To optimize for F1-Score directly
+}
 
 # Define the objective function
 def objective(params):
@@ -20,15 +64,19 @@ def objective(params):
     # Fit the model (use your training data)
     model.fit(X_train, y_train, eval_set=(X_val, y_val), early_stopping_rounds=100, verbose=0)
     
-    # Predict probabilities and compute AUC score (use your validation data)
-    preds_proba = model.predict_proba(X_val)[:, 1]  # For binary classification
-    auc = roc_auc_score(y_val, preds_proba)
+    # Predict on the validation set
+    preds = model.predict(X_val)
     
-    return {'loss': -auc, 'status': STATUS_OK}
+    # Calculate F1-Score for validation set
+    f1 = f1_score(y_val, preds, average='binary')  # Use 'binary' for binary classification
+    
+    # Return the negative F1-score (since Hyperopt minimizes the objective function)
+    return {'loss': -f1, 'status': STATUS_OK}
 
 # Initialize trials to keep track of the optimization process
 trials = Trials()
 
 # Run the optimization
 best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=50, trials=trials)
+
 print("Best hyperparameters found:", best)
