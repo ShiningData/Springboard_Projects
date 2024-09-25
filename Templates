@@ -1,19 +1,69 @@
-Subject: Follow-Up on Claim Prediction Model Feature Identification and Enhancement Discussion
+import dice_ml
+from dice_ml import Dice
+import pandas as pd
+import numpy as np
+from catboost import CatBoostClassifier
+from autogluon.tabular import TabularPredictor
 
-Dear [Client's Name],
+# Function to generate counterfactuals using DiCE for a given model
+def generate_counterfactuals(model, X_train, instance, outcome_to_change, data_type, model_type):
+    # Convert X_train to pandas dataframe if not already
+    if not isinstance(X_train, pd.DataFrame):
+        X_train = pd.DataFrame(X_train, columns=[f'Feature{i+1}' for i in range(X_train.shape[1])])
 
-I hope this email finds you well.
+    # Initialize dice_ml Data and Model
+    d = dice_ml.Data(dataframe=X_train, continuous_features=X_train.columns.tolist(), outcome_name='target')
+    m = dice_ml.Model(model=model, backend="sklearn", model_type=model_type)
+    
+    # Create Dice explainer object
+    exp = Dice(d, m)
+    
+    # Generate counterfactuals for the instance
+    query_instance = pd.DataFrame([instance], columns=X_train.columns)
+    cf = exp.generate_counterfactuals(query_instance, total_CFs=1, desired_class=outcome_to_change)
+    
+    # Return the generated counterfactual
+    return cf.cf_examples_list[0].final_cfs_df
 
-Following our recent meeting regarding the claim prediction model, I wanted to recap the actionable features we identified together during the session. I have attached the finalized list for your review and reference. These features are currently incorporated into the model, and as we discussed, their impact has been evaluated for predictive value.
+# Function to generate counterfactual for CatBoost model
+def catboost_counterfactual(catboost_model, X_train, instance):
+    return generate_counterfactuals(catboost_model, X_train, instance, outcome_to_change=0, data_type="sklearn", model_type="classifier")
 
-Additionally, I would like to revisit the supplementary features that were initially not considered in the first version of the model, as they were deemed less valuable at the time. Given the new insights and your interest in further enhancing the model, I have reattached this list. I encourage you to evaluate whether any of these features may now be worth considering as part of the next iteration.
+# Function to generate counterfactual for AutoGluon model
+def autogluon_counterfactual(autogluon_model, X_train, instance):
+    # Get the best model from AutoGluon
+    best_model = autogluon_model.get_model_best()
+    return generate_counterfactuals(best_model, X_train, instance, outcome_to_change=0, data_type="sklearn", model_type="classifier")
 
-Lastly, I understand that your team has been working on your own list of potential model enhancements. Please feel free to share that with me once you have reached consensus internally, and we can move forward in incorporating any agreed-upon changes to optimize the model's performance.
+# Function to generate counterfactual for Ensemble model
+def ensemble_counterfactual(catboost_model, autogluon_model, X_train, instance):
+    # Generate counterfactuals for both CatBoost and AutoGluon models
+    catboost_cf = catboost_counterfactual(catboost_model, X_train, instance)
+    autogluon_cf = autogluon_counterfactual(autogluon_model, X_train, instance)
+    
+    # Average the two counterfactuals (you can customize this further)
+    ensemble_cf = (catboost_cf + autogluon_cf) / 2
+    return ensemble_cf
 
-I look forward to hearing your thoughts and continuing our collaboration on this project. Should you have any questions or need clarification, do not hesitate to reach out.
+# Example usage:
+# Assuming you have trained CatBoost and AutoGluon models and X_train as your dataset
+catboost_model = CatBoostClassifier().load_model('path_to_catboost_model')  # Load CatBoost model
+autogluon_model = TabularPredictor.load('path_to_autogluon_model')  # Load AutoGluon model
 
-Best regards,  
-[Your Full Name]  
-Lead Data Scientist  
-[Your Company Name]  
-[Your Contact Information]
+# Select a sample instance for which the target is 1 (you want to change to 0)
+instance = X_train.iloc[0].values  # Single instance from dataset
+
+# Generate counterfactuals for CatBoost
+catboost_cf = catboost_counterfactual(catboost_model, X_train, instance)
+print("CatBoost Counterfactual:")
+print(catboost_cf)
+
+# Generate counterfactuals for AutoGluon
+autogluon_cf = autogluon_counterfactual(autogluon_model, X_train, instance)
+print("AutoGluon Counterfactual:")
+print(autogluon_cf)
+
+# Generate counterfactuals for Ensemble model
+ensemble_cf = ensemble_counterfactual(catboost_model, autogluon_model, X_train, instance)
+print("Ensemble Model Counterfactual:")
+print(ensemble_cf)
