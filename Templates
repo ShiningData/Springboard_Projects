@@ -1,75 +1,83 @@
-def determine_customer_result_code(row):
-    # Unpack the columns from the input row for direct access
-    NameMtch = row['NameMtch']
-    BusNameMtch = row.get('BusNameMtch', 'MISSING')
-    AddressMtch = row['AddressMtch']
-    CityMtch = row['CityMtch']
-    StateMtch = row['StateMtch']
-    ZipMtch = row['ZipMtch']
-    HmPhoneMtch = row['HmPhoneMtch']
-    WkPhoneMtch = row['WkPhoneMtch']
-    SSNMtch = row['SSNMtch']
-    DOBMtch = row['DOBMtch']
-    IdMtch = row['IdMtch']
-    OverallMtchScore = row['OverallMtchScore']
+# Import required libraries
+from catboost import CatBoostClassifier
+from autogluon.tabular import TabularPredictor
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Assuming you have trained CatBoost and AutoGluon models and loaded the dataset
+# catboost_model: your trained CatBoost model
+# autogluon_model: your trained AutoGluon model
+
+# Sample data
+X_train = pd.read_csv('your_train_data.csv')  # Features used to train
+y_train = pd.read_csv('your_target_data.csv')  # Target used to train
+
+# CATBOOST FEATURE IMPORTANCE
+def catboost_feature_importance(catboost_model, X_train):
+    # Get feature importance from CatBoost
+    catboost_importance = catboost_model.get_feature_importance(prettified=True)
+    catboost_importance_df = pd.DataFrame(catboost_importance)
     
-    # Combine Address and Phone fields for easier mismatch counting
-    address_fields = [AddressMtch, CityMtch, StateMtch, ZipMtch]
-    phone_fields = [HmPhoneMtch, WkPhoneMtch]
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.barh(catboost_importance_df['Feature Id'], catboost_importance_df['Importances'], color='blue')
+    plt.title("CatBoost Feature Importance")
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.show()
 
-    # Count mismatches in address, phone, SSN, DOB, and ID fields
-    def count_mismatches(fields):
-        return sum(1 for field in fields if field in ['N', 'C'])
+    return catboost_importance_df
 
-    # Count mismatches in address and phone fields
-    address_mismatch_count = count_mismatches(address_fields)
-    phone_mismatch_count = count_mismatches(phone_fields)
+# AUTOGLUON FEATURE IMPORTANCE
+def autogluon_feature_importance(autogluon_model, X_train, y_train):
+    # Use the autogluon predictor to get feature importance
+    predictor = TabularPredictor(label='your_target_column').fit(X_train, y_train)
+    autogluon_importance = predictor.feature_importance(X_train)
+
+    # Plotting
+    autogluon_importance_df = pd.DataFrame(autogluon_importance).reset_index()
+    autogluon_importance_df.columns = ['Feature', 'Importance']
     
-    # Other fields considered for mismatch
-    ssn_mismatch = SSNMtch in ['N', 'C']
-    dob_mismatch = DOBMtch in ['N', 'C']
-    id_mismatch = IdMtch in ['N', 'C']
+    plt.figure(figsize=(10, 6))
+    plt.barh(autogluon_importance_df['Feature'], autogluon_importance_df['Importance'], color='green')
+    plt.title("AutoGluon Feature Importance")
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.show()
+
+    return autogluon_importance_df
+
+# ENSEMBLE FEATURE IMPORTANCE (Average feature importance)
+def ensemble_feature_importance(catboost_importance_df, autogluon_importance_df):
+    # Merge importance dataframes on the feature name
+    merged_importance = pd.merge(catboost_importance_df, autogluon_importance_df, left_on='Feature Id', right_on='Feature', how='inner')
     
-    total_mismatch_count = address_mismatch_count + phone_mismatch_count + ssn_mismatch + dob_mismatch + id_mismatch
+    # Average the importance from both models
+    merged_importance['Avg_Importance'] = merged_importance[['Importances', 'Importance']].mean(axis=1)
+    
+    # Plotting
+    merged_importance.sort_values(by='Avg_Importance', ascending=False, inplace=True)
+    
+    plt.figure(figsize=(10, 6))
+    plt.barh(merged_importance['Feature Id'], merged_importance['Avg_Importance'], color='purple')
+    plt.title("Ensemble Feature Importance (Average)")
+    plt.xlabel("Average Importance")
+    plt.ylabel("Feature")
+    plt.show()
 
-    # If NameMtch is a mismatch ('C' or 'N')
-    if NameMtch in ['C', 'N']:
-        # Filter based on mismatch count
-        if total_mismatch_count == 0:
-            if OverallMtchScore >= 81:
-                return 'CRC1100'
-            elif 75 <= OverallMtchScore < 81:
-                return 'CRC2100'
-            else:
-                return 'CRC2200'
-        elif total_mismatch_count == 1:
-            # One mismatch category
-            return 'CRC2300'
-        elif total_mismatch_count == 2:
-            # Two mismatch categories
-            return 'CRC3200'
-        elif total_mismatch_count >= 3:
-            # Three or more mismatch categories
-            return 'CRC3900'
+    return merged_importance[['Feature Id', 'Avg_Importance']]
 
-    # If NameMtch is a match ('Y')
-    if NameMtch == 'Y':
-        # Check for no mismatches, one mismatch, or two or more mismatches
-        if total_mismatch_count == 0:
-            if OverallMtchScore >= 81:
-                return 'CRC1100'
-            elif 75 <= OverallMtchScore < 81:
-                return 'CRC2100'
-            else:
-                return 'CRC2200'
-        elif total_mismatch_count == 1:
-            return 'CRC3200'
-        elif total_mismatch_count >= 2:
-            return 'CRC3900'
+# Assuming you already have trained models
+catboost_model = CatBoostClassifier().load_model('catboost_model.cbm')  # Load your trained CatBoost model
+autogluon_model = TabularPredictor.load('autogluon_model')  # Load your trained AutoGluon model
 
-    # Fallback case for CRC4100
-    if total_mismatch_count >= 2:
-        return 'CRC4100'
+# Get feature importance for CatBoost and AutoGluon
+catboost_importance_df = catboost_feature_importance(catboost_model, X_train)
+autogluon_importance_df = autogluon_feature_importance(autogluon_model, X_train, y_train)
 
-    # Default result for uncategorized rows
-    return 'CRC4100'
+# Calculate ensemble feature importance
+ensemble_importance_df = ensemble_feature_importance(catboost_importance_df, autogluon_importance_df)
+
+# Display the results
+print(ensemble_importance_df)
