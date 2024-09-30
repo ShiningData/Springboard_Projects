@@ -1,69 +1,100 @@
-import dice_ml
-from dice_ml import Dice
-import pandas as pd
-import numpy as np
-from catboost import CatBoostClassifier
-from autogluon.tabular import TabularPredictor
+# run_explainability.py
 
-# Function to generate counterfactuals using DiCE for a given model
-def generate_counterfactuals(model, X_train, instance, outcome_to_change, data_type, model_type):
-    # Convert X_train to pandas dataframe if not already
-    if not isinstance(X_train, pd.DataFrame):
-        X_train = pd.DataFrame(X_train, columns=[f'Feature{i+1}' for i in range(X_train.shape[1])])
+# Import necessary functions from the explainability_helper_functions module
+from explainability_helper_functions import (
+    shap_local_interpret,
+    ensemble_shap_local_interpret,
+    generate_counterfactuals,
+    catboost_counterfactual,
+    autogluon_counterfactual,
+    ensemble_counterfactual
+)
 
-    # Initialize dice_ml Data and Model
-    d = dice_ml.Data(dataframe=X_train, continuous_features=X_train.columns.tolist(), outcome_name='target')
-    m = dice_ml.Model(model=model, backend="sklearn", model_type=model_type)
+def run_local_instance_explainability(model_type, model, data_instance, feature_names=None, shap_explainer=None):
+    """
+    Function to run SHAP-based local instance interpretation for the given model.
+
+    Parameters:
+    - model_type: str, Type of the model ('catboost', 'autogluon', 'ensemble').
+    - model: The model instance to interpret.
+    - data_instance: The single data instance for which we want local interpretation.
+    - feature_names: List of feature names (optional).
+    - shap_explainer: Precomputed SHAP explainer (optional).
+
+    Returns:
+    - SHAP values for the instance interpretation.
+    """
+    if model_type == 'catboost':
+        return shap_local_interpret(model, data_instance, feature_names, shap_explainer)
+    elif model_type == 'autogluon':
+        return shap_local_interpret(model, data_instance, feature_names, shap_explainer)
+    elif model_type == 'ensemble':
+        return ensemble_shap_local_interpret([model], data_instance, feature_names, shap_explainer)
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
+def run_counterfactual_generation(model_type, model, data_instance, target_class):
+    """
+    Function to generate counterfactuals for the given model and data instance.
+
+    Parameters:
+    - model_type: str, Type of the model ('catboost', 'autogluon', 'ensemble').
+    - model: The model instance.
+    - data_instance: The single data instance for which we want counterfactuals.
+    - target_class: Desired class for the counterfactual instance.
+
+    Returns:
+    - Counterfactual instance that can flip the model’s decision.
+    """
+    if model_type == 'catboost':
+        return catboost_counterfactual(model, data_instance, target_class)
+    elif model_type == 'autogluon':
+        return autogluon_counterfactual(model, data_instance, target_class)
+    elif model_type == 'ensemble':
+        return ensemble_counterfactual([model], data_instance, target_class)
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
+def run_explainability(model_type, model, data_instance, target_class, feature_names=None, shap_explainer=None):
+    """
+    Function to perform both SHAP-based local instance interpretation and counterfactual generation.
     
-    # Create Dice explainer object
-    exp = Dice(d, m)
+    Parameters:
+    - model_type: str, Type of the model ('catboost', 'autogluon', 'ensemble').
+    - model: The model instance.
+    - data_instance: The single data instance for which we want explainability.
+    - target_class: Desired class for the counterfactual instance.
+    - feature_names: List of feature names (optional).
+    - shap_explainer: Precomputed SHAP explainer (optional).
+
+    Returns:
+    - A dictionary containing SHAP interpretation and counterfactuals.
+    """
+    # Run SHAP local instance interpretation
+    shap_result = run_local_instance_explainability(model_type, model, data_instance, feature_names, shap_explainer)
     
-    # Generate counterfactuals for the instance
-    query_instance = pd.DataFrame([instance], columns=X_train.columns)
-    cf = exp.generate_counterfactuals(query_instance, total_CFs=1, desired_class=outcome_to_change)
+    # Run counterfactual generation
+    counterfactual_result = run_counterfactual_generation(model_type, model, data_instance, target_class)
     
-    # Return the generated counterfactual
-    return cf.cf_examples_list[0].final_cfs_df
+    return {
+        "shap_local_interpretation": shap_result,
+        "counterfactuals": counterfactual_result
+    }
 
-# Function to generate counterfactual for CatBoost model
-def catboost_counterfactual(catboost_model, X_train, instance):
-    return generate_counterfactuals(catboost_model, X_train, instance, outcome_to_change=0, data_type="sklearn", model_type="classifier")
-
-# Function to generate counterfactual for AutoGluon model
-def autogluon_counterfactual(autogluon_model, X_train, instance):
-    # Get the best model from AutoGluon
-    best_model = autogluon_model.get_model_best()
-    return generate_counterfactuals(best_model, X_train, instance, outcome_to_change=0, data_type="sklearn", model_type="classifier")
-
-# Function to generate counterfactual for Ensemble model
-def ensemble_counterfactual(catboost_model, autogluon_model, X_train, instance):
-    # Generate counterfactuals for both CatBoost and AutoGluon models
-    catboost_cf = catboost_counterfactual(catboost_model, X_train, instance)
-    autogluon_cf = autogluon_counterfactual(autogluon_model, X_train, instance)
+if __name__ == "__main__":
+    # Example usage (You need to define your models and data instance)
+    model_type = 'catboost'  # or 'autogluon' or 'ensemble'
+    model = None  # Your model instance here
+    data_instance = None  # Your data instance here (single row of data)
+    target_class = 1  # Desired target class for counterfactuals
+    feature_names = ['feature1', 'feature2', 'feature3']  # Example feature names (optional)
     
-    # Average the two counterfactuals (you can customize this further)
-    ensemble_cf = (catboost_cf + autogluon_cf) / 2
-    return ensemble_cf
+    # Run explainability (interpretation + counterfactuals)
+    explainability_results = run_explainability(model_type, model, data_instance, target_class, feature_names)
 
-# Example usage:
-# Assuming you have trained CatBoost and AutoGluon models and X_train as your dataset
-catboost_model = CatBoostClassifier().load_model('path_to_catboost_model')  # Load CatBoost model
-autogluon_model = TabularPredictor.load('path_to_autogluon_model')  # Load AutoGluon model
-
-# Select a sample instance for which the target is 1 (you want to change to 0)
-instance = X_train.iloc[0].values  # Single instance from dataset
-
-# Generate counterfactuals for CatBoost
-catboost_cf = catboost_counterfactual(catboost_model, X_train, instance)
-print("CatBoost Counterfactual:")
-print(catboost_cf)
-
-# Generate counterfactuals for AutoGluon
-autogluon_cf = autogluon_counterfactual(autogluon_model, X_train, instance)
-print("AutoGluon Counterfactual:")
-print(autogluon_cf)
-
-# Generate counterfactuals for Ensemble model
-ensemble_cf = ensemble_counterfactual(catboost_model, autogluon_model, X_train, instance)
-print("Ensemble Model Counterfactual:")
-print(ensemble_cf)
+    # Print results
+    print("SHAP Local Interpretation:")
+    print(explainability_results['shap_local_interpretation'])
+    
+    print("\nCounterfactuals:")
+    print(explainability_results['counterfactuals'])
