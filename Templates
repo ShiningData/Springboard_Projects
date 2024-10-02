@@ -1,43 +1,183 @@
-name: my_environment
-channels:
-  - defaults
-  - conda-forge
-dependencies:
-  - python=3.9
-  - pandas
-  - numpy
-  - scikit-learn
-  - catboost
-  - autogluon
-  - hyperopt
-  - shap
-  - dice-ml
-  - fastapi
-  - uvicorn
-  - uvloop
-  - requests
-  - urllib3
-  - pydantic
-  - pytest
-  - streamlit
-  - ujson
-  - matplotlib
-  - seaborn
-  - pre-commit
-  - pre-commit-hooks
-  - add-trailing-comma
-  - black
-  - pathlib
-  - datetime
-  - logging
-  - configparser
-  - gcc
-  - os
-  - ast
-  - ipykernel
-  - itertools
-  - warnings
-  - re
-  - yaml
-  - functools
-  - preprocess
+def replace_ampersand(name):
+    """
+    Replaces instances of '&' in the given string `name` with the word 'AND'.
+    
+    The function handles two cases:
+    1. '&' attached directly to letters (e.g., 'A&B' becomes 'A AND B').
+    2. '&' with spaces before and after (e.g., 'A & B' becomes 'A AND B').
+
+    Args:
+        name (str): The input string that may contain '&' symbols.
+
+    Returns:
+        str: A new string where all '&' symbols have been replaced with 'AND'.
+    """
+
+def replace_dash(name):
+    """
+    Replaces dashes ('-') in the given string `name` with spaces.
+    
+    The function handles two cases:
+    1. A dash directly attached to letters (e.g., 'A-B' becomes 'A B').
+    2. A dash with spaces before and after (e.g., 'A - B' becomes 'A B').
+
+    Args:
+        name (str): The input string that may contain dashes.
+
+    Returns:
+        str: A new string where all dashes have been replaced with spaces.
+    """
+
+
+def clean_punctuation(name):
+    """
+    Removes all punctuation characters from the given string `name` and replaces them with a space.
+    
+    This function uses a regular expression to identify and replace any character that is not a word character (letters, digits) or whitespace with a space.
+
+    Args:
+        name (str): The input string that may contain punctuation.
+
+    Returns:
+        str: A new string where all punctuation characters have been replaced with spaces.
+    """
+
+
+def remove_ends(name):
+    """
+    Removes common corporate suffixes (such as 'INC', 'LLC', 'CO', etc.) from the end of a given string `name`.
+
+    The function checks for several suffixes commonly associated with company names and trims them if present. Suffixes handled include:
+    - 'INC', 'INK', 'LLC', 'L L C', 'LTD', 'CO', 'COMPANY'
+    
+    Args:
+        name (str): The input string representing a company name, which may end with one of the corporate suffixes.
+
+    Returns:
+        str: The company name without the specified suffixes.
+    """
+
+
+def replace_nonletters(df, col):
+    """
+    Replaces non-letter characters (parentheses, forward slashes, hash symbols) with a space in the specified column of the given DataFrame.
+    
+    The function uses a regular expression to search for the following characters: `()/#`, and replaces them with spaces in the specified column of the DataFrame.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing the column to be processed.
+        col (str): The name of the column where non-letter characters will be replaced.
+
+    Returns:
+        pd.DataFrame: The DataFrame with the specified column processed, where non-letter characters are replaced by spaces.
+    """
+
+
+def preprocess_blank(df, col):
+    """
+    Replaces multiple spaces with a single space and removes any trailing spaces in the specified column of the DataFrame.
+    
+    This function:
+    1. Replaces sequences of one or more whitespace characters with a single space.
+    2. Strips any trailing whitespace from the end of each value in the specified column.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing the column to be processed.
+        col (str): The name of the column to clean whitespace in.
+
+    Returns:
+        pd.DataFrame: The DataFrame with the specified column processed, where multiple spaces are replaced with a single space and trailing spaces are removed.
+    """
+
+
+def preprocess_names(df, col):
+    """
+    Cleans and standardizes company or organization names in the specified column of the DataFrame by replacing common abbreviations, typos, or variations with consistent terms.
+
+    This function applies a series of replacements to standardize terms such as:
+    - 'INS' to 'INSURANCE'
+    - 'CO' to 'COMPANY'
+    - 'HEALTHCARE' to 'HEALTH CARE'
+    - 'BCBS' to 'BLUE CROSS BLUE SHIELD'
+    - And several other common variations across different organizations and companies.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing the column with company or organization names.
+        col (str): The name of the column where the name standardization will be applied.
+
+    Returns:
+        pd.DataFrame: The DataFrame with the specified column processed, where common abbreviations and variations are standardized.
+    """
+
+
+def create_single_payer_dict(df, col, payer_clean_name, search_str):
+    """
+    Creates a dictionary mapping a payer's clean name to a list of unique values from the specified column that match a given search string.
+    
+    This function searches for rows in the specified column that contain the `search_str` and extracts the unique values from those rows. It then returns a dictionary where the key is the `payer_clean_name` and the value is the list of unique matching entries from the specified column.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to search.
+        col (str): The name of the column to search within.
+        payer_clean_name (str): The clean name of the payer to use as the key in the dictionary.
+        search_str (str): The string to search for within the specified column.
+
+    Returns:
+        dict: A dictionary where the key is `payer_clean_name` and the value is a list of unique entries in the specified column that match the `search_str`.
+    """
+
+
+def create_payer_dict(df, col):
+    """
+    Creates a dictionary of payer clean names and their associated unique values from the specified column based on a mapping file.
+    
+    The function loads a YAML file (`payername_map.yaml`) containing a mapping of payer names and their respective search strings. For each payer name and search string, it calls `create_single_payer_dict` to generate a dictionary of clean payer names and the associated values in the column that match the search string. All payer dictionaries are then combined and returned.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to search.
+        col (str): The name of the column to search within.
+
+    Returns:
+        dict: A dictionary where each key is a payer clean name and the value is a list of unique entries in the specified column that match the search strings from the YAML file.
+    """
+
+
+def preprocess_payer_name(df, col="payerName"):
+    """
+    Preprocesses and standardizes the payer names in the specified column of the DataFrame.
+    
+    This function applies a series of cleaning steps to the `payerName` column, including:
+    1. Converts all text to uppercase.
+    2. Replaces ampersands, dashes, and punctuation.
+    3. Removes common corporate suffixes (e.g., INC, LLC).
+    4. Replaces non-letter characters.
+    5. Standardizes common name variations using a custom mapping.
+    6. Handles multiple spaces and trailing spaces.
+    7. Applies a dictionary-based mapping to further clean and standardize the payer names.
+    8. Fills any missing values with the original content from the `payerName` column.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing the payer names.
+        col (str): The name of the column containing the payer names to preprocess. Default is "payerName".
+
+    Returns:
+        pd.DataFrame: The DataFrame with the cleaned and standardized payer names in the specified column.
+    """
+
+
+def preprocess_provider_name(df, col="providerName"):
+    """
+    Preprocesses and standardizes provider names in the specified column of the DataFrame.
+    
+    This function applies a series of transformations to clean the `providerName` column, including:
+    1. Removes punctuation using the `clean_punctuation` function.
+    2. Cleans up multiple spaces and trailing spaces using `preprocess_blank`.
+    3. Replaces specific patterns such as variations of "OUR LADY OF ANGELS" with a consistent format.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing provider names.
+        col (str): The name of the column containing the provider names to preprocess. Default is "providerName".
+
+    Returns:
+        pd.DataFrame: The DataFrame with the cleaned and standardized provider names in the specified column.
+    """
