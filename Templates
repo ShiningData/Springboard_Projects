@@ -1,183 +1,369 @@
-def replace_ampersand(name):
+def get_denial_status(codes_dict, codes_list):
     """
-    Replaces instances of '&' in the given string `name` with the word 'AND'.
+    This function checks if any code in codes_list is marked as "Yes" in codes_dict.
+    If a code has "Yes" as its value, the function returns "Denied". Otherwise, it returns "Accepted".
     
-    The function handles two cases:
-    1. '&' attached directly to letters (e.g., 'A&B' becomes 'A AND B').
-    2. '&' with spaces before and after (e.g., 'A & B' becomes 'A AND B').
+    Parameters:
+    codes_dict (dict): A dictionary where keys are codes and values are "Yes" or other statuses.
+    codes_list (list): A list of codes to be checked.
+    
+    Returns:
+    str: "Denied" if any code is marked as "Yes" in the dictionary, otherwise "Accepted".
+    """
 
-    Args:
-        name (str): The input string that may contain '&' symbols.
+def safe_eval_list(x):
+    """
+    Safely evaluates a string representation of a Python literal expression and returns a list.
+    If the input cannot be evaluated (due to syntax or value errors), an empty list is returned.
+    
+    Parameters:
+    x (str): A string representing a Python literal expression (e.g., "[1, 2, 3]").
+    
+    Returns:
+    list: The evaluated list from the string. If the evaluation fails, returns an empty list.
+    """
+
+def convert_datetime(df, date_cols):
+    """
+    Converts specified columns in a dataframe to datetime format, handling errors by coercing invalid parsing to NaT.
+    
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the columns to be converted.
+    date_cols (list): A list of column names that should be converted to datetime.
+    
+    Returns:
+    pandas.DataFrame: The dataframe with the specified columns converted to datetime format.
+    """
+
+def extract_element(x):
+    """
+    Extracts the first element from the input if it's a list. If the input is a string that looks like a list 
+    (i.e., starts and ends with square brackets), it attempts to evaluate and extract the first element.
+    If neither condition is met, it returns the input unchanged. If the evaluation of the string fails, it returns np.NaN.
+    
+    Parameters:
+    x: The input which can be a list, a string representation of a list, or any other object.
+    
+    Returns:
+    object: The first element if x is a list or a string that looks like a list, np.NaN if evaluation fails, or the input itself if it's neither.
+    """
+
+def col_value_extract(df, columns_to_update):
+    """
+    Applies the extract_element function to specified columns in a dataframe to extract the first element
+    from each entry if it's a list or a string that represents a list.
+    
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the columns to be updated.
+    columns_to_update (list): A list of column names that need to be processed using the extract_element function.
+    
+    Returns:
+    pandas.DataFrame: The dataframe with the specified columns updated, where each element is transformed 
+    by the extract_element function.
+    """
+
+def create_actual_patient_features(
+    df,
+    p_age="patientAge",
+    s_age="subscriberAge",
+    p_gender="patientGender",
+    s_gender="subscriberGender"
+):
+    """
+    Creates actual patient age and gender features based on the given business logic.
+    
+    Business Logic:
+    - If subscriberAge is populated and patientAge is null, the actual patient age will be subscriberAge.
+    - If subscriberAge is null and patientAge is populated, the actual patient age will be patientAge.
+    - If both subscriberAge and patientAge are populated, the actual patient age will be patientAge.
+    - Ages above 89 are considered Protected Health Information (PHI), so any age over 89 is set to 199 to flag it as PHI.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the patient and subscriber age and gender columns.
+    p_age (str): The column name for the patient age.
+    s_age (str): The column name for the subscriber age.
+    p_gender (str): The column name for the patient gender.
+    s_gender (str): The column name for the subscriber gender.
+    
+    Returns:
+    pandas.DataFrame: The dataframe with two new columns:
+    - "FE_actual_patientAge" which contains the calculated actual patient age.
+    - "FE_actual_patientGender" which contains the actual patient gender based on the same logic as age.
+    """
+
+def preprocess_patient_relationship(value):
+    """
+    Cleans and processes the patient relationship values.
+    
+    This function performs the following steps:
+    - If the value is null or NaN, it returns the value as is.
+    - Converts the value to a string and splits it at the first period (".").
+    - If the resulting cleaned value is a digit, it returns it as an integer (converted back to a string).
+    - Otherwise, it returns the cleaned value.
+
+    Parameters:
+    value: The input value representing the patient relationship, which can be a number, string, or NaN.
 
     Returns:
-        str: A new string where all '&' symbols have been replaced with 'AND'.
+    str: The processed and cleaned patient relationship value. If the value is a digit, it returns the numeric part; 
+         otherwise, it returns the cleaned string.
     """
 
-def replace_dash(name):
+def rename_patient_relationship(df, col="patientRelationship"):
     """
-    Replaces dashes ('-') in the given string `name` with spaces.
+    Maps patient relationship codes to their corresponding relationship descriptions in the dataframe.
+
+    The function applies a mapping to replace numerical relationship codes in the specified column
+    with human-readable descriptions. If a code does not have a mapping in the provided dictionary,
+    it defaults to "Other Relationship".
     
-    The function handles two cases:
-    1. A dash directly attached to letters (e.g., 'A-B' becomes 'A B').
-    2. A dash with spaces before and after (e.g., 'A - B' becomes 'A B').
-
-    Args:
-        name (str): The input string that may contain dashes.
-
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the patient relationship column to be renamed.
+    col (str): The column name that contains the relationship codes (default is "patientRelationship").
+    
     Returns:
-        str: A new string where all dashes have been replaced with spaces.
+    pandas.DataFrame: The dataframe with the patient relationship column updated to descriptive values.
     """
 
-
-def clean_punctuation(name):
+def preprocess_float_code(df, col):
     """
-    Removes all punctuation characters from the given string `name` and replaces them with a space.
-    
-    This function uses a regular expression to identify and replace any character that is not a word character (letters, digits) or whitespace with a space.
+    Processes a column with float-like codes and converts them to string without unnecessary decimal places.
 
-    Args:
-        name (str): The input string that may contain punctuation.
-
-    Returns:
-        str: A new string where all punctuation characters have been replaced with spaces.
-    """
-
-
-def remove_ends(name):
-    """
-    Removes common corporate suffixes (such as 'INC', 'LLC', 'CO', etc.) from the end of a given string `name`.
-
-    The function checks for several suffixes commonly associated with company names and trims them if present. Suffixes handled include:
-    - 'INC', 'INK', 'LLC', 'L L C', 'LTD', 'CO', 'COMPANY'
-    
-    Args:
-        name (str): The input string representing a company name, which may end with one of the corporate suffixes.
-
-    Returns:
-        str: The company name without the specified suffixes.
-    """
-
-
-def replace_nonletters(df, col):
-    """
-    Replaces non-letter characters (parentheses, forward slashes, hash symbols) with a space in the specified column of the given DataFrame.
-    
-    The function uses a regular expression to search for the following characters: `()/#`, and replaces them with spaces in the specified column of the DataFrame.
-
-    Args:
-        df (pd.DataFrame): The input DataFrame containing the column to be processed.
-        col (str): The name of the column where non-letter characters will be replaced.
-
-    Returns:
-        pd.DataFrame: The DataFrame with the specified column processed, where non-letter characters are replaced by spaces.
-    """
-
-
-def preprocess_blank(df, col):
-    """
-    Replaces multiple spaces with a single space and removes any trailing spaces in the specified column of the DataFrame.
-    
     This function:
-    1. Replaces sequences of one or more whitespace characters with a single space.
-    2. Strips any trailing whitespace from the end of each value in the specified column.
+    - Converts the column to a string.
+    - If any values in the column end with ".0", it removes the ".0" from those values.
 
-    Args:
-        df (pd.DataFrame): The input DataFrame containing the column to be processed.
-        col (str): The name of the column to clean whitespace in.
-
-    Returns:
-        pd.DataFrame: The DataFrame with the specified column processed, where multiple spaces are replaced with a single space and trailing spaces are removed.
-    """
-
-
-def preprocess_names(df, col):
-    """
-    Cleans and standardizes company or organization names in the specified column of the DataFrame by replacing common abbreviations, typos, or variations with consistent terms.
-
-    This function applies a series of replacements to standardize terms such as:
-    - 'INS' to 'INSURANCE'
-    - 'CO' to 'COMPANY'
-    - 'HEALTHCARE' to 'HEALTH CARE'
-    - 'BCBS' to 'BLUE CROSS BLUE SHIELD'
-    - And several other common variations across different organizations and companies.
-
-    Args:
-        df (pd.DataFrame): The input DataFrame containing the column with company or organization names.
-        col (str): The name of the column where the name standardization will be applied.
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the column to be processed.
+    col (str): The name of the column to process.
 
     Returns:
-        pd.DataFrame: The DataFrame with the specified column processed, where common abbreviations and variations are standardized.
+    pandas.DataFrame: The dataframe with the specified column cleaned of trailing ".0" in float-like codes.
     """
 
-
-def create_single_payer_dict(df, col, payer_clean_name, search_str):
+def preprocess_cause_code(df, col):
     """
-    Creates a dictionary mapping a payer's clean name to a list of unique values from the specified column that match a given search string.
+    Cleans the cause code column by removing any commas within the values.
+
+    This function:
+    - Checks if any values in the column contain commas.
+    - If commas are found, they are replaced with empty strings (removing them).
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the cause code column to be processed.
+    col (str): The name of the column to process.
+
+    Returns:
+    pandas.DataFrame: The dataframe with commas removed from the specified column.
+    """
+
+def remove_commas(x):
+    """
+    Removes commas from a string.
+
+    This function:
+    - If the input is a string, replaces all commas with an empty string.
+    - If the input is not a string, it returns the input unchanged.
+
+    Parameters:
+    x (str): The string from which to remove commas.
+
+    Returns:
+    str: The string without commas, or the original input if not a string.
+    """
+
+def preprocess_line_quantity(df, col):
+    """
+    Preprocesses a column that contains line quantities by removing commas, handling decimal points, 
+    and converting the values to integers.
+
+    This function:
+    - Removes commas from the values in the specified column using the `remove_commas` function.
+    - Removes trailing ".0" and other decimal points that might be present in float-like values.
+    - Converts the column to numeric, coercing errors (invalid parsing becomes NaN).
+    - Fills any NaN values with 0.
+    - Converts the column values to integers.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the column to be processed.
+    col (str): The name of the column to preprocess.
+
+    Returns:
+    pandas.DataFrame: The dataframe with the specified column processed, cleaned, and converted to integers.
+    """
+
+def preprocess_procedure_code_modifier(df, col):
+    """
+    Preprocesses the procedure code modifier column by converting the values to strings and 
+    replacing commas with hyphens.
+
+    This function:
+    - Converts the values in the specified column to strings.
+    - Replaces any commas (",") in the column values with hyphens ("-").
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the column to be processed.
+    col (str): The name of the column to preprocess.
+
+    Returns:
+    pandas.DataFrame: The dataframe with the specified column processed, where commas are replaced by hyphens.
+    """
+
+def create_pointed_diagnosis_codes(codes, pointers=None):
+    """
+    Creates a list of pointed diagnosis codes based on a provided code string and optional pointers.
+
+    This function works in two modes:
+    1. If no pointers are provided, it splits the diagnosis codes by the "|" character and returns the list of codes.
+    2. If pointers are provided:
+        - It splits the codes by "." and uses the pointer indices to return the relevant diagnosis codes.
+        - If a pointer is out of range or invalid, it returns the first code.
     
-    This function searches for rows in the specified column that contain the `search_str` and extracts the unique values from those rows. It then returns a dictionary where the key is the `payer_clean_name` and the value is the list of unique matching entries from the specified column.
-
-    Args:
-        df (pd.DataFrame): The input DataFrame to search.
-        col (str): The name of the column to search within.
-        payer_clean_name (str): The clean name of the payer to use as the key in the dictionary.
-        search_str (str): The string to search for within the specified column.
+    Parameters:
+    codes (str): A string of diagnosis codes, either separated by "|" or ".".
+    pointers (str, optional): A string of pointer values separated by "." that indicates which codes to extract.
 
     Returns:
-        dict: A dictionary where the key is `payer_clean_name` and the value is a list of unique entries in the specified column that match the `search_str`.
+    list: A list of diagnosis codes pointed to by the provided pointer values, or the full list of codes if no pointers are given.
+           If invalid inputs or pointers are encountered, returns NaN or the first code in the list.
     """
 
-
-def create_payer_dict(df, col):
+def create_pointed_diagnosis_type(type_codes, pointers=None):
     """
-    Creates a dictionary of payer clean names and their associated unique values from the specified column based on a mapping file.
+    Creates a list of pointed diagnosis types based on a provided type codes string and optional pointers.
+
+    This function works in two modes:
+    1. If no pointers are provided, it splits the diagnosis type codes by the "|" character and returns the list of type codes.
+    2. If pointers are provided:
+        - It splits the type codes by "." and uses the pointer indices to return the relevant diagnosis types.
+        - If a pointer is out of range or invalid, it returns the first type code.
     
-    The function loads a YAML file (`payername_map.yaml`) containing a mapping of payer names and their respective search strings. For each payer name and search string, it calls `create_single_payer_dict` to generate a dictionary of clean payer names and the associated values in the column that match the search string. All payer dictionaries are then combined and returned.
-
-    Args:
-        df (pd.DataFrame): The input DataFrame to search.
-        col (str): The name of the column to search within.
+    Parameters:
+    type_codes (str): A string of diagnosis type codes, either separated by "|" or ".".
+    pointers (str, optional): A string of pointer values separated by "." that indicates which type codes to extract.
 
     Returns:
-        dict: A dictionary where each key is a payer clean name and the value is a list of unique entries in the specified column that match the search strings from the YAML file.
+    list: A list of diagnosis types pointed to by the provided pointer values, or the full list of type codes if no pointers are given.
+           If invalid inputs or pointers are encountered, returns NaN or the first type code in the list.
     """
 
-
-def preprocess_payer_name(df, col="payerName"):
+def expand_list_columns(df, col_name):
     """
-    Preprocesses and standardizes the payer names in the specified column of the DataFrame.
-    
-    This function applies a series of cleaning steps to the `payerName` column, including:
-    1. Converts all text to uppercase.
-    2. Replaces ampersands, dashes, and punctuation.
-    3. Removes common corporate suffixes (e.g., INC, LLC).
-    4. Replaces non-letter characters.
-    5. Standardizes common name variations using a custom mapping.
-    6. Handles multiple spaces and trailing spaces.
-    7. Applies a dictionary-based mapping to further clean and standardize the payer names.
-    8. Fills any missing values with the original content from the `payerName` column.
+    Expands a dataframe column that contains lists into multiple columns, with each element of the list
+    placed in a separate column.
 
-    Args:
-        df (pd.DataFrame): The input DataFrame containing the payer names.
-        col (str): The name of the column containing the payer names to preprocess. Default is "payerName".
+    This function:
+    - Determines the maximum length of the lists in the specified column.
+    - For each list element, creates a new column (e.g., col_name_1, col_name_2, etc.).
+    - Fills NaN values for rows where the list is shorter than the maximum length.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the column with list values.
+    col_name (str): The name of the column that contains the lists to expand.
 
     Returns:
-        pd.DataFrame: The DataFrame with the cleaned and standardized payer names in the specified column.
+    pandas.DataFrame: The original dataframe with the list column expanded into multiple columns.
     """
 
-
-def preprocess_provider_name(df, col="providerName"):
+def safe_literal_eval(val):
     """
-    Preprocesses and standardizes provider names in the specified column of the DataFrame.
-    
-    This function applies a series of transformations to clean the `providerName` column, including:
-    1. Removes punctuation using the `clean_punctuation` function.
-    2. Cleans up multiple spaces and trailing spaces using `preprocess_blank`.
-    3. Replaces specific patterns such as variations of "OUR LADY OF ANGELS" with a consistent format.
+    Safely evaluates a string that represents a Python literal expression and returns the corresponding object.
 
-    Args:
-        df (pd.DataFrame): The input DataFrame containing provider names.
-        col (str): The name of the column containing the provider names to preprocess. Default is "providerName".
+    This function:
+    - Attempts to evaluate the string using `ast.literal_eval`.
+    - If the evaluation fails due to a ValueError or SyntaxError, it returns the original string.
+    - If the value is an empty list ("[]"), it returns an empty list.
+
+    Parameters:
+    val (str): The string to evaluate, representing a Python literal.
 
     Returns:
-        pd.DataFrame: The DataFrame with the cleaned and standardized provider names in the specified column.
+    object: The evaluated Python object if successful, or the original string if evaluation fails.
     """
+
+def pointed_diagnosis_codes_types(df, code, codetype):
+    """
+    Expands the diagnosis codes and types from list-like columns into individual columns in the dataframe.
+
+    This function:
+    - Fills missing values in the `code` and `codetype` columns with empty lists.
+    - Applies `safe_literal_eval` to both columns to safely convert string representations of lists into actual lists.
+    - Expands the `code` and `codetype` columns by creating new columns for each element of the lists, 
+      naming the new columns sequentially (e.g., `code_1`, `code_2`).
+    - Drops the original `code` and `codetype` columns after expansion.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the diagnosis codes and types to be expanded.
+    code (str): The name of the column containing the diagnosis codes (as lists or strings representing lists).
+    codetype (str): The name of the column containing the diagnosis types (as lists or strings representing lists).
+
+    Returns:
+    pandas.DataFrame: The dataframe with the expanded diagnosis codes and types, with the original `code` and `codetype` columns removed.
+    """
+
+def serviceline_per_claim(df, claimid, sl_n):
+    """
+    Calculates the total number of service lines per claim and adds it as a new feature in the dataframe.
+
+    This function:
+    - Converts the `sl_n` column (service line number) to string format.
+    - Groups the dataframe by `claimid` to count the number of service lines (`sl_n`) for each claim.
+    - Creates a dictionary mapping each `claimid` to its corresponding count of service lines.
+    - Adds a new column, `FE_total_sln_per_claim`, which contains the total number of service lines per claim.
+    - Ensures that the values in the new column are stored as integers.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing claim and service line information.
+    claimid (str): The name of the column representing the unique claim identifier.
+    sl_n (str): The name of the column representing the service line number.
+
+    Returns:
+    pandas.DataFrame: The original dataframe with an additional column `FE_total_sln_per_claim` 
+                      representing the total number of service lines per claim.
+    """
+
+
+def create_date_features(df, date_cols):
+    """
+    Creates new features related to date differences and service line statuses based on date columns.
+
+    This function:
+    - Converts the specified date columns to datetime format.
+    - Calculates the number of days between the claim submission date and the service date, and stores it in a new column `FE_claimstate_to_service_days`.
+    - Calculates the number of days between the service end date and the service start date, storing it in `FE_service_over_day`.
+    - Fills missing values in `FE_service_over_day` with 999.0.
+    - Converts `FE_service_over_day` to integer type.
+    - Adds a new column `FE_serviceLineDateStatus` to indicate whether a service line is "Open" or "Closed" based on the presence of a service end date.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the date columns to be processed.
+    date_cols (list): A list of column names representing date fields used to compute the features. Expected indices:
+                      - date_cols[0]: Claim submission date
+                      - date_cols[3]: Service start date
+                      - date_cols[4]: Service end date
+
+    Returns:
+    pandas.DataFrame: The original dataframe with new date-related features added.
+    """
+
+
+def casting_columns(df):
+    """
+    Casts specific columns in the dataframe to their appropriate data types, either string (categorical) or numeric.
+
+    This function:
+    - Defines lists of columns that should be cast to string (categorical columns) and numeric (integer or float).
+    - Loops through the categorical columns, casting each one to a string type.
+    - Loops through the numerical columns, casting each one to an integer type unless it's in a predefined list, 
+      in which case it is cast to a float type.
+
+    Parameters:
+    df (pandas.DataFrame): The dataframe containing the columns to be cast.
+
+    Returns:
+    pandas.DataFrame: The dataframe with the specified columns cast to their appropriate types.
+    """
+
+
+
+
