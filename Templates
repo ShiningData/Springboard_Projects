@@ -1,100 +1,43 @@
-# run_explainability.py
-
-# Import necessary functions from the explainability_helper_functions module
-from explainability_helper_functions import (
-    shap_local_interpret,
-    ensemble_shap_local_interpret,
-    generate_counterfactuals,
-    catboost_counterfactual,
-    autogluon_counterfactual,
-    ensemble_counterfactual
-)
-
-def run_local_instance_explainability(model_type, model, data_instance, feature_names=None, shap_explainer=None):
-    """
-    Function to run SHAP-based local instance interpretation for the given model.
-
-    Parameters:
-    - model_type: str, Type of the model ('catboost', 'autogluon', 'ensemble').
-    - model: The model instance to interpret.
-    - data_instance: The single data instance for which we want local interpretation.
-    - feature_names: List of feature names (optional).
-    - shap_explainer: Precomputed SHAP explainer (optional).
-
-    Returns:
-    - SHAP values for the instance interpretation.
-    """
-    if model_type == 'catboost':
-        return shap_local_interpret(model, data_instance, feature_names, shap_explainer)
-    elif model_type == 'autogluon':
-        return shap_local_interpret(model, data_instance, feature_names, shap_explainer)
-    elif model_type == 'ensemble':
-        return ensemble_shap_local_interpret([model], data_instance, feature_names, shap_explainer)
-    else:
-        raise ValueError(f"Unsupported model type: {model_type}")
-
-def run_counterfactual_generation(model_type, model, data_instance, target_class):
-    """
-    Function to generate counterfactuals for the given model and data instance.
-
-    Parameters:
-    - model_type: str, Type of the model ('catboost', 'autogluon', 'ensemble').
-    - model: The model instance.
-    - data_instance: The single data instance for which we want counterfactuals.
-    - target_class: Desired class for the counterfactual instance.
-
-    Returns:
-    - Counterfactual instance that can flip the model’s decision.
-    """
-    if model_type == 'catboost':
-        return catboost_counterfactual(model, data_instance, target_class)
-    elif model_type == 'autogluon':
-        return autogluon_counterfactual(model, data_instance, target_class)
-    elif model_type == 'ensemble':
-        return ensemble_counterfactual([model], data_instance, target_class)
-    else:
-        raise ValueError(f"Unsupported model type: {model_type}")
-
-def run_explainability(model_type, model, data_instance, target_class, feature_names=None, shap_explainer=None):
-    """
-    Function to perform both SHAP-based local instance interpretation and counterfactual generation.
-    
-    Parameters:
-    - model_type: str, Type of the model ('catboost', 'autogluon', 'ensemble').
-    - model: The model instance.
-    - data_instance: The single data instance for which we want explainability.
-    - target_class: Desired class for the counterfactual instance.
-    - feature_names: List of feature names (optional).
-    - shap_explainer: Precomputed SHAP explainer (optional).
-
-    Returns:
-    - A dictionary containing SHAP interpretation and counterfactuals.
-    """
-    # Run SHAP local instance interpretation
-    shap_result = run_local_instance_explainability(model_type, model, data_instance, feature_names, shap_explainer)
-    
-    # Run counterfactual generation
-    counterfactual_result = run_counterfactual_generation(model_type, model, data_instance, target_class)
-    
-    return {
-        "shap_local_interpretation": shap_result,
-        "counterfactuals": counterfactual_result
-    }
-
-if __name__ == "__main__":
-    # Example usage (You need to define your models and data instance)
-    model_type = 'catboost'  # or 'autogluon' or 'ensemble'
-    model = None  # Your model instance here
-    data_instance = None  # Your data instance here (single row of data)
-    target_class = 1  # Desired target class for counterfactuals
-    feature_names = ['feature1', 'feature2', 'feature3']  # Example feature names (optional)
-    
-    # Run explainability (interpretation + counterfactuals)
-    explainability_results = run_explainability(model_type, model, data_instance, target_class, feature_names)
-
-    # Print results
-    print("SHAP Local Interpretation:")
-    print(explainability_results['shap_local_interpretation'])
-    
-    print("\nCounterfactuals:")
-    print(explainability_results['counterfactuals'])
+name: my_environment
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pandas
+  - numpy
+  - scikit-learn
+  - catboost
+  - autogluon
+  - hyperopt
+  - shap
+  - dice-ml
+  - fastapi
+  - uvicorn
+  - uvloop
+  - requests
+  - urllib3
+  - pydantic
+  - pytest
+  - streamlit
+  - ujson
+  - matplotlib
+  - seaborn
+  - pre-commit
+  - pre-commit-hooks
+  - add-trailing-comma
+  - black
+  - pathlib
+  - datetime
+  - logging
+  - configparser
+  - gcc
+  - os
+  - ast
+  - ipykernel
+  - itertools
+  - warnings
+  - re
+  - yaml
+  - functools
+  - preprocess
