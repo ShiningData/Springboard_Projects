@@ -1,3 +1,236 @@
+def generate_metrics_df(model_name, X_train, X_test, y_train, y_test, 
+                        y_train_pred, y_test_pred, y_train_pred_prob, 
+                        y_test_pred_prob):
+    """
+    Generates a DataFrame containing various evaluation metrics for a given model.
+
+    Parameters:
+    ----------
+    model_name : str
+        The name of the model being evaluated.
+    X_train : pd.DataFrame or np.ndarray
+        Training set features.
+    X_test : pd.DataFrame or np.ndarray
+        Testing set features.
+    y_train : pd.Series or np.ndarray
+        True labels for the training set.
+    y_test : pd.Series or np.ndarray
+        True labels for the testing set.
+    y_train_pred : pd.Series or np.ndarray
+        Predicted labels for the training set.
+    y_test_pred : pd.Series or np.ndarray
+        Predicted labels for the testing set.
+    y_train_pred_prob : pd.Series or np.ndarray
+        Predicted probabilities for the training set.
+    y_test_pred_prob : pd.Series or np.ndarray
+        Predicted probabilities for the testing set.
+
+    Returns:
+    -------
+    pd.DataFrame
+        A DataFrame containing accuracy, precision, recall, F1 score, and ROC-AUC
+        for both training and testing datasets.
+
+    Metrics included:
+    - Accuracy
+    - Precision
+    - Recall
+    - F1 Score
+    - ROC-AUC
+    """
+
+
+def create_confusion_matrix(y_data, y_pred, report_dir, file_path):
+    """
+    Generates and saves a confusion matrix plot based on the true and predicted labels.
+
+    Parameters:
+    ----------
+    y_data : pd.Series or np.ndarray
+        The actual true labels for the dataset.
+    y_pred : pd.Series or np.ndarray
+        The predicted labels from the model.
+    report_dir : str
+        The directory where the plot will be saved.
+    file_path : str
+        The filename (including extension) for saving the confusion matrix plot.
+
+    Returns:
+    -------
+    None
+        This function does not return anything. It saves the confusion matrix plot
+        as an image in the specified directory.
+
+    The confusion matrix is plotted using a heatmap with annotations, and it is saved
+    as an image file. The plot includes labels for 'True' and 'Predicted' on the axes.
+
+    Notes:
+    ------
+    - The saved plot will have tight bounding box settings to ensure no part of the plot is cropped.
+    - The function also calls garbage collection after closing the plot.
+    """
+
+
+def create_roc_curve(y_pred_prob, y_data, X_data, report_dir, file_path):
+    """
+    Generates and saves a Receiver Operating Characteristic (ROC) curve plot along with the ROC-AUC score.
+
+    Parameters:
+    ----------
+    y_pred_prob : pd.Series or np.ndarray
+        The predicted probabilities for the positive class.
+    y_data : pd.Series or np.ndarray
+        The true labels for the dataset.
+    X_data : pd.DataFrame or np.ndarray
+        The features of the dataset (not used in the ROC calculation but likely passed for consistency).
+    report_dir : str
+        The directory where the ROC curve plot will be saved.
+    file_path : str
+        The filename (including extension) for saving the ROC curve plot.
+
+    Returns:
+    -------
+    None
+        This function does not return anything. It saves the ROC curve plot as an image in the specified directory.
+
+    The ROC curve is plotted using the False Positive Rate (x-axis) against the True Positive Rate (y-axis).
+    The function also calculates and displays the Area Under the ROC Curve (AUC) as part of the plot title.
+
+    Notes:
+    ------
+    - The plot is saved with a tight bounding box to ensure no part of the plot is cropped.
+    - The function calls garbage collection after the plot is closed.
+    """
+
+
+def create_precision_recall_curve(y_pred_prob, y_data, report_dir, file_path):
+    """
+    Generates and saves a Precision-Recall curve plot along with the Precision-Recall AUC score.
+
+    Parameters:
+    ----------
+    y_pred_prob : pd.Series or np.ndarray
+        The predicted probabilities for the positive class.
+    y_data : pd.Series or np.ndarray
+        The true labels for the dataset.
+    report_dir : str
+        The directory where the Precision-Recall curve plot will be saved.
+    file_path : str
+        The filename (including extension) for saving the Precision-Recall curve plot.
+
+    Returns:
+    -------
+    None
+        This function does not return anything. It saves the Precision-Recall curve plot as an image in the specified directory.
+
+    The Precision-Recall curve is plotted with Recall on the x-axis and Precision on the y-axis. The function also calculates
+    and displays the Area Under the Precision-Recall Curve (AUC) as part of the plot title.
+
+    Notes:
+    ------
+    - The plot is saved with a tight bounding box to ensure no part of the plot is cropped.
+    - The function calls garbage collection after the plot is closed.
+    """
+
+
+def create_dir(run_time, report_dir=None, model_dir=None, model_name=None):
+    """
+    Creates directories for storing model and report files based on the runtime and specified paths.
+
+    Parameters:
+    ----------
+    run_time : str
+        A timestamp or identifier for the current run, used to create unique directory names.
+    report_dir : str, optional
+        The base directory path where the report files should be stored. If None, no report directory is created.
+    model_dir : str, optional
+        The base directory path where the model files should be stored. If None, no model directory is created.
+    model_name : str, optional
+        The name of the model, used to create a subdirectory in the model store. If None, the model store directory is not created.
+
+    Returns:
+    -------
+    str
+        The path to the created directory (either model or report directory, depending on the input).
+    
+    Notes:
+    ------
+    - If `model_dir` is provided, a new subdirectory is created in `model_dir` with the format `{run_time}_{model_name}_model_store`.
+    - If `report_dir` is provided, a new subdirectory is created in `report_dir` with the format `{run_time}_report_store`.
+    - Logging information is generated to indicate whether the directories were successfully created or already existed.
+    """
+
+
+def model_preprocess(df):
+    """
+    Preprocesses the input dataframe by handling missing values and casting columns to appropriate data types.
+
+    Parameters:
+    ----------
+    df : pd.DataFrame
+        The input dataframe to be preprocessed.
+
+    Returns:
+    -------
+    pd.DataFrame
+        The preprocessed dataframe with missing values filled and columns cast to the appropriate types.
+
+    Processing steps:
+    - Missing values in the dataframe are replaced with the string "Missing".
+    - The dataframe columns are then cast to appropriate data types using the `casting_columns` function.
+    """
+
+
+def group_stratified_split(df):
+    """
+    Splits the data into training and testing sets using group-based stratification.
+
+    Parameters:
+    ----------
+    df : pd.DataFrame
+        The input dataframe containing the features and target variable. The dataframe should include the columns
+        'FE_DenialStatus' for the target and 'claimUniqueId' for grouping.
+
+    Returns:
+    -------
+    X_train : pd.DataFrame
+        Training set features.
+    X_test : pd.DataFrame
+        Testing set features.
+    y_train : pd.Series
+        Training set target labels.
+    y_test : pd.Series
+        Testing set target labels.
+
+    Process:
+    -------
+    - Encodes the target variable 'FE_DenialStatus' using a LabelEncoder.
+    - Uses GroupShuffleSplit to ensure that the train-test split maintains group stratification based on 'claimUniqueId'.
+    - The stratification ensures that the mean target values for the train and test sets are approximately the same.
+    - Removes columns 'claimUniqueId' and 'reorderServiceLineNbr' from the features before training.
+    - Logs the shapes of the training and testing sets.
+
+    Notes:
+    ------
+    - GroupShuffleSplit is used to ensure that the split respects the grouping in 'claimUniqueId'.
+    - The function ensures that the mean target value across training and testing remains consistent with the overall dataset.
+    """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=========================================================================================================
+
 def get_denial_status(codes_dict, codes_list):
     """
     This function checks if any code in codes_list is marked as "Yes" in codes_dict.
