@@ -1,116 +1,131 @@
-def is_match_n_or_c(*features):
+def acc_auth_prediction(request):
     """
-    Check if any of the provided features are either 'N' or 'C'.
+    Predict the customer result code based on match statuses from an input request.
 
     Args:
-        *features: A variable number of feature values.
-
-    Returns:
-        bool: True if at least one feature is 'N' or 'C', otherwise False.
-    """
-
-def is_all_valid(*features):
-    """
-    Check if none of the provided features are 'N' or 'C'.
-
-    Args:
-        *features: A variable number of feature values.
-
-    Returns:
-        bool: True if all features are neither 'N' nor 'C', otherwise False.
-    """
-
-def count_mismatch_category(baa_input, mismatch_category):
-    """
-    Count mismatches in the specified category by checking if any element is 'N' or 'C'.
-
-    Args:
-        baa_input (dict): A dictionary containing feature keys and their corresponding values.
-        mismatch_category (list): A list of category keys to check for 'N' or 'C'.
-
-    Returns:
-        int: Returns 1 if any feature in the specified categories has 'N' or 'C', otherwise 0.
-    """
-
-def single_mismatch(
-    PAIAddressMtch,
-    HmPhoneMtch,
-    WkPhoneMtch,
-    PAIIDMtch,
-    NameMtch,
-    BusNameMtch,
-    SSNMtch,
-    DOBMtch
-):
-    """
-    Check for mismatches across different feature match categories and return corresponding CRC codes.
-
-    Args:
-        PAIAddressMtch: Match status for PAI Address.
-        HmPhoneMtch: Match status for Home Phone.
-        WkPhoneMtch: Match status for Work Phone.
-        PAIIDMtch: Match status for PAI ID.
-        NameMtch: Match status for Name.
-        BusNameMtch: Match status for Business Name.
-        SSNMtch: Match status for SSN.
-        DOBMtch: Match status for Date of Birth.
-
-    Returns:
-        str: The corresponding CRC code if a mismatch is found in the given categories, based on whether 'N' or 'C' is present in any feature.
-    """
-
-def multiple_mismatch(
-    PAIAddressMtch,
-    HmPhoneMtch,
-    WkPhoneMtch,
-    PAIIDMtch,
-    NameMtch,
-    BusNameMtch,
-    SSNMtch,
-    DOBMtch
-):
-    """
-    Check for multiple mismatches across several feature categories and return a specific CRC code based on the combination of mismatches.
-
-    Args:
-        PAIAddressMtch: Match status for PAI Address.
-        HmPhoneMtch: Match status for Home Phone.
-        WkPhoneMtch: Match status for Work Phone.
-        PAIIDMtch: Match status for PAI ID.
-        NameMtch: Match status for Name.
-        BusNameMtch: Match status for Business Name.
-        SSNMtch: Match status for SSN.
-        DOBMtch: Match status for Date of Birth.
-
-    Returns:
-        str: The corresponding CRC code based on the following conditions:
-            - If all Name, Business Name, DOB, and SSN match categories are valid and any other category contains 'N' or 'C', return 'CRC2900'.
-            - If there are mismatches in both Name, Business Name, DOB, SSN, and any of the other categories, return 'CRC3900'.
-            - If the mismatches are confined to Name, Business Name, DOB, and SSN, return 'CRC4900'.
-    """
-
-def determine_customer_result_code(baa_input):
-    """
-    Determine the customer result code based on input feature matches and mismatch thresholds.
-
-    Args:
-        baa_input (dict): A dictionary containing customer feature match information, including:
+        request (dict): A dictionary containing feature match information for various customer attributes, including:
             - NameMtch: Match status for Name.
             - BusNameMtch: Match status for Business Name.
             - SSNMtch: Match status for SSN.
             - DOBMtch: Match status for Date of Birth.
-            - PAIAddressMtch: Match status for PAI Address.
+            - AddressMtch: Match status for Address.
+            - CityMtch: Match status for City.
+            - StateMtch: Match status for State.
+            - ZipMtch: Match status for Zip Code.
             - HmPhoneMtch: Match status for Home Phone.
             - WkPhoneMtch: Match status for Work Phone.
-            - PAIIDMtch: Match status for PAI ID.
-            - OverallMtchScore: Overall match score for the customer.
+            - IDTypeMtch: Match status for ID Type.
+            - IDStateMtch: Match status for ID State.
+            - OverallMtchScore: Overall match score.
 
     Returns:
-        str: The corresponding CRC code based on match statuses, thresholds, and mismatch count:
-            - 'CRC1100': If the overall match score is above the upper threshold and name or business name mismatch is found.
-            - 'CRC1300': If the overall match score is above the upper threshold and both name and business name mismatch are found.
-            - 'CRC1400': If the overall match score is below the lower threshold.
-            - 'CRC2100' or other codes: Based on the number of mismatches and which specific feature categories contain mismatches.
-            - 'CRC4100': Default result code if no specific category applies.
+        dict: A dictionary containing the customer result code ('customerResultcode') after evaluating the matches.
+    
+    Raises:
+        ValueError: If validation fails due to missing or unexpected values in the input.
+    """
+
+@app.post("/prediction/acc_auth", status_code=status.HTTP_200_OK)
+def predict_avs(request: acc_auth_model):
+    """
+    Predict the result code for bank account authentication based on the provided input data.
+
+    Args:
+        request (acc_auth_model): A model object containing the necessary input data for account authentication prediction.
+
+    Returns:
+        dict: A dictionary containing the predicted authentication result.
+    """
+
+@app.get("/client/")
+def client_info(request: Request):
+    """
+    Retrieve and return the client's host and port information.
+
+    Args:
+        request (Request): The incoming HTTP request object containing client details.
+
+    Returns:
+        dict: A dictionary with the client's host and port information, including:
+            - 'client_host': The client's host address.
+            - 'client_port': The client's port number.
+    """
+
+from pydantic import BaseModel
+from typing import Optional
+
+class acc_auth_model(BaseModel):
+    """
+    A Pydantic model representing the input data required for bank account authentication prediction.
+
+    Attributes:
+        NameMtch (Optional[str]): Match status for Name. Defaults to "MISSING".
+        BusNameMtch (Optional[str]): Match status for Business Name. Defaults to "MISSING".
+        SSNMtch (Optional[str]): Match status for SSN. Defaults to "MISSING".
+        DOBMtch (Optional[str]): Match status for Date of Birth. Defaults to "MISSING".
+        AddressMtch (Optional[str]): Match status for Address. Defaults to "MISSING".
+        CityMtch (Optional[str]): Match status for City. Defaults to "U".
+        StateMtch (Optional[str]): Match status for State. Defaults to "U".
+        ZipMtch (Optional[str]): Match status for Zip Code. Defaults to "U".
+        HmPhoneMtch (Optional[str]): Match status for Home Phone. Defaults to "MISSING".
+        WkPhoneMtch (Optional[str]): Match status for Work Phone. Defaults to "MISSING".
+        IDTypeMtch (Optional[str]): Match status for ID Type. Defaults to "MISSING".
+        IDNoMtch (Optional[str]): Match status for ID Number. Defaults to "MISSING".
+        IDStateMtch (Optional[str]): Match status for ID State. Defaults to "MISSING".
+        OverallMtchScore (int): The overall match score for the customer.
+
+    Example:
+        {
+            "NameMtch": "Y",
+            "BusNameMtch": "Y",
+            "SSNMtch": "Y",
+            "DOBMtch": "Y",
+            "AddressMtch": "Y",
+            "CityMtch": "Y",
+            "StateMtch": "Y",
+            "ZipMtch": "Y",
+            "HmPhoneMtch": "Y",
+            "WkPhoneMtch": "Y",
+            "IDTypeMtch": "Y",
+            "IDNoMtch": "Y",
+            "IDStateMtch": "Y",
+            "OverallMtchScore": 100
+        }
+    """
+
+
+def validate_matches(data):
+    """
+    Validate that all the required keys exist in the input data and that the values for each key are in the correct form.
+
+    Args:
+        data (dict): A dictionary containing feature match information. The dictionary is expected to contain the following keys:
+            - NameMtch
+            - BusNameMtch
+            - SSNMtch
+            - DOBMtch
+            - AddressMtch
+            - CityMtch
+            - StateMtch
+            - ZipMtch
+            - HmPhoneMtch
+            - WkPhoneMtch
+            - IDTypeMtch
+            - IDNoMtch
+            - IDStateMtch
+            - OverallMtchScore
+
+    Returns:
+        bool: True if all keys exist and their values are in the correct form, False otherwise. If any key is missing or has an invalid value, returns False along with a message indicating the issue.
+    
+    Validations:
+        - Checks if all expected keys exist in the input data.
+        - Ensures that each feature has a valid value based on predefined sets of allowed values for each key.
+        - For numerical fields like 'OverallMtchScore', ensures the value is within the allowed range (0 to 100).
+    
+    Possible Errors:
+        - "Some features are missing": If any expected key is missing.
+        - "Unknown feature": If a key in the input data is not recognized.
+        - "Invalid value for {feature}": If the value for a specific feature is not within the set of valid values.
     """
 
