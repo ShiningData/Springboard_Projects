@@ -1,42 +1,116 @@
-import itertools
-import pandas as pd
+def is_match_n_or_c(*features):
+    """
+    Check if any of the provided features are either 'N' or 'C'.
 
-# Define the possible values for each column
-address_mtch = ["Y", "N", "C", "U"]
-city_match = ["Y", "N", "C", "U"]
-state_mtch = ["Y", "N", "U"]
-zip_match = ["Y", "N", "C", "U"]
+    Args:
+        *features: A variable number of feature values.
 
-# Generate all possible combinations
-combinations = list(itertools.product(address_mtch, city_match, state_mtch, zip_match))
+    Returns:
+        bool: True if at least one feature is 'N' or 'C', otherwise False.
+    """
 
-# Create a DataFrame
-df_combinations = pd.DataFrame(combinations, columns=["AddressMtch", "CityMatch", "StateMtch", "ZipMatch"])
+def is_all_valid(*features):
+    """
+    Check if none of the provided features are 'N' or 'C'.
 
-# Export to CSV if needed
-df_combinations.to_csv('possible_combinations.csv', index=False)
+    Args:
+        *features: A variable number of feature values.
 
-# Print the first few rows of the DataFrame
-print(df_combinations.head())
+    Returns:
+        bool: True if all features are neither 'N' nor 'C', otherwise False.
+    """
 
-==========
+def count_mismatch_category(baa_input, mismatch_category):
+    """
+    Count mismatches in the specified category by checking if any element is 'N' or 'C'.
 
-import itertools
-import pandas as pd
+    Args:
+        baa_input (dict): A dictionary containing feature keys and their corresponding values.
+        mismatch_category (list): A list of category keys to check for 'N' or 'C'.
 
-# Define the possible values for each column
-id_type_mtch = ["Y", "N", "U"]
-id_no_match = ["Y", "N", "C", "U"]
-id_state_mtch = ["Y", "N", "U"]
+    Returns:
+        int: Returns 1 if any feature in the specified categories has 'N' or 'C', otherwise 0.
+    """
 
-# Generate all possible combinations
-combinations = list(itertools.product(id_type_mtch, id_no_match, id_state_mtch))
+def single_mismatch(
+    PAIAddressMtch,
+    HmPhoneMtch,
+    WkPhoneMtch,
+    PAIIDMtch,
+    NameMtch,
+    BusNameMtch,
+    SSNMtch,
+    DOBMtch
+):
+    """
+    Check for mismatches across different feature match categories and return corresponding CRC codes.
 
-# Create a DataFrame
-df_combinations = pd.DataFrame(combinations, columns=["IDTypeMtch", "IDNoMatch", "IDStateMtch"])
+    Args:
+        PAIAddressMtch: Match status for PAI Address.
+        HmPhoneMtch: Match status for Home Phone.
+        WkPhoneMtch: Match status for Work Phone.
+        PAIIDMtch: Match status for PAI ID.
+        NameMtch: Match status for Name.
+        BusNameMtch: Match status for Business Name.
+        SSNMtch: Match status for SSN.
+        DOBMtch: Match status for Date of Birth.
 
-# Export to CSV if needed
-df_combinations.to_csv('possible_id_combinations.csv', index=False)
+    Returns:
+        str: The corresponding CRC code if a mismatch is found in the given categories, based on whether 'N' or 'C' is present in any feature.
+    """
 
-# Print the first few rows of the DataFrame
-print(df_combinations.head())
+def multiple_mismatch(
+    PAIAddressMtch,
+    HmPhoneMtch,
+    WkPhoneMtch,
+    PAIIDMtch,
+    NameMtch,
+    BusNameMtch,
+    SSNMtch,
+    DOBMtch
+):
+    """
+    Check for multiple mismatches across several feature categories and return a specific CRC code based on the combination of mismatches.
+
+    Args:
+        PAIAddressMtch: Match status for PAI Address.
+        HmPhoneMtch: Match status for Home Phone.
+        WkPhoneMtch: Match status for Work Phone.
+        PAIIDMtch: Match status for PAI ID.
+        NameMtch: Match status for Name.
+        BusNameMtch: Match status for Business Name.
+        SSNMtch: Match status for SSN.
+        DOBMtch: Match status for Date of Birth.
+
+    Returns:
+        str: The corresponding CRC code based on the following conditions:
+            - If all Name, Business Name, DOB, and SSN match categories are valid and any other category contains 'N' or 'C', return 'CRC2900'.
+            - If there are mismatches in both Name, Business Name, DOB, SSN, and any of the other categories, return 'CRC3900'.
+            - If the mismatches are confined to Name, Business Name, DOB, and SSN, return 'CRC4900'.
+    """
+
+def determine_customer_result_code(baa_input):
+    """
+    Determine the customer result code based on input feature matches and mismatch thresholds.
+
+    Args:
+        baa_input (dict): A dictionary containing customer feature match information, including:
+            - NameMtch: Match status for Name.
+            - BusNameMtch: Match status for Business Name.
+            - SSNMtch: Match status for SSN.
+            - DOBMtch: Match status for Date of Birth.
+            - PAIAddressMtch: Match status for PAI Address.
+            - HmPhoneMtch: Match status for Home Phone.
+            - WkPhoneMtch: Match status for Work Phone.
+            - PAIIDMtch: Match status for PAI ID.
+            - OverallMtchScore: Overall match score for the customer.
+
+    Returns:
+        str: The corresponding CRC code based on match statuses, thresholds, and mismatch count:
+            - 'CRC1100': If the overall match score is above the upper threshold and name or business name mismatch is found.
+            - 'CRC1300': If the overall match score is above the upper threshold and both name and business name mismatch are found.
+            - 'CRC1400': If the overall match score is below the lower threshold.
+            - 'CRC2100' or other codes: Based on the number of mismatches and which specific feature categories contain mismatches.
+            - 'CRC4100': Default result code if no specific category applies.
+    """
+
