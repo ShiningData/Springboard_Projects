@@ -1,16 +1,9 @@
-def crc_predict(df, dir_path):
-    """
-    Predict the customer result code for each row in the provided DataFrame and save the results to a CSV file.
+Previously, we developed a PyCaret multiclass classification model that blended the top four performing tree-based algorithms—Extra Tree Classifier, LightGBM, and Decision Tree Classifier—using an ensemble approach. The model averaged predicted probabilities to determine the counterparty result code, relying on features such as EWS-returned user name matching and overall score inputs.
 
-    Args:
-        df (pandas.DataFrame): The input DataFrame containing the data for which customer result codes need to be predicted.
-        dir_path (str): The directory path where the prediction results will be saved as a CSV file.
+However, due to changes in business requirements, we transitioned from the machine learning-based model to a rule-based approach. In the previous model, we utilized 13 input features, including **NameMtch**, **FNameMatch**, **LNameMtch**, **BusNameMtch**, **AddressMtch**, **CityMtch**, **StateMtch**, **ZipMtch**, **HmPhoneMtch**, **WkPhoneMtch**, **SSNMtch**, **DOBMtch**, **OverallMtchScore**, and **customerResultcode**.
 
-    Returns:
-        pandas.DataFrame: The input DataFrame with an additional column 'customerResultcode' containing the predicted result codes for each row.
+In the current rule-based model, the feature set has been modified to include 14 features. The **FNameMatch** and **LNameMtch** features have been removed, while **IDTypeMatch**, **IDNoMtch**, and **IDStateMtch** have been added, alongside the remaining original features. This shift better aligns with our updated business logic and requirements.
 
-    Process:
-        - Applies the `predict_customer_result_code()` function to each row of the DataFrame.
-        - Adds a new column 'customerResultcode' with the predicted values.
-        - Saves the resulting DataFrame to a CSV file at the specified `dir_path` using the format "{RUN_TIME}_prediction_df.csv".
-    """
+Additionally, the number of unique target variable values has expanded from 8 in the previous model to 12 in the rule-based model. This enables more granular response code evaluations, which have been validated with our EWS business partners who possess deep domain expertise.
+
+Currently, we lack sufficient labeled data that reflects the new business logic, which makes a machine learning approach less viable at this time. Consequently, we have adopted a rule-based model to address current needs. However, as we gather more data, we intend to reassess and potentially revert to a machine learning model approach, which could yield better long-term benefits as data availability grows.
