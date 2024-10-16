@@ -1,1 +1,14 @@
+import os
+import glob
+
+# Define the common directory where all the model directories are stored
+model_dir_path = "/path/to/your/model/directory"
+
+# Get a list of all directories in the model_dir_path (Assuming directories contain timestamps in their names)
+all_model_dirs = [d for d in glob.glob(os.path.join(model_dir_path, '*')) if os.path.isdir(d)]
+
+# Extract the latest directory based on modification time
+most_recent_model_dir = max(all_model_dirs, key=os.path.getmtime)
+
+print(f"The most recent model directory is: {most_recent_model_dir}")
 
