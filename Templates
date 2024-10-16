@@ -1,14 +1,39 @@
 import os
-import glob
+import re
+from datetime import datetime
 
 # Define the common directory where all the model directories are stored
 model_dir_path = "/path/to/your/model/directory"
 
-# Get a list of all directories in the model_dir_path (Assuming directories contain timestamps in their names)
-all_model_dirs = [d for d in glob.glob(os.path.join(model_dir_path, '*')) if os.path.isdir(d)]
+# Regular expression to extract the timestamp from the directory name (assuming the format 'model_YYYYMMDD_HHMMSS')
+# Adjust the regex according to your actual timestamp format in the directory names
+timestamp_pattern = re.compile(r'.*_(\d{8}_\d{6})')
 
-# Extract the latest directory based on modification time
-most_recent_model_dir = max(all_model_dirs, key=os.path.getmtime)
+# Function to extract the timestamp from a directory name
+def extract_timestamp(dir_name):
+    match = timestamp_pattern.match(dir_name)
+    if match:
+        return datetime.strptime(match.group(1), '%Y%m%d_%H%M%S')
+    return None
 
-print(f"The most recent model directory is: {most_recent_model_dir}")
+# Get a list of all directories in the model_dir_path
+all_model_dirs = [d for d in os.listdir(model_dir_path) if os.path.isdir(os.path.join(model_dir_path, d))]
 
+# Create a dictionary of directories with their extracted timestamps
+model_dirs_with_timestamps = {
+    d: extract_timestamp(d) for d in all_model_dirs if extract_timestamp(d) is not None
+}
+
+# Find the most recent timestamp
+if model_dirs_with_timestamps:
+    most_recent_timestamp = max(model_dirs_with_timestamps.values())
+    
+    # Get all directories with the most recent timestamp
+    most_recent_model_dirs = [
+        os.path.join(model_dir_path, d) 
+        for d, ts in model_dirs_with_timestamps.items() if ts == most_recent_timestamp
+    ]
+    
+    print(f"The most recent model directories are: {most_recent_model_dirs}")
+else:
+    print("No valid model directories found.")
