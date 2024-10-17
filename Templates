@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import shap
-import matplotlib.pyplot as plt
 import joblib
 from catboost import CatBoostClassifier
 from autogluon.tabular import TabularPredictor
@@ -124,36 +123,34 @@ class EnsembleModelInterpreter:
             print(f"Error during SHAP computation: {e}")
             raise e
 
-    def plot_explanation(self, instance: pd.DataFrame, save_path: str = None):
+    def prepare_explainability_data(self, instance: pd.DataFrame) -> dict:
         """
-        Plots the combined SHAP values for the given instance.
+        Prepares data for API consumption for model interpretability.
 
         Parameters:
         - instance (pd.DataFrame): A single instance for explanation.
-        - save_path (str, optional): Path to save the plot. If None, displays the plot.
+
+        Returns:
+        - dict: A dictionary with prediction probabilities and SHAP values for the instance.
         """
         try:
+            # Get ensemble prediction
+            ensemble_prediction = self.predict(instance)
+            print("Ensemble prediction obtained.")
+
+            # Get SHAP values for the instance
             shap_values = self.explain_prediction(instance)
-            shap_df = pd.DataFrame({
-                'feature': list(shap_values.keys()),
-                'shap_value': list(shap_values.values())
-            })
+            print("SHAP values for interpretability obtained.")
 
-            shap_df = shap_df.sort_values(by='shap_value', key=lambda x: abs(x), ascending=False)
+            # Prepare the data to send via API
+            response_data = {
+                "ensemble_prediction": ensemble_prediction.to_dict(orient='records'),
+                "shap_values": shap_values
+            }
 
-            plt.figure(figsize=(10, max(6, len(shap_df) * 0.4)))
-            plt.barh(shap_df['feature'], shap_df['shap_value'], color='skyblue')
-            plt.xlabel('SHAP Value')
-            plt.title('Combined SHAP Values for Ensemble Prediction')
-            plt.gca().invert_yaxis()
-
-            if save_path:
-                plt.savefig(save_path, bbox_inches='tight')
-                print(f"SHAP explanation plot saved to {save_path}.")
-            else:
-                plt.show()
+            return response_data
         except Exception as e:
-            print(f"Error during plotting: {e}")
+            print(f"Error preparing explainability data: {e}")
             raise e
 
 # Example usage
@@ -177,16 +174,7 @@ if __name__ == "__main__":
     # Replace with your actual instance
     instance = data.sample(1).drop('target_column', axis=1)  # Replace 'target_column' accordingly
 
-    # Generate ensemble prediction
-    ensemble_prediction = interpreter.predict(instance)
-    print("Ensemble Prediction:")
-    print(ensemble_prediction)
-
-    # Explain the prediction
-    explanation = interpreter.explain_prediction(instance)
-    print("Feature SHAP Values:")
-    for feature, shap_val in explanation.items():
-        print(f"{feature}: {shap_val}")
-
-    # Plot the explanation
-    interpreter.plot_explanation(instance)
+    # Prepare data for API request
+    explainability_data = interpreter.prepare_explainability_data(instance)
+    print("Data for API consumption:")
+    print(explainability_data)
