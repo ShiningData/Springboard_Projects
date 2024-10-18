@@ -1,3 +1,11 @@
+Patient's Age: The patient is 70 years old. Based on historical data, claims from older patients are sometimes more likely to be denied. This added +25% to the likelihood of denial.
+
+Total Amount of the Claim: The claim is for $1,500. Claims with smaller amounts are generally less likely to be denied. This reduced the chance of denial by -20%.
+
+Diagnosis: The patient has been diagnosed with diabetes. Claims with this diagnosis have a slightly higher chance of being denied. This increased the denial likelihood by +10%.
+
+Type of Service: The type of service in this claim, identified by a specific code, is generally associated with a lower chance of being denied. This factor reduced the chance of denial by -12%.
+===================
 # model_explainability.py
 
 import pandas as pd
