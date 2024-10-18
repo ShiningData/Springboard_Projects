@@ -1,1 +1,294 @@
+# model_explainability.py
 
+import pandas as pd
+import numpy as np
+import shap
+import joblib
+from catboost import CatBoostClassifier
+from autogluon.tabular import TabularPredictor
+
+class EnsembleModelInterpreter:
+    def __init__(self, 
+                 catboost_model_path: str, 
+                 autogluon_model_path: str,
+                 data: pd.DataFrame):
+        """
+        Initializes the EnsembleModelInterpreter with trained CatBoost and AutoGluon models.
+
+        Parameters:
+        - catboost_model_path (str): Path to the serialized CatBoost model.
+        - autogluon_model_path (str): Path to the serialized AutoGluon predictor.
+        - data (pd.DataFrame): The dataset used to fit the SHAP explainers.
+        """
+        # Load CatBoost model
+        try:
+            self.catboost_model = CatBoostClassifier()
+            self.catboost_model.load_model(catboost_model_path)
+            print("CatBoost model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading CatBoost model: {e}")
+            raise e
+
+        # Load AutoGluon model
+        try:
+            self.autogluon_predictor = TabularPredictor.load(autogluon_model_path)
+            print("AutoGluon predictor loaded successfully.")
+        except Exception as e:
+            print(f"Error loading AutoGluon predictor: {e}")
+            raise e
+
+        # Store data for SHAP explainers
+        self.data = data
+
+        # Initialize SHAP explainers
+        try:
+            self.catboost_explainer = shap.TreeExplainer(self.catboost_model, data)
+            print("SHAP TreeExplainer for CatBoost initialized.")
+        except Exception as e:
+            print(f"Error initializing SHAP for CatBoost: {e}")
+            raise e
+
+        try:
+            # Assuming AutoGluon uses a tree-based model; adjust if different
+            self.autogluon_explainer = shap.Explainer(self.autogluon_predictor.predict_proba, data)
+            print("SHAP Explainer for AutoGluon initialized.")
+        except Exception as e:
+            print(f"Error initializing SHAP for AutoGluon: {e}")
+            raise e
+
+    def predict(self, instance: pd.DataFrame) -> pd.DataFrame:
+        """
+        Generates ensemble prediction by averaging probabilities from both models.
+
+        Parameters:
+        - instance (pd.DataFrame): A single instance for prediction.
+
+        Returns:
+        - pd.DataFrame: Ensemble class probabilities and predicted class label.
+        """
+        try:
+            # CatBoost prediction probabilities
+            catboost_probs = self.catboost_model.predict_proba(instance)
+            catboost_df = pd.DataFrame(catboost_probs, columns=self.catboost_model.classes_)
+            print("CatBoost prediction probabilities obtained.")
+
+            # AutoGluon prediction probabilities
+            autogluon_probs = self.autogluon_predictor.predict_proba(instance)
+            autogluon_df = autogluon_probs.reset_index(drop=True)
+            print("AutoGluon prediction probabilities obtained.")
+
+            # Ensure both dataframes have the same classes
+            if not all(catboost_df.columns == autogluon_df.columns):
+                raise ValueError("Class labels of CatBoost and AutoGluon models do not match.")
+
+            # Average probabilities
+            ensemble_probs = (catboost_df + autogluon_df) / 2
+            ensemble_probs['ensemble_pred'] = ensemble_probs.idxmax(axis=1)
+            print("Ensemble prediction probabilities computed.")
+
+            return ensemble_probs
+        except Exception as e:
+            print(f"Error during prediction: {e}")
+            raise e
+
+    def explain_prediction(self, instance: pd.DataFrame) -> dict:
+        """
+        Computes and combines SHAP values from both models for the given instance.
+
+        Parameters:
+        - instance (pd.DataFrame): A single instance for explanation.
+
+        Returns:
+        - dict: Combined SHAP values per feature.
+        """
+        try:
+            # SHAP values for CatBoost
+            shap_catboost = self.catboost_explainer(instance)
+            shap_catboost_values = shap_catboost.values
+            print("SHAP values for CatBoost computed.")
+
+            # SHAP values for AutoGluon
+            shap_autogluon = self.autogluon_explainer(instance)
+            shap_autogluon_values = shap_autogluon.values
+            print("SHAP values for AutoGluon computed.")
+
+            # Average SHAP values
+            combined_shap = (shap_catboost_values + shap_autogluon_values) / 2
+            print("SHAP values combined.")
+
+            # Create a dictionary of feature names and their SHAP values
+            feature_shap = dict(zip(instance.columns, combined_shap[0]))
+            return feature_shap
+        except Exception as e:
+            print(f"Error during SHAP computation: {e}")
+            raise e
+
+    def prepare_explainability_data(self, instance: pd.DataFrame) -> dict:
+        """
+        Prepares data for API consumption for model interpretability.
+
+        Parameters:
+        - instance (pd.DataFrame): A single instance for explanation.
+
+        Returns:
+        - dict: A dictionary with prediction probabilities and SHAP values for the instance.
+        """
+        try:
+            # Get ensemble prediction
+            ensemble_prediction = self.predict(instance)
+            print("Ensemble prediction obtained.")
+
+            # Get SHAP values for the instance
+            shap_values = self.explain_prediction(instance)
+            print("SHAP values for interpretability obtained.")
+
+            # Prepare the data to send via API
+            response_data = {
+                "ensemble_prediction": ensemble_prediction.to_dict(orient='records'),
+                "shap_values": shap_values
+            }
+
+            return response_data
+        except Exception as e:
+            print(f"Error preparing explainability data: {e}")
+            raise e
+
+# Example usage
+if __name__ == "__main__":
+    # Paths to the trained models
+    catboost_model_path = 'path/to/catboost_model.cbm'
+    autogluon_model_path = 'path/to/autogluon_predictor'
+
+    # Load or prepare the data used for model training
+    # This should be the same data used to fit the models for accurate SHAP explanations
+    data = pd.read_csv('path/to/training_data.csv')
+
+    # Initialize the interpreter
+    interpreter = EnsembleModelInterpreter(
+        catboost_model_path=catboost_model_path,
+        autogluon_model_path=autogluon_model_path,
+        data=data
+    )
+
+    # Example instance for prediction and explanation
+    # Replace with your actual instance
+    instance = data.sample(1).drop('target_column', axis=1)  # Replace 'target_column' accordingly
+
+    # Prepare data for API request
+    explainability_data = interpreter.prepare_explainability_data(instance)
+    print("Data for API consumption:")
+    print(explainability_data)
+
+================================================
+
+To translate SHAP values into a very understandable and simplified explanation for business people in a UI application, you can focus on clarity, relevance, and simplicity. Here's a step-by-step guide on how you can achieve that:
+
+1. Simplify the Feature Names
+Problem: SHAP values are often tied to raw feature names, which may be too technical or not meaningful to business stakeholders.
+Solution: Map technical feature names to more understandable terms. For example:
+credit_score → "Customer's Credit Score"
+num_transactions → "Number of Transactions"
+age_group → "Customer Age Group"
+2. Explain the Impact of SHAP Values
+Problem: SHAP values themselves may not make sense to a business audience (e.g., +0.15 or -0.3 contribution to a prediction).
+Solution: Convert the SHAP values into simple explanations about how each feature influenced the prediction. Use terms like:
+"This increased the likelihood by X%."
+"This decreased the likelihood by Y%."
+Example:
+SHAP value of +0.15 for credit_score could be explained as: "The customer's high credit score increased the likelihood of approval by 15%."
+3. Rank the Importance of Features
+Problem: Presenting all features and their contributions can be overwhelming.
+Solution: Focus on the top 3-5 most important features contributing to the prediction and describe their impact in plain language.
+Example: "The main factors that influenced this decision were the customer's credit score, number of transactions, and age group."
+4. Convert SHAP Values into Simple Sentences
+Problem: Numeric SHAP values are hard to interpret.
+Solution: Translate these values into natural language. You can use phrases like:
+"Because the customer’s credit score is high, this increased the likelihood of approval."
+"The number of recent transactions is low, which decreased the likelihood of approval."
+These explanations should focus on whether the feature had a positive or negative effect and why.
+5. Use Business Metrics Instead of Technical Metrics
+Problem: SHAP values might relate to technical aspects of the model (log-odds, probabilities) that business users might not understand.
+Solution: Present the final outcome (e.g., probability of approval or churn) alongside the explanation. For example:
+"This customer has a 75% chance of being approved for a loan."
+"Their high credit score helped increase this probability."
+6. Provide Visual Cues
+In the UI, visual aids like:
+Green/red arrows indicating positive or negative effects.
+Bars or bubbles to represent the relative importance or contribution of each feature.
+Example:
+Green upward arrow next to "High credit score" explaining that it increased the likelihood.
+Red downward arrow next to "Low number of transactions" showing it decreased the likelihood.
+7. Example Sentences for Business Users
+Here are some sample explanations that could appear in the UI based on SHAP values:
+
+Loan Approval Example:
+
+"The customer’s credit score of 750 increased the chance of loan approval by 20%."
+"However, the low number of recent transactions reduced the approval likelihood by 10%."
+"Overall, the customer is 75% likely to be approved for the loan."
+Churn Prediction Example:
+
+"This customer is predicted to stay with the company. Their recent increase in product usage contributed positively to this decision."
+"However, their limited interaction with customer support slightly decreased the likelihood of staying."
+
+=================
+
+8. Template for Business-Friendly Output
+Here's a code snippet that will help generate such business-friendly explanations from SHAP values:
+
+python
+Copy code
+def generate_business_friendly_explanation(shap_values: dict, threshold: float = 0.05) -> str:
+    """
+    Converts SHAP values into business-friendly explanations.
+    
+    Parameters:
+    - shap_values (dict): A dictionary where keys are feature names and values are SHAP values.
+    - threshold (float): A threshold to filter out less significant features.
+    
+    Returns:
+    - str: A business-friendly explanation.
+    """
+    explanation = []
+    
+    for feature, value in shap_values.items():
+        # Convert SHAP value into a positive/negative impact
+        if abs(value) > threshold:
+            if value > 0:
+                explanation.append(f"The feature '{feature}' positively impacted the outcome.")
+            else:
+                explanation.append(f"The feature '{feature}' negatively impacted the outcome.")
+    
+    return " ".join(explanation)
+
+# Example usage with SHAP values
+shap_values = {
+    "Credit Score": 0.2,
+    "Number of Transactions": -0.1,
+    "Customer Age Group": 0.05
+}
+
+explanation = generate_business_friendly_explanation(shap_values)
+print(explanation)
+
+# Output:
+# "The feature 'Credit Score' positively impacted the outcome. The feature 'Number of Transactions' negatively impacted the outcome."
+9. Add Contextual Descriptions for Key Features
+If there are specific features that are frequently used (e.g., credit score, age), you can provide brief descriptions of what each feature means. For example:
+
+"Credit Score: A measure of the customer's creditworthiness."
+"Number of Transactions: The number of recent transactions the customer has made."
+10. Put It All Together in the UI
+In your UI, the output could look something like this for a churn prediction:
+
+markdown
+Copy code
+**Prediction:**
+The customer is 85% likely to stay with the company.
+
+**Top Factors Influencing the Decision:**
+1. **Credit Score**: High credit score increased the likelihood of retention by 15%.
+2. **Recent Transactions**: The low number of transactions decreased the likelihood by 10%.
+3. **Customer Age**: The customer's age group contributed slightly to the prediction.
+Conclusion
+In summary, the key is to convert technical SHAP values into simple, business-friendly language, focus on the top features, and provide clear, actionable explanations. By using familiar business terms, providing examples, and highlighting key factors, you can make model predictions more understandable to non-technical audiences in the UI.
