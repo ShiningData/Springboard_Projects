@@ -1,17 +1,1 @@
-The PNC Big Data ecosystem consolidates all historical customer information, including demographics and transactions across various channels and systems. This ecosystem supports both predictive and prescriptive decision-making. The data undergoes auditing, cleaning, and integration processes to facilitate analytical reporting, calculation of critical business metrics, and informed decision-making.
 
-=====
-
-At PNC, AI and IT innovations are strategically developed to enhance internal processes, employee enablement, or partner and customer engagement. Each project is assessed based on specific attributes that influence these areas and is carefully evaluated against metrics throughout its lifecycle. In healthcare-focused initiatives, we collaborate with partners for expertise and to evaluate partner-related metrics. This approach ensures continuous monitoring of ROI and the conversion of ideas to tangible value, driving overall project success.
-
-=========
-
-We abstract AI deployment across channels while maintaining transparency regarding its specific use cases. All machine learning models are delivered as services and seamlessly integrated into existing systems. Products utilize AI pipelines as needed or upon invocation. Enhanced risk frameworks, designed to accommodate AI models, are incorporated into these AI pipelines to ensure effective risk mitigation.
-
-===
-
-Supporting partners with IT challenges while investing in new AI and IT infrastructure requires a proactive and comprehensive strategy to ensure seamless operations and collaboration. We have established clear protocols and communication channels for client-facing team members and customer service associates to address AI and IT issues. A well-defined decision tree identifies the internal teams responsible for each product, service, and corresponding point of contact. Service Level Agreements (SLAs) are established for systems and services, translating into Recovery Point Objectives (RPOs) and Recovery Time Objectives (RTOs) for backend systems.
-
-===
-
-AI will play a pivotal role in customer service operations by improving efficiency, personalization, and the overall customer experience. We are implementing a multi-tier strategy that spans from intelligent assistants to knowledge-driven assistants. Intelligent assistants will include chatbots trained on existing policies, issues, and rule-based systems. Meanwhile, knowledge-driven assistants will be trained on data, context, experience, and outputs to better serve customers and partners. Our deployment approach will integrate these types of assistants, tailored to specific areas and the criticality of each business application.
