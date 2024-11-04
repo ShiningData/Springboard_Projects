@@ -1,1 +1,39 @@
+import pandas as pd
+from mlxtend.frequent_patterns import apriori
+from mlxtend.frequent_patterns import association_rules
+
+# Load the dataset - this dataset should include the features, predicted class, and actual class
+df = pd.read_csv('ensemble_predictions.csv')
+
+# Assume the dataset contains the following columns:
+# 'feature_1', 'feature_2', ..., 'feature_n', 'predicted_class', 'actual_class'
+
+# Filter only the denied cases
+denied_df = df[df['predicted_class'] == 'denied']
+
+# Convert features into a format suitable for association mining (one-hot encoding)
+# Here, we binarize the features to create transactions-like data
+one_hot_encoded_df = pd.get_dummies(denied_df.drop(columns=['predicted_class', 'actual_class']))
+
+# Add the predicted class to the one-hot encoded dataframe
+one_hot_encoded_df['predicted_denied'] = (denied_df['predicted_class'] == 'denied').astype(int)
+
+# Apply Apriori algorithm to find frequent itemsets
+frequent_itemsets = apriori(one_hot_encoded_df, min_support=0.1, use_colnames=True)
+
+# Generate association rules
+rules = association_rules(frequent_itemsets, metric='confidence', min_threshold=0.7)
+
+# Filter rules that help explain the "denied" predictions
+denied_rules = rules[rules['consequents'].apply(lambda x: 'predicted_denied' in x)]
+
+# Print the rules explaining denied predictions
+print("\nRules explaining 'denied' predictions:")
+print(denied_rules)
+
+# Save the rules to CSV for further analysis
+denied_rules.to_csv('denied_rules_explanation.csv', index=False)
+
+# The rules can be analyzed to understand feature combinations that strongly influence a particular prediction
+# For example, we can look at the antecedents, support, confidence, and lift to interpret the model's behavior
 
