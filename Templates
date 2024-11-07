@@ -16,8 +16,17 @@ def validate_rules(data, target_column, rules):
             invalid_rows.extend(filtered_data[invalid].index.tolist())
     return invalid_rows
 
-# Function to calculate data drift using Jensen-Shannon distance
-def calculate_data_drift(reference, current):
+# Function to calculate data drift for categorical features
+def calculate_categorical_drift(reference, current):
+    reference_dist = reference.value_counts(normalize=True)
+    current_dist = current.value_counts(normalize=True)
+    categories = list(set(reference_dist.index).union(set(current_dist.index)))
+    reference_probs = [reference_dist.get(cat, 0) for cat in categories]
+    current_probs = [current_dist.get(cat, 0) for cat in categories]
+    return metrics.jensenshannon(reference_probs, current_probs)
+
+# Function to calculate data drift for numerical features
+def calculate_numerical_drift(reference, current):
     p = np.histogram(reference, bins=20, range=(reference.min(), reference.max()), density=True)[0]
     q = np.histogram(current, bins=20, range=(current.min(), current.max()), density=True)[0]
     return metrics.jensenshannon(p, q)
@@ -28,6 +37,7 @@ def calculate_concept_drift(reference_valid_rate, current_valid_rate):
     return drift_score
 
 # Streamlit app
+st.set_page_config(page_title="Rule-Based Model Monitoring Dashboard", page_icon="📊")
 st.title("Rule-Based Model Monitoring Dashboard")
 
 # File uploader
@@ -92,24 +102,32 @@ if uploaded_file is not None:
         st.subheader("Data Drift Analysis")
         for feature in features:
             if feature in reference_df.columns and feature in df.columns:
-                drift_score = calculate_data_drift(reference_df[feature], df[feature])
-                st.write(f"Data drift score for {feature}: {drift_score}")
+                if df[feature].dtype == 'object':  # Categorical feature
+                    drift_score = calculate_categorical_drift(reference_df[feature], df[feature])
+                    st.write(f"Categorical data drift score for {feature}: {drift_score}")
+                else:  # Numerical feature
+                    drift_score = calculate_numerical_drift(reference_df[feature], df[feature])
+                    st.write(f"Numerical data drift score for {feature}: {drift_score}")
                 # Plotting the distribution for reference and current data
                 fig, ax = plt.subplots()
-                sns.kdeplot(reference_df[feature], label='Reference', ax=ax)
-                sns.kdeplot(df[feature], label='Current', ax=ax, color='orange')
+                if df[feature].dtype == 'object':
+                    reference_df[feature].value_counts(normalize=True).plot(kind='bar', alpha=0.5, ax=ax, label='Reference')
+                    df[feature].value_counts(normalize=True).plot(kind='bar', alpha=0.5, ax=ax, label='Current', color='orange')
+                else:
+                    sns.kdeplot(reference_df[feature], label='Reference', ax=ax)
+                    sns.kdeplot(df[feature], label='Current', ax=ax, color='orange')
                 plt.legend()
                 st.pyplot(fig)
 
-        # Target drift analysis
+        # Target drift analysis in tabular format
         st.subheader("Target Drift Analysis")
         reference_target_dist = reference_df[target_column].value_counts(normalize=True)
         current_target_dist = df[target_column].value_counts(normalize=True)
-        fig, ax = plt.subplots()
-        reference_target_dist.plot(kind='bar', alpha=0.5, ax=ax, label='Reference')
-        current_target_dist.plot(kind='bar', alpha=0.5, ax=ax, label='Current', color='orange')
-        plt.legend()
-        st.pyplot(fig)
+        target_drift_df = pd.DataFrame({
+            "Reference Distribution": reference_target_dist,
+            "Current Distribution": current_target_dist
+        }).fillna(0)
+        st.write(target_drift_df)
 
         # Concept drift analysis based on rule validation success rate
         st.subheader("Concept Drift Analysis")
