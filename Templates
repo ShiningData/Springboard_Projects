@@ -1,142 +1,27 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn import metrics
-import streamlit.components.v1 as components
+1. Data Drift Analysis:
+Data drift refers to changes in the distribution of the input features over time. In this script, it is analyzed separately for categorical and numerical features:
 
-# Function to validate target variable alignment with predefined rules
-def validate_rules(data, target_column, rules):
-    invalid_rows = []
-    for target_value, rule in rules.items():
-        filtered_data = data[data[target_column] == target_value]
-        if not filtered_data.empty:
-            invalid = ~filtered_data.eval(rule)
-            invalid_rows.extend(filtered_data[invalid].index.tolist())
-    return invalid_rows
+Categorical Features:
+For each categorical feature, the distribution of each category (e.g., "Y", "N", "U", "C", "MISSING") is compared between the reference dataset and the current dataset.
+The comparison is performed using Jensen-Shannon distance, a metric that measures the similarity between two probability distributions. If this distance is high, it indicates a drift in the feature's distribution, implying that the current data is not similar to the reference data.
+Numerical Features:
+For numerical features, the script creates histograms for both the reference and current data, calculating the frequency distribution in each bin.
+The Jensen-Shannon distance is also used here to compare the histogram distributions. A high distance score indicates a significant drift, meaning that the numerical feature's distribution has changed over time.
+2. Target Drift Analysis:
+Target drift measures changes in the distribution of the target variable between the reference dataset and the current dataset.
 
-# Function to calculate data drift for categorical features
-def calculate_categorical_drift(reference, current):
-    reference_dist = reference.value_counts(normalize=True)
-    current_dist = current.value_counts(normalize=True)
-    categories = list(set(reference_dist.index).union(set(current_dist.index)))
-    reference_probs = [reference_dist.get(cat, 0) for cat in categories]
-    current_probs = [current_dist.get(cat, 0) for cat in categories]
-    return metrics.jensenshannon(reference_probs, current_probs)
+The reference and current distributions of the target variable are calculated and displayed in a tabular format.
+The table shows the proportion of each target value in both the reference and current datasets, helping identify any shifts in the target variable's behavior over time.
+For example, if the proportion of a specific target class has significantly decreased, it may indicate that the underlying patterns have changed.
 
-# Function to calculate data drift for numerical features
-def calculate_numerical_drift(reference, current):
-    p = np.histogram(reference, bins=20, range=(reference.min(), reference.max()), density=True)[0]
-    q = np.histogram(current, bins=20, range=(current.min(), current.max()), density=True)[0]
-    return metrics.jensenshannon(p, q)
+3. Concept Drift Analysis:
+Concept drift refers to changes in the relationship between input features and the target variable over time.
 
-# Function to calculate concept drift based on rule validation success rate
-def calculate_concept_drift(reference_valid_rate, current_valid_rate):
-    drift_score = abs(reference_valid_rate - current_valid_rate)
-    return drift_score
+In this script, concept drift is estimated based on rule validation success rates for both the reference and current datasets.
+The validation success rate is calculated by checking how well the predefined rules align with the reference and current datasets.
+If the difference in validation success rates is greater than a threshold (0.1 in this script), it indicates significant concept drift. Concept drift suggests that the existing rules may no longer be valid for the current data, and the model may need retraining.
+Summary:
 
-# Streamlit app
-st.set_page_config(page_title="Rule-Based Model Monitoring Dashboard", page_icon="📊")
-st.title("Rule-Based Model Monitoring Dashboard")
-
-# File uploader
-uploaded_file = st.file_uploader("Upload a CSV file with predicted target variable", type="csv")
-
-if uploaded_file is not None:
-    # Load data
-    df = pd.read_csv(uploaded_file)
-
-    # Apply custom CSS to style the table headers
-    st.markdown(
-        """
-        <style>
-        thead tr th {
-            background-color: orange;
-            color: white;
-        }
-        tbody tr th {
-            color: white;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Input fields to define target column and rules
-    target_column = st.selectbox("Select target variable column", df.columns)
-    unique_targets = df[target_column].unique()
-
-    st.subheader("Target Validation Rules")
-    rules = {}
-    for target in unique_targets:
-        rule = st.text_input(f"Rule for target value {target}", value="True")
-        rules[target] = rule
-
-    # Validate alignment with rules
-    st.subheader("Validation of Predicted Targets")
-    invalid_rows = validate_rules(df, target_column, rules)
-    current_valid_rate = 1 - (len(invalid_rows) / len(df))
-    if len(invalid_rows) > 0:
-        st.error(f"Invalid rows found: {len(invalid_rows)}")
-        st.write(df.loc[invalid_rows])
-    else:
-        st.success("All rows are valid according to defined rules.")
-
-    # Distribution Plots and Data Monitoring
-    st.subheader("Distribution of Feature Values by Predicted Target")
-    features = st.multiselect("Select features to visualize", df.columns)
-    for feature in features:
-        st.write(f"Feature Distribution by Target - {feature}")
-        fig, ax = plt.subplots()
-        sns.boxplot(x=target_column, y=feature, data=df, ax=ax)
-        st.pyplot(fig)
-
-    # Drift Analysis
-    st.subheader("Drift Analysis")
-    reference_file = st.file_uploader("Upload reference data for drift analysis", type="csv")
-    if reference_file is not None:
-        reference_df = pd.read_csv(reference_file)
-
-        # Data drift analysis for selected features
-        st.subheader("Data Drift Analysis")
-        for feature in features:
-            if feature in reference_df.columns and feature in df.columns:
-                if df[feature].dtype == 'object':  # Categorical feature
-                    drift_score = calculate_categorical_drift(reference_df[feature], df[feature])
-                    st.write(f"Categorical data drift score for {feature}: {drift_score}")
-                else:  # Numerical feature
-                    drift_score = calculate_numerical_drift(reference_df[feature], df[feature])
-                    st.write(f"Numerical data drift score for {feature}: {drift_score}")
-                # Plotting the distribution for reference and current data
-                fig, ax = plt.subplots()
-                if df[feature].dtype == 'object':
-                    reference_df[feature].value_counts(normalize=True).plot(kind='bar', alpha=0.5, ax=ax, label='Reference')
-                    df[feature].value_counts(normalize=True).plot(kind='bar', alpha=0.5, ax=ax, label='Current', color='orange')
-                else:
-                    sns.kdeplot(reference_df[feature], label='Reference', ax=ax)
-                    sns.kdeplot(df[feature], label='Current', ax=ax, color='orange')
-                plt.legend()
-                st.pyplot(fig)
-
-        # Target drift analysis in tabular format
-        st.subheader("Target Drift Analysis")
-        reference_target_dist = reference_df[target_column].value_counts(normalize=True)
-        current_target_dist = df[target_column].value_counts(normalize=True)
-        target_drift_df = pd.DataFrame({
-            "Reference Distribution": reference_target_dist,
-            "Current Distribution": current_target_dist
-        }).fillna(0)
-        st.write(target_drift_df)
-
-        # Concept drift analysis based on rule validation success rate
-        st.subheader("Concept Drift Analysis")
-        reference_invalid_rows = validate_rules(reference_df, target_column, rules)
-        reference_valid_rate = 1 - (len(reference_invalid_rows) / len(reference_df))
-        concept_drift_score = calculate_concept_drift(reference_valid_rate, current_valid_rate)
-        st.write(f"Concept drift score based on rule validation success rate: {concept_drift_score}")
-
-        if concept_drift_score > 0.1:  # Threshold for concept drift
-            st.warning("Significant concept drift detected. Consider updating the rules or retraining the model.")
-        else:
-            st.success("No significant concept drift detected.")
+Data Drift: Examines changes in input feature distributions (using Jensen-Shannon distance for both categorical and numerical features).
+Target Drift: Compares the target variable's distribution between the reference and current datasets.
+Concept Drift: Monitors changes in the relationship between features and the target variable by evaluating rule validation success rates.
