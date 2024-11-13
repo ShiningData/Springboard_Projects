@@ -1,31 +1,72 @@
-Executive Summary: Claim Predictor Model
+import pandas as pd
+import numpy as np
+import lime
+import lime.lime_tabular
+import catboost
+from autogluon.tabular import TabularPredictor
+from sklearn.preprocessing import LabelEncoder
 
-The Claim Predictor project is an innovative solution designed to streamline and enhance claim processing by identifying potential claim denials before submission. This predictive model integrates seamlessly into providers' electronic claims workflows, enabling early detection of high-risk claims for denial. By identifying such claims and providing insights on denial risks and possible reasons, the model helps optimize the review process, reducing both administrative overhead and financial impact.
+# Load your data
+# Assuming you have a Pandas DataFrame called df with input features
+df = pd.read_csv("your_data.csv")
 
-Strategic Focus and Projected Benefits: Our model addresses critical pain points in the healthcare claims process by focusing on reducing administrative costs and improving cash flow efficiency. By flagging potential denials early, we facilitate a proactive approach to claim management, allowing providers to address issues promptly and potentially expedite payment cycles. This capability offers a competitive advantage, especially as the model scales to support multiple providers without sacrificing performance.
+# Preprocessing for categorical and numerical features
+categorical_features = df.select_dtypes(include=['object', 'category']).columns
+numerical_features = df.select_dtypes(include=['int64', 'float64']).columns
 
-Recent Accomplishments:
+# Encoding categorical features
+label_encoders = {}
+for col in categorical_features:
+    le = LabelEncoder()
+    df[col] = le.fit_transform(df[col])
+    label_encoders[col] = le
 
-Model Development: Leveraged advanced AutoML and CatBoost ensemble techniques to develop a robust model with strong performance metrics and interpretability.
-Explainability and Insights: Established a training and inference pipeline that not only produces predictions but also provides transparent explanations, enhancing user trust and model adoption.
-Deployment and Integration: Collaborated with data engineering teams to initiate deployment preparations, ensuring seamless integration into operational workflows.
-Stakeholder Engagement: Developed a Streamlit-based interactive dashboard to visualize model performance and key metrics, giving product managers an accessible, exploratory tool to communicate the model’s impact effectively.
-This project continues to evolve with a focus on scalability, efficiency, and adaptability to new claim patterns, positioning it as a valuable asset in improving claims processing for healthcare providers.
+# Split into features and target
+y = df['target']
+X = df.drop('target', axis=1)
 
-+++++++++++++++++++++++++========
+# Load trained models (replace with your model paths or instances)
+catboost_model = catboost.CatBoostClassifier().load_model("catboost_model.cbm")
+autogluon_model = TabularPredictor.load("autogluon_model")
 
-Based on the provided image, here’s a draft executive summary for the "Bank Account Authentication Rule-Based Model" project:
+# Define an ensemble prediction function
+def ensemble_predict(data):
+    catboost_preds = catboost_model.predict_proba(data)[:, 1]
+    autogluon_preds = autogluon_model.predict_proba(data)[1]  # Assuming binary classification
+    # Average the probabilities from both models
+    ensemble_preds = (catboost_preds + autogluon_preds) / 2
+    return ensemble_preds
 
----
+# LIME interpreter setup
+explainer = lime.lime_tabular.LimeTabularExplainer(
+    training_data=X.values,
+    feature_names=X.columns,
+    class_names=['Class 0', 'Class 1'],
+    mode='classification'
+)
 
-Executive Summary: Bank Account Authentication Rule-Based Model
+# Generate LIME explanations for multiple instances and store results in a DataFrame
+explanations = []
+for idx in range(len(X)):
+    instance = X.iloc[idx].values.reshape(1, -1)
+    prediction = ensemble_predict(instance)
+    if prediction >= 0.5:
+        explanation = explainer.explain_instance(
+            data_row=instance[0],
+            predict_fn=ensemble_predict
+        )
+        explanation_table = explanation.as_list()
+        explanation_dict = {feature: weight for feature, weight in explanation_table}
+        explanation_dict['instance_index'] = idx
+        explanations.append(explanation_dict)
+    else:
+        explanations.append({'instance_index': idx, 'explanation': 'The claim is accepted'})
 
-The Bank Account Authentication Rule-Based Model is an innovative solution aimed at enhancing the security and integrity of account ownership information. This model utilizes a rule-based approach to verify Account Owner Authentication (AOA) data by comparing beneficiary account details against authoritative data sources. By matching critical information such as names, addresses, and account numbers, the model helps mitigate risks associated with improper or fraudulent payments, supporting the integrity of financial transactions.
+# Convert explanations to DataFrame
+explanations_df = pd.DataFrame(explanations)
 
-The model functions as a counterparty verification tool, designed to aid business users in assessing whether the entity claiming ownership of a particular bank account aligns with authoritative records. This process enables a more accurate assessment of payment recipients and reduces potential fraud by flagging mismatches between the account holder's information and external validation data. In cases where discrepancies are detected, the model generates alerts, allowing for timely interventions to prevent improper fund transfers.
+# Save the explanations DataFrame to a CSV file
+explanations_df.to_csv('lime_explanations.csv', index=False)
 
-Recent Accomplishments:
-- A detailed development performance assessment was completed on the platform using FastAPI, achieving a total request processing time of 2.54 seconds with an average response time of 0.00051 seconds per request, demonstrating the model’s high efficiency.
-- A comprehensive MPMG documentation package was finalized for submission to the MRMG team, ensuring that all business rules, parameters, and logic are clearly defined for operational readiness.
-- A Model Monitoring Dashboard was created to track data drift, concept drift, and perform error analysis, enhancing the model’s adaptability and facilitating continuous improvements. Additionally, load and performance testing is scheduled for November 20, 2025, followed by a planned go-live on February 15, 2025.
-
+# Display the explanations DataFrame
+print(explanations_df.head())
