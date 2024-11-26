@@ -1,72 +1,56 @@
-import pandas as pd
-import numpy as np
-import lime
-import lime.lime_tabular
-import catboost
-from autogluon.tabular import TabularPredictor
-from sklearn.preprocessing import LabelEncoder
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, sum as spark_sum, when, lit
 
-# Load your data
-# Assuming you have a Pandas DataFrame called df with input features
-df = pd.read_csv("your_data.csv")
+# Start Spark session
+spark = SparkSession.builder.appName("Dataframe Join").getOrCreate()
 
-# Preprocessing for categorical and numerical features
-categorical_features = df.select_dtypes(include=['object', 'category']).columns
-numerical_features = df.select_dtypes(include=['int64', 'float64']).columns
+# Define schema and data for DataFrame 1 and 2
+data1 = [
+    ("rule1", "active", "2023-01-01", "business_rule_1"),
+    ("rule2", "inactive", "2022-05-01", "business_rule_2"),
+    ("rule3", "active", "2023-03-01", "business_rule_3"),
+]
+columns1 = ["office_type_rule_name", "status", "effective_date", "business_rule"]
+df1 = spark.createDataFrame(data1, columns1)
 
-# Encoding categorical features
-label_encoders = {}
-for col in categorical_features:
-    le = LabelEncoder()
-    df[col] = le.fit_transform(df[col])
-    label_encoders[col] = le
+data2 = [
+    ("rule1", "01", 2021, 10),
+    ("rule1", "01", 2022, 12),
+    ("rule1", "01", 2023, 14),
+    ("rule1", "01", 2024, 16),
+    ("rule2", "01", 2021, 20),
+    ("rule2", "01", 2022, 25),
+    ("rule2", "01", 2023, 18),
+    ("rule2", "01", 2024, 22),
+]
+columns2 = ["office_type_rule_name", "execution_month", "execution_year", "num_execution"]
+df2 = spark.createDataFrame(data2, columns2)
 
-# Split into features and target
-y = df['target']
-X = df.drop('target', axis=1)
+# Step 1: Preprocess the second table - Group by 'office_type_rule_name' and 'execution_year'
+current_year = 2025
+current_month = 7
 
-# Load trained models (replace with your model paths or instances)
-catboost_model = catboost.CatBoostClassifier().load_model("catboost_model.cbm")
-autogluon_model = TabularPredictor.load("autogluon_model")
-
-# Define an ensemble prediction function
-def ensemble_predict(data):
-    catboost_preds = catboost_model.predict_proba(data)[:, 1]
-    autogluon_preds = autogluon_model.predict_proba(data)[1]  # Assuming binary classification
-    # Average the probabilities from both models
-    ensemble_preds = (catboost_preds + autogluon_preds) / 2
-    return ensemble_preds
-
-# LIME interpreter setup
-explainer = lime.lime_tabular.LimeTabularExplainer(
-    training_data=X.values,
-    feature_names=X.columns,
-    class_names=['Class 0', 'Class 1'],
-    mode='classification'
+aggregated_df2 = df2.groupBy("office_type_rule_name", "execution_year").agg(
+    spark_sum("num_execution").alias("yearly_num_execution")
 )
 
-# Generate LIME explanations for multiple instances and store results in a DataFrame
-explanations = []
-for idx in range(len(X)):
-    instance = X.iloc[idx].values.reshape(1, -1)
-    prediction = ensemble_predict(instance)
-    if prediction >= 0.5:
-        explanation = explainer.explain_instance(
-            data_row=instance[0],
-            predict_fn=ensemble_predict
-        )
-        explanation_table = explanation.as_list()
-        explanation_dict = {feature: weight for feature, weight in explanation_table}
-        explanation_dict['instance_index'] = idx
-        explanations.append(explanation_dict)
-    else:
-        explanations.append({'instance_index': idx, 'explanation': 'The claim is accepted'})
+# Step 2: Pivot the aggregated DataFrame to get each year as a separate column
+pivot_df2 = aggregated_df2.groupBy("office_type_rule_name").pivot("execution_year").sum("yearly_num_execution")
 
-# Convert explanations to DataFrame
-explanations_df = pd.DataFrame(explanations)
+# Step 3: Handle the additional column for the first half of the current year
+half_year_col_name = "Jan {} - June {}".format(current_year, current_year)
 
-# Save the explanations DataFrame to a CSV file
-explanations_df.to_csv('lime_explanations.csv', index=False)
+# Create a new column for the first half of 2025 if we are in July 2025
+pivot_df2 = pivot_df2.withColumn(
+    half_year_col_name,
+    when(lit(current_month >= 7), lit("Half Year Completed")).otherwise(lit(None))
+)
 
-# Display the explanations DataFrame
-print(explanations_df.head())
+# Step 4: Join the base table (df1) with the pivoted second table (pivot_df2)
+final_df = df1.join(pivot_df2, on="office_type_rule_name", how="left")
+
+# Show the final DataFrame
+final_df.show(truncate=False)
+
+# Stop Spark session
+spark.stop()
