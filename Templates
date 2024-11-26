@@ -1,14 +1,14 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, when, lit, coalesce
+from pyspark.sql.functions import col, sum as spark_sum, when, lit, coalesce, datediff, current_date, year, array_except, array
 
 # Start Spark session
 spark = SparkSession.builder.appName("Dataframe Join").getOrCreate()
 
 # Define schema and data for DataFrame 1 and 2
 data1 = [
-    ("rule1", "active", "2023-01-01", "business_rule_1"),
-    ("rule2", "inactive", "2022-05-01", "business_rule_2"),
-    ("rule3", "active", "2023-03-01", "business_rule_3"),
+    ("rule1", "active", "2018-06-21 00:00:000", "business_rule_1"),
+    ("rule2", "inactive", "2022-05-01 00:00:000", "business_rule_2"),
+    ("rule3", "active", "2023-03-01 00:00:000", "business_rule_3"),
 ]
 columns1 = ["office_type_rule_name", "status", "effective_date", "business_rule"]
 df1 = spark.createDataFrame(data1, columns1)
@@ -53,6 +53,16 @@ for year_col in year_columns:
 
 # Step 5: Join the base table (df1) with the pivoted second table (pivot_df2)
 final_df = df1.join(pivot_df2, on="office_type_rule_name", how="left")
+
+# Step 6: Create 'effective age' column as the difference between current date and 'effective_date'
+final_df = final_df.withColumn("effective_age", datediff(current_date(), col("effective_date")))
+
+# Step 7: Create 'year' column by extracting the year part from 'effective_date'
+final_df = final_df.withColumn("year", year(col("effective_date")))
+
+# Step 8: Create 'USED or Not Used' column based on year columns
+used_columns = array_except(array(*[col(c) for c in year_columns]), array(lit("Not Used")))
+final_df = final_df.withColumn("USED or Not Used", when(used_columns.isNull() | (used_columns == lit([])), lit("Not Used")).otherwise(lit("Used")))
 
 # Show the final DataFrame
 final_df.show(truncate=False)
