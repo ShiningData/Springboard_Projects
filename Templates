@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, when, lit
+from pyspark.sql.functions import col, sum as spark_sum, when, lit, coalesce
 
 # Start Spark session
 spark = SparkSession.builder.appName("Dataframe Join").getOrCreate()
@@ -46,7 +46,12 @@ pivot_df2 = pivot_df2.withColumn(
     when(lit(current_month >= 7), lit("Half Year Completed")).otherwise(lit(None))
 )
 
-# Step 4: Join the base table (df1) with the pivoted second table (pivot_df2)
+# Step 4: Replace null values in year columns with 'Not Used'
+year_columns = [col for col in pivot_df2.columns if col not in ["office_type_rule_name"]]
+for year_col in year_columns:
+    pivot_df2 = pivot_df2.withColumn(year_col, coalesce(col(year_col), lit("Not Used")))
+
+# Step 5: Join the base table (df1) with the pivoted second table (pivot_df2)
 final_df = df1.join(pivot_df2, on="office_type_rule_name", how="left")
 
 # Show the final DataFrame
