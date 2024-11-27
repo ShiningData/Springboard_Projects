@@ -1,71 +1,145 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, when, lit, coalesce, datediff, current_date, year, array_except, array
+Engin Turkmen
+Senior Data Scientist / DSI Team
 
-# Start Spark session
-spark = SparkSession.builder.appName("Dataframe Join").getOrCreate()
+1. KEY ACCOMPLISHMENTS
+a. Claim Predictor Project:
+I led the Claim Predictor Project, an innovative initiative aimed at streamlining and enhancing claim preprocessing by identifying potential claim denials before submission. This solution addresses critical challenges in the healthcare claims process, such as reducing administrative costs, decreasing denial rates, and improving cash flow efficiency. By proactively flagging potential denials, the model enables providers to address issues early and expedite payment cycles. Key accomplishments include:
+(1)	Analyzing and Addressing Legacy Shortcomings: I conducted an in-depth analysis of the previous model, which business stakeholders found unsatisfactory, codebase, workflow, data implementation, and MRMG documentation. Through ad hoc data analysis and close collaboration with business partners, I identified key areas for improvement and delivered actionable recommendations.
+(2)	Developing a High-Performance Ensemble Model: Leveraging insights gained from stakeholder collaboration, I spearheaded the development of an ensemble model utilizing AutoML and CatBoost. The new model outperformed its predecessor in both performance metrics and interpretability, meeting business expectations and offering a more robust solution.
+(3)	Building an End-to-End Automated Pipeline: We designed and implemented a fully automated pipeline encompassing feature engineering, training, inference, exploratory analysis, and interpretability. I also worked closely with data engineering teams to prepare for seamless deployment, ensuring optimized operational integration and sustained performance.
+(4)	Designing an Interactive Streamlit Application: To enhance stakeholder engagement and showcase the model’s functionality, I led Streamlit app design sessions and provided scripts to develop an interactive interface. This tool empowers product managers to effectively present insights to potential clients, adding significant value to the business.
+This project exemplifies my ability to combine technical expertise, business acumen, and collaborative leadership to deliver impactful solutions, fostering trust and paving the way for continued innovation.
+b. Bank Account Authentication Project:
+I led the Bank Account Authentication project, an innovative initiative aimed at enhancing the security and integrity of account ownership verification. Utilizing a rule-based approach, the solution compares Account Owner Authentication (AOA) data against authoritative sources (EWS) by matching critical details such as names, SSNs, dates of birth, IDs, phone numbers, and addresses. This process mitigates risks associated with improper or fraudulent payments, ensuring the integrity of financial transactions.
+Given the business's preference for more granular scoring in the initial deployment and the current lack of sufficient labeled data to support a machine learning model, I adopted a rule-based approach to meet immediate needs. However, I designed the system with scalability in mind, enabling a transition to a machine learning-based model in the future as data availability improves. Key accomplishments include:
+(1)	Business Alignment and Rule Definition: Collaborated closely with the product manager to identify optimal rules that align with business requirements. This involved conducting multiple ad hoc analyses and rigorous tests to validate and refine the business logic.
+(2)	End-to-End Pipeline Development: Built a comprehensive model pipeline capable of delivering granular account authentication response codes, addressing the need for detailed and actionable outputs.
+(3)	MRMG Documentation and Feedback Integration: Prepared a complete MRMG documentation package, reviewed it collaboratively with business partners, and incorporated feedback to ensure clarity, accuracy, and alignment with operational readiness standards.
+(4)	Model Monitoring and Adaptability: Developed a robust Streamlit-based model monitoring application to track key metrics such as data drift, target drift, and concept drift. This tool also supports error analysis and exploratory insights, enhancing the model's adaptability to evolving business needs and facilitating continuous improvements.
+This approach not only delivered immediate value but also positioned the project for long-term success by creating a scalable framework that can evolve with business requirements and data availability.
+c. Annual and Monthly Wire Report Automation:
+I conducted the development of two automated pipelines to streamline the reporting of monthly and annual wire transaction monitoring. These pipelines involved comprehensive data manipulation and engineering on the backend to ensure accuracy, reliability, and scalability and useful metrics which stakeholders benefits on the fronted. Key accomplishments include:
+(1)	Pipeline Development: Designed and implemented fully automated processes to generate reports for wire transaction monitoring, replacing previously manual and time-intensive tasks. These pipelines provide stakeholders with the flexibility to customize time ranges for report generation, significantly improving efficiency. 
+(2)	Integration into Payment Trends Application: Collaborated with the team to integrate the automated reporting processes into the Payment Trends Application, enabling stakeholders to view all relevant insights and metrics directly through the dashboard.
+(3)	Metrics Creation and Deployment: Developed actionable metrics derived from the reports and worked closely with the data engineering team to incorporate these metrics into the DSI Metrics Farm, ensuring accessibility and usability for broader organizational purposes.
+(4)	Business Impact: This automation alleviated a significant manual workload previously managed by business stakeholders, reducing errors and saving valuable time. It has empowered stakeholders with a seamless, efficient reporting tool that enhances decision-making and operational productivity.
+These initiatives not only optimized wire transaction reporting but also demonstrated my ability to deliver impactful, scalable solutions that address critical business needs while fostering collaboration across teams.
+d. Bank Names Standardization:
+I led the development of a repeatable ABA to Bank Names Mapping Process, designed to ensure consistent and reliable mapping of bank names across datasets. This process serves as a foundational tool for the Payment Trends Dashboard and the Payments Knowledge Graph, addressing critical business needs for data standardization and accuracy. Key accomplishments include:
+1.	Systematic and Repeatable Mapping Process: Created a structured process capable of reliably resolving bank names to standardized entity names during each data refresh. This approach ensures consistency while accommodating updates and additions to the source data.
+2.	Entity Resolution and Standardization: Implemented logic to resolve variations of bank names into a single standardized format.
+3.	Dynamic Output Table Design: Designed the output table to include critical fields: Bank Identifier (ABA), Raw Bank Name from Source Data, Formatted/Resolved Bank Name, and Date of Data Loading. This structure ensures traceability, transparency, and readiness for integration into downstream applications.
+4.	Future Scalability: Delivered an automated and repeatable process adaptable to periodic updates in source data, ensuring long-term usability for data refresh cycles.
+This process standardizes bank name data, reducing inconsistencies that can lead to misinterpretations in key dashboards and knowledge graphs. It also enhances data reliability and scalability, positioning it as a critical component for ongoing payment trend analysis and decision-making.
+e. AI/ML Synthetic Data Generation:
+As the representative of the DSI team, I developed an end-to-end churn model to evaluate the capabilities of synthetic data generation candidates (Athena, MostlyAI, and Howso) in comparison to real data. The performance metrics of my model on real data served as the benchmark for selecting the most suitable synthetic data generation tool. Key accomplishments include:
+(1)	Benchmark Model Development: Built a robust churn model that established performance benchmarks on real data, providing a critical reference point for assessing the effectiveness of synthetic data candidates.
+(2)	Collaboration with EDM Analytics Competency Center: Partnered closely with the EDM Analytics Competency Center throughout the evaluation process. Delivered all requested codebases, detailed reports, and analyses to ensure transparency and alignment with evaluation goals.
+(3)	Stakeholder Engagement and Deliverables: Actively participated in meetings to discuss findings, present analyses, and refine deliverables for the AI/ML track in the synthetic data generation project. Maintained clear communication and provided actionable insights that supported data-driven decision-making.
+(4)	Cross-Functional Teamwork: Demonstrated full cooperation and efficient teamwork by coordinating efforts. Successfully delivered all requested outputs, meeting project objectives within the designated timeline.
+This project highlighted my ability to deliver impactful, data-driven solutions and foster collaboration, ultimately contributing to the successful evaluation and selection of a synthetic data generation candidate.
 
-# Define schema and data for DataFrame 1 and 2
-data1 = [
-    ("rule1", "active", "2018-06-21 00:00:000", "business_rule_1"),
-    ("rule2", "inactive", "2022-05-01 00:00:000", "business_rule_2"),
-    ("rule3", "active", "2023-03-01 00:00:000", "business_rule_3"),
-]
-columns1 = ["office_type_rule_name", "status", "effective_date", "business_rule"]
-df1 = spark.createDataFrame(data1, columns1)
+2. PROBLEM-SOLVING/ADAPTABILITY
+Throughout the year, in addition to the key accomplishments outlined above, I addressed numerous challenges to solve complex business problems, conduct ad hoc analyses, streamline processes, and achieve successful outcomes through effective collaboration with team members, as detailed below.
+a. Universal Forecasting Metric Module and MRMG Process:
+I collaborated with a team member to develop and implement a Universal Forecasting Model Metric Module, which was seamlessly integrated into the model pipeline. This module was rigorously tested across multiple datasets to ensure its robustness and reliability, providing a standardized approach to evaluating forecasting models. Key accomplishments include:
+(1)	Development of Metric Module: Designed and built a universal metric module for forecasting models, which was tested on various datasets to consolidate a reliable and comprehensive evaluation framework.
+(2)	MRMG Package Preparation: Assisted in preparing MRMG documentation packages for three distinct clients, ensuring each package adhered to established standards and requirements.
+(3)	MRMG Review and Issue Resolution: Participated in MRMG review meetings, meticulously evaluated all documentation, and resolved identified issues. My efforts contributed to the successful completion and submission of the MRMG packages, and meeting organizational expectations.
+This initiative demonstrated my ability to collaborate effectively, deliver scalable and reliable solutions, and contribute to the successful completion of MRMG processes. The universal metric module now serves as a critical component for evaluating forecasting models consistently across different clients and datasets.
+b. Liquidity – Sensitivity Analysis:
+As part of the Liquidity Project, I conducted extensive research on sensitivity analysis to evaluate the impact of interest rate changes on deposit balances. This analysis was implemented at multiple levels—relationship ID, account ID, and product level—to provide granular and actionable insights tailored to the needs of the business.
+Collaborating with a team member, we tested 20 advanced techniques to identify the most effective approaches and metrics for integration into a user dashboard. These techniques included cutting-edge methodologies to ensure a comprehensive evaluation of the impact of interest rate fluctuations.
+The best-performing methodologies and their corresponding metrics were integrated into an interactive dashboard. This tool empowers stakeholders with a reliable resource to monitor and evaluate the relationship between interest rate changes and deposit balances. By delivering actionable insights, this initiative supports strategic decision-making and enhances financial planning efficiency.
+c. Attempted Fraud Ad-hoc Analysis:
+I conducted an exploratory data analysis on attempted fraud transaction datasets from four different clients, uncovering key patterns and deriving actionable insights. These findings provided a foundation for understanding fraud trends and informed internal discussions on potential risk mitigation strategies. Key accomplishments include:
+(1)	Insight Derivation: Performed comprehensive analysis on diverse datasets to identify trends, anomalies, and potential fraud patterns across multiple clients.
+(2)	Internal Communication: Developed a detailed slide deck summarizing the findings to facilitate internal discussions, aligning the team on the insights and their implications.
+(3)	Project Foundation: The analysis served as the basis for initiating a new project aimed at addressing fraud-related challenges identified during the exploratory phase.
+The analysis highlighted fraud trends and patterns, demonstrating the value of data-driven approaches for risk assessment. Although the findings were not directly presented to stakeholders, they played a crucial role in informing internal strategies and driving the initiation of a new project to tackle fraud effectively.
+d. Pos Pay File Upload Workflow Automation:
+I developed a file standardization automation pipeline designed to efficiently convert various file formats (TXT, CSV, JSON) into a standardized output format with a structured schema that includes fields such as Account Number, Serial Number, Issued Amount, Date, Action, Payee 1, and Payee 2. This initiative streamlined the preprocessing of input files, ensuring consistency and reliability in the workflow. Key accomplishments include:
+(1)	Automation Pipeline Development: Designed and implemented a comprehensive backend pipeline for data preprocessing and engineering, enabling seamless standardization of diverse file types into a unified format.
+(2)	Collaboration and Application Development: Partnered with a team member to develop a Streamlit application showcasing the automation methodology. This interactive application provided upper management with a clear understanding of the process and its benefits.
+This automated workflow significantly improved efficiency by standardizing input files, reducing manual intervention, and ensuring structured outputs. The Streamlit application successfully demonstrated the solution’s value, and received appreciation from upper management.
+e. Trancode Consolidation
+I contributed to the TransCode Consolidation adhoc project, which aimed to streamline and consolidate individual transaction codes (transcodes) into logical groupings to simplify billing and analysis processes while maintaining revenue integrity and historical data relevance. Key accomplishments include: 
+(1)	Requirements Documentation and Planning: Created a detailed plan and documented all necessary requirements to ensure alignment with business objectives. This documentation served as a roadmap for the project, clarifying expectations and deliverables.
+(2)	Research and Solution Development: Conducted comprehensive research on potential approaches for transcode consolidation and collaborated with my team to test these solutions. We analyzed historical data and usage patterns to identify logical groupings that align with revenue and operational goals.
+(3)	Stakeholder Engagement and Feedback Integration: Developed and presented a slide deck to manager and business partners, outlining our proposed solutions and their benefits. Based on stakeholder feedback, we worked to refine and enhance the solution to better meet their needs.
+(4)	Collaborative Execution and Transition: Once the backend implementation was completed, I transitioned this ad hoc task to my teammate to ensure seamless continuity. This allowed me to focus on initiating and driving another critical project.
+Through structured planning, effective collaboration, and proactive engagement with stakeholders, this project established a simplified transcode structure, paving the way for improved billing efficiency and analysis capabilities. My contributions ensured the project’s alignment with business goals and its successful progress toward implementation.
+f. Clustering Project - Support:
+I provided mentorship and support to a new associate data scientist on our team during the initiation planning phase of a clustering project. Key Contributions:
+(1)	Cluster Model Design and Planning: Assisted in designing the cluster model by guiding the associate through the initiation planning phase. I shared best practices and insights to ensure a strong foundational approach to the project.
+(2)	Methodology Sharing: Introduced and applied clustering methodologies that I had successfully used in previous project which are widely adopted within our team. This significantly expedited the associate's understanding of the techniques and their practical application.
+(3)	Feedback and Collaboration: Provided constructive feedback and guidance as needed throughout the project, fostering the associate’s confidence and enhancing the quality of their work.
+By offering mentorship and technical support, I facilitated the associate data scientist’s ability to quickly adapt to the project, better understand clustering methodologies, and deliver results effectively. This collaboration not only strengthened the project’s execution but also contributed to the associate’s professional growth.
+f. Pos Pay Simplification – Research:
+As part of the Pos Pay Simplification initiative, I contributed to an ad hoc analysis focused on exploring Optical Character Recognition (OCR) solutions and identifying tools and libraries that could be utilized within the PNC ecosystem to advance the project using AI technology. Key Contributions:
+(1)	OCR Solutions Research and Documentation: Conducted an in-depth review of various OCR tools and libraries and compiled a detailed list of options that could potentially be leveraged within the PNC ecosystem. This documentation served as a resource to guide future technical decisions for the project.
+(2)	Collaboration with Engineering Teams: Participated in meetings with engineers to discuss the documented tools and libraries, aligning on their feasibility and potential use cases. This collaboration ensured that the identified solutions were practical and aligned with project goals.
+(3)	Actionable Task Development: Collaborated with the team to evaluate the listed options and translate the research into actionable tasks for the next phase of the project.
 
-data2 = [
-    ("rule1", "01", 2021, 10),
-    ("rule1", "01", 2022, 12),
-    ("rule1", "01", 2023, 14),
-    ("rule1", "01", 2024, 16),
-    ("rule2", "01", 2021, 20),
-    ("rule2", "01", 2022, 25),
-    ("rule2", "01", 2023, 18),
-    ("rule2", "01", 2024, 22),
-]
-columns2 = ["office_type_rule_name", "execution_month", "execution_year", "num_execution"]
-df2 = spark.createDataFrame(data2, columns2)
+3. COLLABORATION AND STAKEHOLDER ENGAGEMENT
+Over the course of multiple projects, I played a pivotal role in fostering strong partnerships with stakeholders by prioritizing collaboration, clear communication, and actionable insights. My contributions consistently bridged the gap between technical expertise and business needs, enabling stakeholders to make data-driven decisions with confidence.
 
-# Step 1: Preprocess the second table - Group by 'office_type_rule_name' and 'execution_year'
-current_year = 2025
-current_month = 7
 
-aggregated_df2 = df2.groupBy("office_type_rule_name", "execution_year").agg(
-    spark_sum("num_execution").alias("yearly_num_execution")
-)
+a. Stakeholder Collaboration Highlights:
+(1)	Proactive Engagement and Alignment: Across projects such as the Claim Predictor Project, Bank Account Authentication, and TransCode Consolidation, I worked closely with business stakeholders to align solutions with their objectives. By conducting ad hoc analyses, creating detailed documentation, and presenting slide decks, I ensured that proposed solutions were actionable and tailored to their needs. My consistent integration of stakeholder feedback not only refined the deliverables but also reinforced trust and partnership.
+(2)	Empowering Stakeholders with Decision Support Tools: I developed intuitive, user-friendly tools such as interactive dashboards and Streamlit applications in projects like Bank Account Authentication, and Annual and Monthly Wire Report Automation. These tools enabled stakeholders to monitor key metrics, and financial transaction patterns, providing them with reliable resources for strategic decision-making.
+(3)	Cross-Functional Collaboration: By partnering with engineering teams, EDM Analytics, and business stakeholders, I ensured that my technical implementations—such as the Claim Predictor, Bank Account Authentication, AI/ML Synthetic Data Generation and all automation projects—aligned with operational realities and broader organizational goals. My ability to translate complex technical concepts into actionable tasks fostered clarity and efficiency throughout these collaborations.
+(4)	Mentorship and Knowledge Sharing: I actively mentored team members, as demonstrated in the Clustering Project and Universal Forecasting Metric Module. By sharing methodologies, providing feedback, and guiding planning phases, I empowered both new and experienced team members to execute their responsibilities effectively. This not only strengthened team capabilities but also ensured smoother project execution. I also actively contributed to mentorship across the organization, as highlighted in Section 4 – Forward-Looking Impact, by providing guidance and support in multiple instances to foster growth and collaboration. 
+(5)	Adaptability to Business Needs: In scenarios requiring innovative yet scalable solutions—such as the AI/ML Synthetic Data Generation and Bank Account Authentication Projects—I adapted to evolving requirements by balancing immediate needs with long-term goals. For instance, implementing rule-based models where labeled data was insufficient demonstrated my ability to deliver value while planning for future scalability with machine learning models.
+b. Impact on Decision Support
+(1)	Data-Driven Insights: My exploratory analyses in projects like Attempted Fraud Analysis and Pos Pay File Upload Workflow Automation provided critical insights that informed risk assessment and internal decision-making. These insights often served as the foundation for initiating new projects or refining existing strategies.
+(2)	Standardization for Clarity: By creating repeatable processes and standardized outputs, such as in the Bank Names Standardization and Annual Wire Report Automation, I eliminated inconsistencies and streamlined data for better usability. This standardization enhanced the accuracy and reliability of key dashboards and knowledge graphs, improving decision-making efficiency.
+(3)	Tools to Facilitate Strategic Planning: The dashboards, metric modules, and pipelines I developed empowered stakeholders with the ability to visualize trends, evaluate impacts, and make informed decisions. 
+Through consistent collaboration, technical expertise, and a focus on delivering actionable insights, I established strong partnerships with stakeholders and enabled them to make better decisions. By addressing their immediate needs while planning for scalability and innovation, I positioned myself as a reliable partner and consultant, driving both project success and organizational growth. My contributions have consistently demonstrated the value of aligning technical solutions with business priorities to achieve meaningful, long-lasting impact.
 
-# Step 2: Pivot the aggregated DataFrame to get each year as a separate column
-pivot_df2 = aggregated_df2.groupBy("office_type_rule_name").pivot("execution_year").sum("yearly_num_execution")
-
-# Step 3: Handle the additional column for the first half of the current year
-half_year_col_name = "Jan {} - June {}".format(current_year, current_year)
-
-# Create a new column for the first half of 2025 if we are in July 2025
-pivot_df2 = pivot_df2.withColumn(
-    half_year_col_name,
-    when(lit(current_month >= 7), lit("Half Year Completed")).otherwise(lit(None))
-)
-
-# Step 4: Replace null values in year columns with 'Not Used'
-year_columns = [col for col in pivot_df2.columns if col not in ["office_type_rule_name"]]
-for year_col in year_columns:
-    pivot_df2 = pivot_df2.withColumn(year_col, coalesce(col(year_col), lit("Not Used")))
-
-# Step 5: Join the base table (df1) with the pivoted second table (pivot_df2)
-final_df = df1.join(pivot_df2, on="office_type_rule_name", how="left")
-
-# Step 6: Create 'effective age' column as the difference between current date and 'effective_date'
-final_df = final_df.withColumn("effective_age", datediff(current_date(), col("effective_date")))
-
-# Step 7: Create 'year' column by extracting the year part from 'effective_date'
-final_df = final_df.withColumn("year", year(col("effective_date")))
-
-# Step 8: Create 'USED or Not Used' column based on year columns
-used_columns = array_except(array(*[col(c) for c in year_columns]), array(lit("Not Used")))
-final_df = final_df.withColumn("USED or Not Used", when(used_columns.isNull() | (used_columns == lit([])), lit("Not Used")).otherwise(lit("Used")))
-
-# Show the final DataFrame
-final_df.show(truncate=False)
-
-# Stop Spark session
-spark.stop()
+4. FORWARD-LOOKING IMPACT
+     a. Scalable Data Science Solutions:
+By developing user-friendly dashboards using Streamlit and Dash, I have created tools that empower stakeholders to make data-driven decisions more efficiently. These solutions are designed to be adaptable, ensuring they remain relevant as business needs evolve.
+    b. Business Alignment:
+By focusing on business-critical projects such as claim predictor, bank account authentication , and automating payment trend monitoring, I have delivered insights and models that directly impact strategic goals. These contributions provide a roadmap for leveraging data science in creating long-term value.
+    c. Strengthening Technical Frameworks:
+My work in automating workflows, implementing robust model development and deployment strategies has improved operational reliability and reduced turnaround times for data science projects. These advancements position the organization to respond proactively to complex business needs.
+    d. Continuation partnership with business:
+I have focused on fostering strong and reliable partnerships with business stakeholders by ensuring timely and effective solutions that address their needs. By maintaining open lines of communication and incorporating their feedback into our solutions in a professional and seamless manner, I have helped build trust and confidence in our capabilities. This proactive approach has positioned our team as a go-to consultant for future business solutions, creating opportunities for continued collaboration and long-term partnerships.
+    e. Mentoring/Coaching and Knowledge Sharing:
+          (1)  Data Science Summit Model Showdown Coaching:
+This year, I coached two data science teams, Friction Fighters and Drops of Jupyter, for the annual PNC Data Science Model Showdown. The competition challenged teams to analyze PNC card transaction data and uncover insights into customer behavior following suspected fraudulent activity.
+As a coach, I facilitated weekly structured meetings to guide the teams in developing their skills, sharing relevant resources, and providing constructive feedback to address the business problem effectively. I closely monitored their progress, ensuring alignment with the competition goals, and contributed to their overall success. Notably, the Friction Fighters team emerged as the top winner of the competition across PNC.
+The experience earned me highly positive feedback not only from team members but also from their manager, highlighting my ability to mentor, drive results, and foster professional growth within the teams.
+           (2)  Rising Data Science Program Mentoring:
+As part of the Rising Data Science Program, I provided mentorship for two capstone projects:
+1.	Customer Life Stages Project: Focused on designing an interpretable customer segmentation model to support targeted sales interactions.
+2.	Churn Prediction Project: Aimed at building a predictive model to identify customers likely to leave the bank, enabling proactive engagement with at-risk clients.
+In my role as a mentor, I held regular structured meetings with each team to support their skill enhancement, recommend valuable resources, and offer detailed feedback on their approach to solving business problems. I ensured their progress remained aligned with project goals, fostering their ability to deliver meaningful results.
+Both teams successfully achieved their objectives, and my guidance was met with overwhelmingly positive feedback from the participants. This experience highlighted my strengths in leadership, driving impactful outcomes, and empowering teams to grow professionally while solving real-world challenges.
+           (3)  Development Program Tutoring:
+As part of the development program, I organized a comprehensive tutoring session on model development and deployment strategies. This session included a professionally designed slide deck and a live demo showcasing best practices used in data science projects across PNC. Additionally, I provided participants with a variety of resources that they could integrate into their workflows to enhance real-world business solutions.
+The session was well-received, and I received highly positive feedback from participants, who appreciated the practical insights and actionable strategies I shared. This initiative demonstrated my commitment to mentoring and contributing to the professional growth of others within the organization. 
+           (4)  Collaboration within the team:
+I actively supported collaboration within our team by providing guidance and resources to newly onboarded data scientists and junior data scientists. I assisted them with their projects and the MRMG process whenever they sought help, ensuring they had the tools and support needed to succeed. This approach fostered a collaborative environment and contributed to the team’s overall efficiency and development.
+5. PROFESSIONAL DEVELOPMENT
+a. Technical Skills Growth:
+This year, I made significant progress in enhancing my technical expertise beyond the traditional scope of data science to align with a broader organizational perspective. I focused on expanding my technical expertise to bridge the gap between data science and business needs, enabling more impactful contributions. A key highlight of my growth was the development of user-centric Streamlit and Dash applications, which provided intuitive and actionable dashboards to business stakeholders. These tools enhanced communication by translating complex data insights into accessible, business-friendly formats, thereby driving more informed decision-making. 
+As a continuation education through self-funded programs which I completed last year such as MLOps Course from Data Science School, Data Engineering Program from Purdue University, and Product Development Certification from Cornell University, to further strengthen my technical acumen, I joined several advanced learning programs this year, including:
+•	Completed Harvard University FinTech Program (via Guild Education), focusing on innovative solutions in financial technology and data-driven decision-making.
+•	Started a 7.5-months Cloud Big Data Engineering Bootcamp (self-funded), which provided advanced skills in cloud architecture and data engineering.
+These programs have strengthened my skill set, allowing me to apply advanced concepts to my projects, share insights with colleagues, and accelerate business problem-solving through automation and scalable solutions. Furthermore, I deepened my understanding of developing user-centric dashboards and applications, ensuring seamless communication of data insights to business stakeholders. Additionally, I attended PyCon, enhancing my programming expertise to deliver better product experiences.
+b. Business Skills Growth:
+This year marked significant progress in understanding the business landscape, enabling me to align my technical expertise more closely with organizational objectives. By working directly with business partners, I gained a deeper understanding of the company’s products, operational processes, and the unique challenges faced in areas such as healthcare, payments, account verifications, liquidity, fraud detection, and business automation. Key areas of growth included:
+•	Collaborative Problem-Solving: Partnering with stakeholders to define challenges and deliver targeted, data-driven solutions that integrate seamlessly into their workflows.
+•	Business Communication: Creating clear documentation of complex processes and engaging in frequent communication with cross-functional teams, which improved alignment and strengthened partnerships.
+•	Strategic Insights: Applying analytical methodologies not only to address immediate issues but also to identify long-term opportunities for process improvement, earning trust and positive feedback from stakeholders.
+Through active participation in MRMG processes, I improved my ability to prepare and review MRMG documents, lead structured discussions, and drive alignment across teams. These experiences enhanced my business acumen, established strong connections with business stakeholders, ensured the successful completion of projects, and prepared me to take on more strategic responsibilities.
+c. Areas for Growth:
+Looking ahead, I am committed to developing my skills further in the following areas:
+1.	Model Development Architecture: I aim to expand my expertise in building end-to-end model development pipelines and MLOps frameworks. This will enable faster iteration, more robust and scalable solutions, and streamlined collaboration with business partners.
+2.	Resource Efficiency in Product Development: I plan to deepen my knowledge of parallel processing and GPU/CPU optimization techniques to enhance the computational efficiency of product development.
+3.	Cloud Technologies: With the organization transitioning to cloud environments, I am focusing on earning relevant cloud certifications and preparing to apply these skills to upcoming projects in this domain.
+4.	Advanced Machine Learning Techniques: I intend to refine my knowledge of Graph Machine Learning and Large Language Models (LLMs) and identify practical applications for these technologies to address complex business challenges.
+d. Career Goal:
+This year has been a transformative period of learning and growth. By expanding my technical skills and deepening my understanding of the business, I have positioned myself to take on greater leadership responsibilities as a LEAD DATA SCIENTIST in the upcoming year. My commitment to professional development and delivering business-aligned solutions ensures that I am ready to contribute to the organization’s continued success. 
