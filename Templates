@@ -3,41 +3,24 @@ import re
 def parse_rules(rules):
     readable_rules = []
     for rule in rules:
-        # Remove unwanted symbols
+        # Remove unwanted symbols and normalize spacing
         rule = rule.replace('"', '').replace('IF ', '').strip()
         
         # Match intervals and format them
-        intervals = re.findall(r'([a-zA-Z_]+) = ([\(\[-]?[^\)]+[\)\]])', rule)
+        intervals = re.findall(r'([a-zA-Z_]+) ?[=<>]+ ?([\(\[-]?[^\)]+[\)\]])', rule)
         formatted_conditions = []
         for feature, interval in intervals:
-            # Handle interval formatting
-            interval = interval.replace('-inf', 'less than').replace('inf', 'more than')
-            interval = re.sub(r'\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)', r'between \1 and \2', interval)
-            interval = re.sub(r'\[(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)', r'including between \1 and \2', interval)
-            formatted_conditions.append(f"{feature} is {interval}")
-        
-        # Extract the label
-        label_match = re.search(r'THEN label - \((\d+)\)', rule)
-        label = label_match.group(1) if label_match else "Unknown"
-        
-        # Combine formatted conditions with the label
-        readable_rule = f"If {' AND '.join(formatted_conditions)}, THEN label is {label}."
-        readable_rules.append(readable_rule)
-    
-    return readable_rules
-
-
-# Example input
-rules = [
-    "Thife total sin_per_claim - (-inf 11.5) AND claimErequencyCode = <0.5, inf) AND FE_claimstate to service days - (-inf, 183.0) AND FE_actual patientAge = (-inf, 144.0) AND servicelineQuantity = (-inf, 220.5) THEN label - (0)",
-    "coinihequencyodae o.5,9.5) i iepoca n gor chade noyCade, 52.o) o 7e el teeiate ta-Semtesdoy (2005, 929.5) PuEN tabel necogntaty - (-&nf, 667.5) THEN label - (0)",
-    "IF FE_claimstate to service days - ‹6.5, inf) AND FE_total sin per _Claim - <1.5, inf) AND ClaimTotalChargeAmt - (-inf, 75740.22) AND FE_actual_patientAge = ‹2.5, inf) AND serviceLineunitofMeasure - (UN) THEN label - (1)",
-    "serviceLineChargeAnt - <1.02, 15719.33) AND serviceLineQuantity = (-inf, 864.5) THEN label - (1)**IF FELactual patientAge = ‹45.5, inf) AND serviceLineChargeAmt - <0.005, inf) AND 5 <3.01, 10422.62) THEN Label - (3)"
-]
-
-# Convert to human-readable format
-readable_rules = parse_rules(rules)
-
-# Print the results
-for rule in readable_rules:
-    print(rule)
+            # Normalize interval formatting
+            interval = interval.replace('inf', '∞')  # Handle infinity for clarity
+            
+            # Handle different cases of intervals
+            if '(-∞,' in interval:  # Less than case
+                formatted_condition = f"{feature} is less than {interval.split(',')[1].strip(')')}"
+            elif '(∞,' in interval:  # Greater than case
+                formatted_condition = f"{feature} is greater than {interval.split(',')[0].strip('(')}"
+            elif ',' in interval:  # Between case
+                values = interval.strip('()[]').split(',')
+                if '(' in interval or ')' in interval:  # Exclusive bounds
+                    formatted_condition = f"{feature} is between {values[0].strip()} and {values[1].strip()} (exclusive)"
+                else:  # Inclusive bounds
+                    formatted_condition = f"{feature} is between
