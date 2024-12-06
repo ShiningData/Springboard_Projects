@@ -1,26 +1,56 @@
-import re
+def convert_to_meaning(sentence):
+    """
+    Converts a condition-based sentence into a human-readable meaning.
+    
+    Parameters:
+    sentence (str): A sentence containing a range or condition.
 
-def parse_rules(rules):
-    readable_rules = []
-    for rule in rules:
-        # Remove unwanted symbols and normalize spacing
-        rule = rule.replace('"', '').replace('IF ', '').strip()
+    Returns:
+    str: A human-readable meaning of the sentence.
+    """
+    if "means" not in sentence:
+        return "Invalid format"
+    
+    # Split sentence into parts
+    variable_part, meaning_part = sentence.split("means", 1)
+    variable_part = variable_part.strip()
+    meaning_part = meaning_part.strip()
+    
+    # Extract the variable and condition
+    if "(" in variable_part and ")" in variable_part:
+        variable, condition = variable_part.split("(", 1)
+        condition = condition.rstrip(")")
+        variable = variable.strip()
         
-        # Match intervals and format them
-        intervals = re.findall(r'([a-zA-Z_]+) ?[=<>]+ ?([\(\[-]?[^\)]+[\)\]])', rule)
-        formatted_conditions = []
-        for feature, interval in intervals:
-            # Normalize interval formatting
-            interval = interval.replace('inf', '∞')  # Handle infinity for clarity
+        # Process different cases for conditions
+        if "," in condition:
+            # Handle range conditions
+            low, high = condition.split(",")
+            low = low.strip()
+            high = high.strip()
             
-            # Handle different cases of intervals
-            if '(-∞,' in interval:  # Less than case
-                formatted_condition = f"{feature} is less than {interval.split(',')[1].strip(')')}"
-            elif '(∞,' in interval:  # Greater than case
-                formatted_condition = f"{feature} is greater than {interval.split(',')[0].strip('(')}"
-            elif ',' in interval:  # Between case
-                values = interval.strip('()[]').split(',')
-                if '(' in interval or ')' in interval:  # Exclusive bounds
-                    formatted_condition = f"{feature} is between {values[0].strip()} and {values[1].strip()} (exclusive)"
-                else:  # Inclusive bounds
-                    formatted_condition = f"{feature} is between
+            if low == "-inf":
+                return f"{variable} is less than {high}"
+            elif high == "inf":
+                return f"{variable} is greater than {low}"
+            else:
+                return f"{variable} is between {low} and {high}"
+        else:
+            # Handle specific value conditions
+            return f"{variable} is {condition}"
+    else:
+        # Handle categorical mappings
+        return meaning_part
+
+# Example Usage:
+sentences = [
+    "FE_claimstate_to_service_days = (<4.5, inf) means FE_claimstate_to_service_days is greater than 4.5",
+    "FE_claimstate_to_service_days = (-inf, 281.5) means FE_claimstate_to_service_days is less than 281.5",
+    "serviceLineChargeAmt = (<1.02, 15719.33) means serviceLineChargeAmt is between 1.02 and 15719.33",
+    "FE_payerIDName = [99999-0122 - MEDICARE] means FE_payerIDName is 99999-0122 - MEDICARE",
+    "serviceLineUnitOfMeasure = {UN} means serviceLineUnitOfMeasure is UN"
+]
+
+# Convert each sentence
+for s in sentences:
+    print(convert_to_meaning(s))
