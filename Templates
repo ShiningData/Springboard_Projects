@@ -1,66 +1,43 @@
-def convert_rule_to_sentence(rule):
-    """
-    Converts a rule string into a human-readable explanation using column mappings.
-    """
-    # Mapping of column names to client-friendly descriptions
-    column_mapping = {
-        "claimUniqueId": "the unique claim ID",
-        "billingSystem": "the billing system",
-        "claimTotalChargeAmt": "the total charge amount for the claim",
-        "claimFacilityCode": "the claim facility code",
-        "claimFacilityCodeQualifier": "the facility code qualifier",
-        "claimFrequencyCode": "the frequency code of the claim",
-        "claimRelatedCauseCode": "the related cause code for the claim",
-        "claimAccidentState": "the accident state for the claim",
-        "serviceLineChargeAmt": "the charge amount for the service line",
-        "serviceLineUnitOfMeasure": "the unit of measure for the service line",
-        "serviceLineQuantity": "the total number of service line quantities",
-        "serviceLineRevenueCode": "the revenue code for the service line",
-        "serviceLineProcedureCode": "the procedure code for the service line",
-        "serviceLineProcedureCodeQualifier": "the procedure code qualifier for the service line",
-        "serviceLineProcedureCodeModifiers": "the procedure code modifiers for the service line",
-        "providerNpi": "the provider's NPI (National Provider Identifier)",
-        "primaryDiagnosis": "the primary diagnosis",
-        "patientRelationship": "the patient's relationship to the insured",
-        "FE_claimstate_to_service_days": "the days between the claim and service",
-        "FE_service_over_day": "the service over the day metric",
-        "FE_serviceLineDateStatus": "the status of the service line date",
-        "FE_payerIDName": "the name of the payer ID",
-        "FE_actual_patientAge": "the actual age of the patient",
-        "FE_actual_patientGender": "the gender of the patient",
-        "FE_serviceLinePointedDiagnosisCodes_1": "the first pointed diagnosis code for the service line",
-        "FE_serviceLinePointedDiagnosisCodes_2": "the second pointed diagnosis code for the service line",
-        "FE_serviceLinePointedDiagnosisCodes_3": "the third pointed diagnosis code for the service line",
-        "FE_serviceLinePointedDiagnosisCodes_4": "the fourth pointed diagnosis code for the service line",
-        "FE_serviceLinePointedDiagnosisTypeCodes_1": "the first pointed diagnosis type code for the service line",
-        "FE_serviceLinePointedDiagnosisTypeCodes_2": "the second pointed diagnosis type code for the service line",
-        "FE_serviceLinePointedDiagnosisTypeCodes_3": "the third pointed diagnosis type code for the service line",
-        "FE_serviceLinePointedDiagnosisTypeCodes_4": "the fourth pointed diagnosis type code for the service line",
-        "FE_total_sln_per_claim": "the total service lines per claim",
-    }
+import re
 
-    # Replace column names with client-friendly descriptions
-    for column, description in column_mapping.items():
-        rule = rule.replace(column, description)
+def parse_rules(rules):
+    readable_rules = []
+    for rule in rules:
+        # Remove unwanted symbols
+        rule = rule.replace('"', '').replace('IF ', '').strip()
+        
+        # Match intervals and format them
+        intervals = re.findall(r'([a-zA-Z_]+) = ([\(\[-]?[^\)]+[\)\]])', rule)
+        formatted_conditions = []
+        for feature, interval in intervals:
+            # Handle interval formatting
+            interval = interval.replace('-inf', 'less than').replace('inf', 'more than')
+            interval = re.sub(r'\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)', r'between \1 and \2', interval)
+            interval = re.sub(r'\[(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)', r'including between \1 and \2', interval)
+            formatted_conditions.append(f"{feature} is {interval}")
+        
+        # Extract the label
+        label_match = re.search(r'THEN label - \((\d+)\)', rule)
+        label = label_match.group(1) if label_match else "Unknown"
+        
+        # Combine formatted conditions with the label
+        readable_rule = f"If {' AND '.join(formatted_conditions)}, THEN label is {label}."
+        readable_rules.append(readable_rule)
+    
+    return readable_rules
 
-    # Replace logical operators and formatting
-    rule = rule.replace("<", "is less than")
-    rule = rule.replace(">", "is greater than")
-    rule = rule.replace("=", "equals")
-    rule = rule.replace("AND", ", and")
-    rule = rule.replace("THEN", ". Therefore,")
-    rule = rule.replace("label = {1}", "the claim was denied")
 
-    return rule
+# Example input
+rules = [
+    "Thife total sin_per_claim - (-inf 11.5) AND claimErequencyCode = <0.5, inf) AND FE_claimstate to service days - (-inf, 183.0) AND FE_actual patientAge = (-inf, 144.0) AND servicelineQuantity = (-inf, 220.5) THEN label - (0)",
+    "coinihequencyodae o.5,9.5) i iepoca n gor chade noyCade, 52.o) o 7e el teeiate ta-Semtesdoy (2005, 929.5) PuEN tabel necogntaty - (-&nf, 667.5) THEN label - (0)",
+    "IF FE_claimstate to service days - ‹6.5, inf) AND FE_total sin per _Claim - <1.5, inf) AND ClaimTotalChargeAmt - (-inf, 75740.22) AND FE_actual_patientAge = ‹2.5, inf) AND serviceLineunitofMeasure - (UN) THEN label - (1)",
+    "serviceLineChargeAnt - <1.02, 15719.33) AND serviceLineQuantity = (-inf, 864.5) THEN label - (1)**IF FELactual patientAge = ‹45.5, inf) AND serviceLineChargeAmt - <0.005, inf) AND 5 <3.01, 10422.62) THEN Label - (3)"
+]
 
-# Example rule from the image
-rule_text = (
-    "IF FE_claimstate_to_service_days <6.5 AND claimTotalChargeAmt <75740.22 "
-    "AND FE_actual_patientAge <2.5 AND serviceLineChargeAmt <15719.33 "
-    "AND serviceLineQuantity <864.5 THEN label = {1}"
-)
+# Convert to human-readable format
+readable_rules = parse_rules(rules)
 
-# Convert the rule to a client-friendly sentence
-human_readable_rule = convert_rule_to_sentence(rule_text)
-
-print(human_readable_rule)
+# Print the results
+for rule in readable_rules:
+    print(rule)
