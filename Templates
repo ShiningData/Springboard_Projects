@@ -1,56 +1,207 @@
-def convert_to_meaning(sentence):
+def read_claim_df(preprocessed_data):
     """
-    Converts a condition-based sentence into a human-readable meaning.
-    
-    Parameters:
-    sentence (str): A sentence containing a range or condition.
+    Extract specific columns from the preprocessed claim data.
+
+    This function selects a subset of columns relevant for exploratory data analysis (EDA)
+    from the provided preprocessed DataFrame.
+
+    Args:
+        preprocessed_data (pd.DataFrame): The input DataFrame containing the preprocessed claim data.
 
     Returns:
-    str: A human-readable meaning of the sentence.
+        pd.DataFrame: A DataFrame containing only the selected columns for EDA.
     """
-    if "means" not in sentence:
-        return "Invalid format"
-    
-    # Split sentence into parts
-    variable_part, meaning_part = sentence.split("means", 1)
-    variable_part = variable_part.strip()
-    meaning_part = meaning_part.strip()
-    
-    # Extract the variable and condition
-    if "(" in variable_part and ")" in variable_part:
-        variable, condition = variable_part.split("(", 1)
-        condition = condition.rstrip(")")
-        variable = variable.strip()
-        
-        # Process different cases for conditions
-        if "," in condition:
-            # Handle range conditions
-            low, high = condition.split(",")
-            low = low.strip()
-            high = high.strip()
-            
-            if low == "-inf":
-                return f"{variable} is less than {high}"
-            elif high == "inf":
-                return f"{variable} is greater than {low}"
-            else:
-                return f"{variable} is between {low} and {high}"
-        else:
-            # Handle specific value conditions
-            return f"{variable} is {condition}"
-    else:
-        # Handle categorical mappings
-        return meaning_part
 
-# Example Usage:
-sentences = [
-    "FE_claimstate_to_service_days = (<4.5, inf) means FE_claimstate_to_service_days is greater than 4.5",
-    "FE_claimstate_to_service_days = (-inf, 281.5) means FE_claimstate_to_service_days is less than 281.5",
-    "serviceLineChargeAmt = (<1.02, 15719.33) means serviceLineChargeAmt is between 1.02 and 15719.33",
-    "FE_payerIDName = [99999-0122 - MEDICARE] means FE_payerIDName is 99999-0122 - MEDICARE",
-    "serviceLineUnitOfMeasure = {UN} means serviceLineUnitOfMeasure is UN"
-]
+def extract_statistics(df):
+    """
+    Extract key statistics from the input DataFrame.
 
-# Convert each sentence
-for s in sentences:
-    print(convert_to_meaning(s))
+    This function calculates and returns various summary statistics for the claim data,
+    including the count of unique claim IDs, date ranges, and unique payer/provider entities.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing claim data.
+
+    Returns:
+        pd.DataFrame: A DataFrame summarizing the extracted statistics, including:
+            - Unique Claim Ids
+            - Minimum and Maximum Claim Creation Dates
+            - Unique Payer Entities
+            - Unique Provider NPIs
+    """
+
+
+def aggregate_denial_status(df):
+    """
+    Aggregate FE_DenialStatus at the claim level.
+
+    This function transforms the `FE_DenialStatus` column by grouping the data at the 
+    `claimUniqueId` level. If any instance within the group is labeled as "Denied," 
+    the aggregated status for the claim will be "Denied." Otherwise, it will be "Accepted."
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing claim data with `FE_DenialStatus` column.
+
+    Returns:
+        pd.DataFrame: DataFrame with the aggregated `FE_DenialStatus` values.
+    """
+
+
+def format_with_commas(x, pos):
+    """
+    Format numbers with commas.
+
+    This function takes a numeric input and formats it with commas for better readability.
+
+    Args:
+        x (int): The number to format.
+        pos (int): The position (required for compatibility with formatting functions).
+
+    Returns:
+        str: The formatted number with commas.
+    """
+
+
+def denial_to_accepted_ratio(claim_df):
+    """
+    Calculate the Denied-to-Accepted ratio for claims and services.
+
+    This function computes the ratio of denied claims to accepted claims, as well as
+    the ratio of denied services to accepted services.
+
+    Args:
+        claim_df (pd.DataFrame): Input DataFrame containing the `claim_FE_DenialStatus` column.
+
+    Returns:
+        tuple: A tuple containing:
+            - claim_ratio (float): Ratio of denied claims to accepted claims.
+            - service_ratio (float): Ratio of denied services to accepted services.
+    """
+
+
+def plot_denial_to_accepted_ratio(claim_df, claim_ratio, service_ratio):
+    """
+    Plot the Denied-to-Accepted ratio for claims and services.
+
+    This function generates a visualization comparing the ratio of denied to accepted claims
+    and services.
+
+    Args:
+        claim_df (pd.DataFrame): Input DataFrame containing claim data.
+        claim_ratio (float): Denied-to-Accepted ratio for claims.
+        service_ratio (float): Denied-to-Accepted ratio for services.
+
+    Returns:
+        None: Displays the generated plot.
+    """
+
+
+def denial_status_by_month(df):
+    """
+    Aggregate and organize denial status data by month.
+
+    This function processes the input DataFrame to:
+    1. Parse the `claimCreationDate` column into year-month format.
+    2. Aggregate `FE_DenialStatus` at the claim level (Accepted/Denied).
+    3. Drop duplicate claim-level data for unique `claimUniqueId`.
+    4. Create an ordered categorical variable for year-month to facilitate ordered plotting.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing claim data with `claimCreationDate` 
+                           and `FE_DenialStatus` columns.
+
+    Returns:
+        pd.DataFrame: Processed DataFrame with year-month aggregation and denial status.
+    """
+
+
+def plot_denial_status_by_month(claim_month_df):
+    """
+    Plot denial status by year-month.
+
+    This function visualizes the aggregated denial status over time by plotting a bar chart.
+    Each bar represents the proportion of Accepted vs. Denied claims for a given year-month.
+
+    Args:
+        claim_month_df (pd.DataFrame): Input DataFrame containing aggregated year-month data 
+                                       with `FE_DenialStatus` and `year_month` columns.
+
+    Returns:
+        None: Displays a bar chart with the denial status proportions by month.
+    """
+
+
+def denial_claim_amt_per_month(df):
+    """
+    Aggregate the total denied claim amount by year-month.
+
+    This function processes the input DataFrame to:
+    1. Drop duplicates to ensure claim-level data for unique `claimUniqueId`.
+    2. Filter for claims with `FE_DenialStatus` marked as "Denied."
+    3. Group the data by `year_month` and calculate the total denied claim amount.
+    4. Set the `year_month` column as an ordered categorical variable for sorted plotting.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing claim data with 
+                           `FE_DenialStatus`, `claimUniqueId`, and `claimTotalChargeAmt` columns.
+
+    Returns:
+        pd.DataFrame: Processed DataFrame with `year_month` and the corresponding 
+                      total denied claim amount.
+    """
+
+
+def plot_denial_claim_amt_per_month(denied_amt_df):
+    """
+    Plot the total denied claim amount per month.
+
+    This function visualizes the total denied claim amount over time, using a bar plot.
+    The x-axis represents the year-month, and the y-axis shows the total denied claim amount.
+
+    Args:
+        denied_amt_df (pd.DataFrame): Input DataFrame containing `year_month` and 
+                                      `claimTotalChargeAmt` for denied claims.
+
+    Returns:
+        None: Displays a bar chart showing the total denied claim amount per month.
+    """
+
+
+def pareto_analysis(df):
+    """
+    Perform Pareto analysis on denied claim amounts for each month.
+
+    This function calculates the cumulative denied claim amounts and cumulative percentages
+    for each year-month, allowing identification of the highest contributors to denied claims.
+
+    Steps:
+    1. Extract unique `year_month` values.
+    2. Filter for denied claims within each `year_month`.
+    3. Sort the claims by `claimTotalChargeAmt` in descending order.
+    4. Compute cumulative claim amounts and cumulative percentages.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing `year_month`, `FE_DenialStatus`,
+                           and `claimTotalChargeAmt`.
+
+    Returns:
+        dict: A dictionary where keys are `year_month` and values are DataFrames with 
+              sorted claim data, cumulative amounts, and percentages.
+    """
+
+
+def plot_pareto_analysis(pareto_dict):
+    """
+    Plot Pareto analysis results for each year-month.
+
+    This function generates Pareto charts for the given months, illustrating the 
+    cumulative denied claim amounts and their percentages.
+
+    Args:
+        pareto_dict (dict): A dictionary with `year_month` as keys and DataFrames as values. 
+                            Each DataFrame contains claim data, cumulative amounts, 
+                            and percentages.
+
+    Returns:
+        None: Displays Pareto charts for the analysis.
+    """
