@@ -1,8 +1,8 @@
-# Full pie chart with non-overlapping labels and percentages outside the chart
+# Full pie chart with percentages arranged alternately higher and lower to avoid overlaps
 fig, ax = plt.subplots(figsize=(10, 8))
 colors = plt.cm.tab10(range(len(outcomes)))  # Assign colors from a colormap
 
-# Create a full pie chart
+# Create the full pie chart
 wedges, _ = ax.pie(
     counts,
     startangle=90,
@@ -11,15 +11,16 @@ wedges, _ = ax.pie(
     autopct=None  # Disable default percentage placement
 )
 
-# Add percentages outside the pie, avoiding overlaps
-for wedge, percentage in zip(wedges, percentages):
+# Add percentages outside the pie, arranged alternately higher and lower
+for i, (wedge, percentage) in enumerate(zip(wedges, percentages)):
     theta = (wedge.theta2 + wedge.theta1) / 2  # Calculate the angle
     x = np.cos(np.radians(theta))  # X-coordinate
     y = np.sin(np.radians(theta))  # Y-coordinate
+    offset = 0.15 if i % 2 == 0 else -0.15  # Alternate higher and lower placement
     ax.annotate(
         f"{percentage:.1f}%", 
         xy=(x, y), 
-        xytext=(1.3 * x, 1.3 * y),  # Place percentage further outside to avoid overlap
+        xytext=(1.3 * x, 1.3 * y + offset),  # Adjust placement based on offset
         ha="center",
         fontsize=10,
         arrowprops=dict(arrowstyle="-", color="black", lw=0.5)
