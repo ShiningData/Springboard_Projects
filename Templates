@@ -1,207 +1,41 @@
-def read_claim_df(preprocessed_data):
-    """
-    Extract specific columns from the preprocessed claim data.
+# Full pie chart with non-overlapping labels and percentages outside the chart
+fig, ax = plt.subplots(figsize=(10, 8))
+colors = plt.cm.tab10(range(len(outcomes)))  # Assign colors from a colormap
 
-    This function selects a subset of columns relevant for exploratory data analysis (EDA)
-    from the provided preprocessed DataFrame.
+# Create a full pie chart
+wedges, _ = ax.pie(
+    counts,
+    startangle=90,
+    labels=None,  # No labels inside the pie chart
+    colors=colors,
+    autopct=None  # Disable default percentage placement
+)
 
-    Args:
-        preprocessed_data (pd.DataFrame): The input DataFrame containing the preprocessed claim data.
+# Add percentages outside the pie, avoiding overlaps
+for wedge, percentage in zip(wedges, percentages):
+    theta = (wedge.theta2 + wedge.theta1) / 2  # Calculate the angle
+    x = np.cos(np.radians(theta))  # X-coordinate
+    y = np.sin(np.radians(theta))  # Y-coordinate
+    ax.annotate(
+        f"{percentage:.1f}%", 
+        xy=(x, y), 
+        xytext=(1.3 * x, 1.3 * y),  # Place percentage further outside to avoid overlap
+        ha="center",
+        fontsize=10,
+        arrowprops=dict(arrowstyle="-", color="black", lw=0.5)
+    )
 
-    Returns:
-        pd.DataFrame: A DataFrame containing only the selected columns for EDA.
-    """
+# Add a legend with color coding and outcome names
+ax.legend(
+    handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10) for color in colors],
+    labels=outcomes,
+    loc="center left",
+    bbox_to_anchor=(1, 0.5),  # Position the legend to the right of the pie chart
+    title="Outcomes",
+    fontsize=10,
+    title_fontsize=12
+)
 
-def extract_statistics(df):
-    """
-    Extract key statistics from the input DataFrame.
-
-    This function calculates and returns various summary statistics for the claim data,
-    including the count of unique claim IDs, date ranges, and unique payer/provider entities.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame containing claim data.
-
-    Returns:
-        pd.DataFrame: A DataFrame summarizing the extracted statistics, including:
-            - Unique Claim Ids
-            - Minimum and Maximum Claim Creation Dates
-            - Unique Payer Entities
-            - Unique Provider NPIs
-    """
-
-
-def aggregate_denial_status(df):
-    """
-    Aggregate FE_DenialStatus at the claim level.
-
-    This function transforms the `FE_DenialStatus` column by grouping the data at the 
-    `claimUniqueId` level. If any instance within the group is labeled as "Denied," 
-    the aggregated status for the claim will be "Denied." Otherwise, it will be "Accepted."
-
-    Args:
-        df (pd.DataFrame): Input DataFrame containing claim data with `FE_DenialStatus` column.
-
-    Returns:
-        pd.DataFrame: DataFrame with the aggregated `FE_DenialStatus` values.
-    """
-
-
-def format_with_commas(x, pos):
-    """
-    Format numbers with commas.
-
-    This function takes a numeric input and formats it with commas for better readability.
-
-    Args:
-        x (int): The number to format.
-        pos (int): The position (required for compatibility with formatting functions).
-
-    Returns:
-        str: The formatted number with commas.
-    """
-
-
-def denial_to_accepted_ratio(claim_df):
-    """
-    Calculate the Denied-to-Accepted ratio for claims and services.
-
-    This function computes the ratio of denied claims to accepted claims, as well as
-    the ratio of denied services to accepted services.
-
-    Args:
-        claim_df (pd.DataFrame): Input DataFrame containing the `claim_FE_DenialStatus` column.
-
-    Returns:
-        tuple: A tuple containing:
-            - claim_ratio (float): Ratio of denied claims to accepted claims.
-            - service_ratio (float): Ratio of denied services to accepted services.
-    """
-
-
-def plot_denial_to_accepted_ratio(claim_df, claim_ratio, service_ratio):
-    """
-    Plot the Denied-to-Accepted ratio for claims and services.
-
-    This function generates a visualization comparing the ratio of denied to accepted claims
-    and services.
-
-    Args:
-        claim_df (pd.DataFrame): Input DataFrame containing claim data.
-        claim_ratio (float): Denied-to-Accepted ratio for claims.
-        service_ratio (float): Denied-to-Accepted ratio for services.
-
-    Returns:
-        None: Displays the generated plot.
-    """
-
-
-def denial_status_by_month(df):
-    """
-    Aggregate and organize denial status data by month.
-
-    This function processes the input DataFrame to:
-    1. Parse the `claimCreationDate` column into year-month format.
-    2. Aggregate `FE_DenialStatus` at the claim level (Accepted/Denied).
-    3. Drop duplicate claim-level data for unique `claimUniqueId`.
-    4. Create an ordered categorical variable for year-month to facilitate ordered plotting.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame containing claim data with `claimCreationDate` 
-                           and `FE_DenialStatus` columns.
-
-    Returns:
-        pd.DataFrame: Processed DataFrame with year-month aggregation and denial status.
-    """
-
-
-def plot_denial_status_by_month(claim_month_df):
-    """
-    Plot denial status by year-month.
-
-    This function visualizes the aggregated denial status over time by plotting a bar chart.
-    Each bar represents the proportion of Accepted vs. Denied claims for a given year-month.
-
-    Args:
-        claim_month_df (pd.DataFrame): Input DataFrame containing aggregated year-month data 
-                                       with `FE_DenialStatus` and `year_month` columns.
-
-    Returns:
-        None: Displays a bar chart with the denial status proportions by month.
-    """
-
-
-def denial_claim_amt_per_month(df):
-    """
-    Aggregate the total denied claim amount by year-month.
-
-    This function processes the input DataFrame to:
-    1. Drop duplicates to ensure claim-level data for unique `claimUniqueId`.
-    2. Filter for claims with `FE_DenialStatus` marked as "Denied."
-    3. Group the data by `year_month` and calculate the total denied claim amount.
-    4. Set the `year_month` column as an ordered categorical variable for sorted plotting.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame containing claim data with 
-                           `FE_DenialStatus`, `claimUniqueId`, and `claimTotalChargeAmt` columns.
-
-    Returns:
-        pd.DataFrame: Processed DataFrame with `year_month` and the corresponding 
-                      total denied claim amount.
-    """
-
-
-def plot_denial_claim_amt_per_month(denied_amt_df):
-    """
-    Plot the total denied claim amount per month.
-
-    This function visualizes the total denied claim amount over time, using a bar plot.
-    The x-axis represents the year-month, and the y-axis shows the total denied claim amount.
-
-    Args:
-        denied_amt_df (pd.DataFrame): Input DataFrame containing `year_month` and 
-                                      `claimTotalChargeAmt` for denied claims.
-
-    Returns:
-        None: Displays a bar chart showing the total denied claim amount per month.
-    """
-
-
-def pareto_analysis(df):
-    """
-    Perform Pareto analysis on denied claim amounts for each month.
-
-    This function calculates the cumulative denied claim amounts and cumulative percentages
-    for each year-month, allowing identification of the highest contributors to denied claims.
-
-    Steps:
-    1. Extract unique `year_month` values.
-    2. Filter for denied claims within each `year_month`.
-    3. Sort the claims by `claimTotalChargeAmt` in descending order.
-    4. Compute cumulative claim amounts and cumulative percentages.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame containing `year_month`, `FE_DenialStatus`,
-                           and `claimTotalChargeAmt`.
-
-    Returns:
-        dict: A dictionary where keys are `year_month` and values are DataFrames with 
-              sorted claim data, cumulative amounts, and percentages.
-    """
-
-
-def plot_pareto_analysis(pareto_dict):
-    """
-    Plot Pareto analysis results for each year-month.
-
-    This function generates Pareto charts for the given months, illustrating the 
-    cumulative denied claim amounts and their percentages.
-
-    Args:
-        pareto_dict (dict): A dictionary with `year_month` as keys and DataFrames as values. 
-                            Each DataFrame contains claim data, cumulative amounts, 
-                            and percentages.
-
-    Returns:
-        None: Displays Pareto charts for the analysis.
-    """
+plt.title("Percentage Distribution of Outcomes", fontsize=14)
+plt.tight_layout()
+plt.show()
