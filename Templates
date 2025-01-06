@@ -1,42 +1,76 @@
-# Full pie chart with percentages arranged alternately higher and lower to avoid overlaps
-fig, ax = plt.subplots(figsize=(10, 8))
-colors = plt.cm.tab10(range(len(outcomes)))  # Assign colors from a colormap
+from pyspark.sql import functions as F
+from datetime import datetime
 
-# Create the full pie chart
-wedges, _ = ax.pie(
-    counts,
-    startangle=90,
-    labels=None,  # No labels inside the pie chart
-    colors=colors,
-    autopct=None  # Disable default percentage placement
-)
+# Function to calculate the start and end period of the last six months dynamically
+def get_last_six_months():
+    current_year = datetime.now().year
+    current_month = datetime.now().month
 
-# Add percentages outside the pie, arranged alternately higher and lower
-for i, (wedge, percentage) in enumerate(zip(wedges, percentages)):
-    theta = (wedge.theta2 + wedge.theta1) / 2  # Calculate the angle
-    x = np.cos(np.radians(theta))  # X-coordinate
-    y = np.sin(np.radians(theta))  # Y-coordinate
-    offset = 0.15 if i % 2 == 0 else -0.15  # Alternate higher and lower placement
-    ax.annotate(
-        f"{percentage:.1f}%", 
-        xy=(x, y), 
-        xytext=(1.3 * x, 1.3 * y + offset),  # Adjust placement based on offset
-        ha="center",
-        fontsize=10,
-        arrowprops=dict(arrowstyle="-", color="black", lw=0.5)
+    if current_month <= 6:
+        last_six_month_start_year = current_year - 1
+        last_six_month_start_month = 7
+        last_six_month_end_year = current_year
+        last_six_month_end_month = 6
+    else:
+        last_six_month_start_year = current_year
+        last_six_month_start_month = current_month - 6
+        last_six_month_end_year = current_year
+        last_six_month_end_month = current_month
+
+    return (last_six_month_start_year, last_six_month_start_month, last_six_month_end_year, last_six_month_end_month)
+
+# Function to create column names in the required format
+def create_column_name(start_year, start_month, end_year, end_month):
+    start_period = f"{'January' if start_month <= 6 else 'July'}"
+    end_period = f"{'June' if end_month <= 6 else 'December'}"
+    return f"total_{start_year}_{start_period}_{end_year}_{end_period}"
+
+# Initialize the pipeline
+if 'result_df' not in locals():
+    # Initial aggregation for all historical data (first-time setup)
+    result_df = df_base.groupBy("uid_prules").agg(
+        F.sum(F.when(F.col("execution_year") == 2021, F.col("num_executions")).otherwise(0)).alias("total_2021"),
+        F.sum(F.when(F.col("execution_year") == 2022, F.col("num_executions")).otherwise(0)).alias("total_2022"),
+        F.sum(F.when(F.col("execution_year") == 2023, F.col("num_executions")).otherwise(0)).alias("total_2023"),
+        F.sum(F.when((F.col("execution_year") == 2024) & (F.col("execution_month").between(1, 6)), F.col("num_executions")).otherwise(0)).alias("total_2024_January_June"),
+        F.sum(F.when((F.col("execution_year") == 2024) & (F.col("execution_month").between(7, 12)), F.col("num_executions")).otherwise(0)).alias("total_2024_July_December")
+    )
+else:
+    # Step 1: Get the last six-month period dynamically
+    start_year, start_month, end_year, end_month = get_last_six_months()
+
+    # Step 2: Filter the data for the last six months dynamically
+    latest_data = df_base.filter(
+        ((F.col("execution_year") == start_year) & (F.col("execution_month") >= start_month)) |
+        ((F.col("execution_year") == end_year) & (F.col("execution_month") <= end_month))
     )
 
-# Add a legend with color coding and outcome names
-ax.legend(
-    handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10) for color in colors],
-    labels=outcomes,
-    loc="center left",
-    bbox_to_anchor=(1, 0.5),  # Position the legend to the right of the pie chart
-    title="Outcomes",
-    fontsize=10,
-    title_fontsize=12
-)
+    # Step 3: Create a dynamic column name based on the current six-month period
+    new_column_name = create_column_name(start_year, start_month, end_year, end_month)
 
-plt.title("Percentage Distribution of Outcomes", fontsize=14)
-plt.tight_layout()
-plt.show()
+    # Step 4: Group and aggregate the sum of executions for the last six months
+    new_data = latest_data.groupBy("uid_prules").agg(
+        F.sum("num_executions").alias(new_column_name)
+    )
+
+    # Step 5: Dynamically join the new column to the result DataFrame
+    result_df = result_df.join(new_data, on="uid_prules", how="outer")
+
+# Step 6: Reorder columns in chronological order
+# Extract column names
+base_columns = ["uid_prules"]  # Always keep uid_prules as the first column
+dynamic_columns = sorted(
+    [col for col in result_df.columns if col.startswith("total_")],
+    key=lambda x: (int(x.split("_")[1]),  # Sort by year
+                   0 if "January" in x else 1)  # Sort by half-year period
+)
+ordered_columns = base_columns + dynamic_columns
+
+# Step 7: Select only the calculated columns
+result_df = result_df.select(*ordered_columns)
+
+# Step 8: Show the updated result table
+result_df.show()
+
+# Step 9: Save the result_df back to storage (optional)
+result_df.write.mode("overwrite").parquet("path_to_save_updated_result")
