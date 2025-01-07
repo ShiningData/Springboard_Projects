@@ -1,35 +1,62 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lit, max as spark_max
+from pyspark.sql import functions as F
+from datetime import datetime
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("IncrementalUpdate").getOrCreate()
+# Step 1: Load the data (replace with your data source)
+df = spark.read.format("csv").option("header", "true").load("path_to_your_data.csv")
 
-# Define paths for the target and source tables
-target_table_path = "/path/to/target_table"
-source_table_path = "/path/to/source_table"
-
-# Load the existing target table
-target_table = spark.read.format("delta").load(target_table_path)
-
-# Find the maximum execution year and month in the target table
-max_execution = target_table.agg(
-    spark_max("execution_year").alias("max_year"),
-    spark_max("execution_month").alias("max_month")
-).collect()[0]
-max_year = max_execution["max_year"]
-max_month = max_execution["max_month"]
-
-# Load the source table
-source_table = spark.read.format("delta").load(source_table_path)
-
-# Filter only new data based on execution_year and execution_month
-new_data = source_table.filter(
-    (col("execution_year") > lit(max_year)) |
-    ((col("execution_year") == lit(max_year)) & (col("execution_month") > lit(max_month)))
+# Step 2: Group by for 2021-2023 yearly sums
+yearly_data = (
+    df.filter(F.col("execution_year").between(2021, 2023))
+    .groupby("rule_name")
+    .pivot("execution_year")
+    .agg(F.sum("num_executions"))
+    .fillna("Not Used")
 )
 
-# Append the new data to the target table
-updated_table = target_table.union(new_data)
+# Step 3: Create 6-month periods for 2024 and beyond
+df = df.withColumn(
+    "execution_period",
+    F.when(F.col("execution_year") >= 2024,
+           F.concat_ws(" - ",
+                       F.when(F.col("execution_month").between(1, 6), 
+                              F.concat(F.lit("Jan "), F.col("execution_year")))
+                       .otherwise(F.concat(F.lit("Jul "), F.col("execution_year"))),
+                       F.when(F.col("execution_month").between(1, 6), 
+                              F.concat(F.lit("Jun "), F.col("execution_year")))
+                       .otherwise(F.concat(F.lit("Dec "), F.col("execution_year")))
+           )
+    )
+)
 
-# Write the updated table back to the target path
-updated_table.write.format("delta").mode("overwrite").save(target_table_path)
+six_months_data = (
+    df.filter(F.col("execution_period").isNotNull())
+    .groupby("rule_name")
+    .pivot("execution_period")
+    .agg(F.sum("num_executions"))
+    .fillna("Not Used")
+)
+
+# Step 4: Combine yearly and 6-months data
+final_df = yearly_data.join(six_months_data, on="rule_name", how="outer")
+
+# Step 5: Dynamically append new 6-month columns
+# Get the current date
+current_date = datetime.now()
+current_year = current_date.year
+current_month = current_date.month
+
+# Check if it's time to add a new 6-month column
+if current_month in [7, 8, 9, 10, 11, 12]:  # Second half of the year
+    new_column_name = f"Jan {current_year} - Jun {current_year}"
+else:  # First half of the year
+    new_column_name = f"Jul {current_year - 1} - Dec {current_year - 1}"
+
+# Check if the column already exists
+if new_column_name not in final_df.columns:
+    final_df = final_df.withColumn(new_column_name, F.lit("Not Used"))
+
+# Show the updated table
+final_df.show(truncate=False)
+
+# Optionally, save the updated table
+# final_df.write.format("csv").mode("overwrite").save("path_to_output.csv")
