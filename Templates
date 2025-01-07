@@ -1,33 +1,35 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lit, max as spark_max, concat_ws, to_date
+from pyspark.sql.functions import col, lit, max as spark_max
 
 # Initialize Spark session
-spark = SparkSession.builder.appName("IncrementalAppend").getOrCreate()
+spark = SparkSession.builder.appName("IncrementalUpdate").getOrCreate()
 
-# Define paths or table names
+# Define paths for the target and source tables
 target_table_path = "/path/to/target_table"
 source_table_path = "/path/to/source_table"
 
 # Load the existing target table
 target_table = spark.read.format("delta").load(target_table_path)
 
-# Find the latest execution date in the target table
-latest_date = target_table.select(spark_max("execution_date").alias("max_date")).collect()[0]["max_date"]
+# Find the maximum execution year and month in the target table
+max_execution = target_table.agg(
+    spark_max("execution_year").alias("max_year"),
+    spark_max("execution_month").alias("max_month")
+).collect()[0]
+max_year = max_execution["max_year"]
+max_month = max_execution["max_month"]
 
 # Load the source table
 source_table = spark.read.format("delta").load(source_table_path)
 
-# Create execution_date from EXECUTION_MONTH and EXECUTION_YEAR
-source_table = source_table.withColumn(
-    "execution_date",
-    to_date(concat_ws("/", col("EXECUTION_MONTH"), lit(1), col("EXECUTION_YEAR")), "MM/dd/yyyy")
+# Filter only new data based on execution_year and execution_month
+new_data = source_table.filter(
+    (col("execution_year") > lit(max_year)) |
+    ((col("execution_year") == lit(max_year)) & (col("execution_month") > lit(max_month)))
 )
 
-# Filter new data based on the latest execution date
-new_data = source_table.filter(col("execution_date") > lit(latest_date))
-
-# Append new data to the target table
+# Append the new data to the target table
 updated_table = target_table.union(new_data)
 
-# Write the updated table back
+# Write the updated table back to the target path
 updated_table.write.format("delta").mode("overwrite").save(target_table_path)
