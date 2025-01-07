@@ -1,76 +1,33 @@
-from pyspark.sql import functions as F
-from datetime import datetime
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, lit, max as spark_max, concat_ws, to_date
 
-# Function to calculate the start and end period of the last six months dynamically
-def get_last_six_months():
-    current_year = datetime.now().year
-    current_month = datetime.now().month
+# Initialize Spark session
+spark = SparkSession.builder.appName("IncrementalAppend").getOrCreate()
 
-    if current_month <= 6:
-        last_six_month_start_year = current_year - 1
-        last_six_month_start_month = 7
-        last_six_month_end_year = current_year
-        last_six_month_end_month = 6
-    else:
-        last_six_month_start_year = current_year
-        last_six_month_start_month = current_month - 6
-        last_six_month_end_year = current_year
-        last_six_month_end_month = current_month
+# Define paths or table names
+target_table_path = "/path/to/target_table"
+source_table_path = "/path/to/source_table"
 
-    return (last_six_month_start_year, last_six_month_start_month, last_six_month_end_year, last_six_month_end_month)
+# Load the existing target table
+target_table = spark.read.format("delta").load(target_table_path)
 
-# Function to create column names in the required format
-def create_column_name(start_year, start_month, end_year, end_month):
-    start_period = f"{'January' if start_month <= 6 else 'July'}"
-    end_period = f"{'June' if end_month <= 6 else 'December'}"
-    return f"total_{start_year}_{start_period}_{end_year}_{end_period}"
+# Find the latest execution date in the target table
+latest_date = target_table.select(spark_max("execution_date").alias("max_date")).collect()[0]["max_date"]
 
-# Initialize the pipeline
-if 'result_df' not in locals():
-    # Initial aggregation for all historical data (first-time setup)
-    result_df = df_base.groupBy("uid_prules").agg(
-        F.sum(F.when(F.col("execution_year") == 2021, F.col("num_executions")).otherwise(0)).alias("total_2021"),
-        F.sum(F.when(F.col("execution_year") == 2022, F.col("num_executions")).otherwise(0)).alias("total_2022"),
-        F.sum(F.when(F.col("execution_year") == 2023, F.col("num_executions")).otherwise(0)).alias("total_2023"),
-        F.sum(F.when((F.col("execution_year") == 2024) & (F.col("execution_month").between(1, 6)), F.col("num_executions")).otherwise(0)).alias("total_2024_January_June"),
-        F.sum(F.when((F.col("execution_year") == 2024) & (F.col("execution_month").between(7, 12)), F.col("num_executions")).otherwise(0)).alias("total_2024_July_December")
-    )
-else:
-    # Step 1: Get the last six-month period dynamically
-    start_year, start_month, end_year, end_month = get_last_six_months()
+# Load the source table
+source_table = spark.read.format("delta").load(source_table_path)
 
-    # Step 2: Filter the data for the last six months dynamically
-    latest_data = df_base.filter(
-        ((F.col("execution_year") == start_year) & (F.col("execution_month") >= start_month)) |
-        ((F.col("execution_year") == end_year) & (F.col("execution_month") <= end_month))
-    )
-
-    # Step 3: Create a dynamic column name based on the current six-month period
-    new_column_name = create_column_name(start_year, start_month, end_year, end_month)
-
-    # Step 4: Group and aggregate the sum of executions for the last six months
-    new_data = latest_data.groupBy("uid_prules").agg(
-        F.sum("num_executions").alias(new_column_name)
-    )
-
-    # Step 5: Dynamically join the new column to the result DataFrame
-    result_df = result_df.join(new_data, on="uid_prules", how="outer")
-
-# Step 6: Reorder columns in chronological order
-# Extract column names
-base_columns = ["uid_prules"]  # Always keep uid_prules as the first column
-dynamic_columns = sorted(
-    [col for col in result_df.columns if col.startswith("total_")],
-    key=lambda x: (int(x.split("_")[1]),  # Sort by year
-                   0 if "January" in x else 1)  # Sort by half-year period
+# Create execution_date from EXECUTION_MONTH and EXECUTION_YEAR
+source_table = source_table.withColumn(
+    "execution_date",
+    to_date(concat_ws("/", col("EXECUTION_MONTH"), lit(1), col("EXECUTION_YEAR")), "MM/dd/yyyy")
 )
-ordered_columns = base_columns + dynamic_columns
 
-# Step 7: Select only the calculated columns
-result_df = result_df.select(*ordered_columns)
+# Filter new data based on the latest execution date
+new_data = source_table.filter(col("execution_date") > lit(latest_date))
 
-# Step 8: Show the updated result table
-result_df.show()
+# Append new data to the target table
+updated_table = target_table.union(new_data)
 
-# Step 9: Save the result_df back to storage (optional)
-result_df.write.mode("overwrite").parquet("path_to_save_updated_result")
+# Write the updated table back
+updated_table.write.format("delta").mode("overwrite").save(target_table_path)
