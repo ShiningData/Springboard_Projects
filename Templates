@@ -7,9 +7,9 @@ existing_table_path = "path_to_existing_table.csv"
 existing_table = spark.read.format("csv").option("header", "true").load(existing_table_path)
 
 # Step 2: Identify the last column (6-month period) in the existing table
-last_column = [col for col in existing_table.columns if " - " in col]
-if last_column:
-    last_period = sorted(last_column)[-1]  # Get the most recent 6-month period
+last_period_columns = [col for col in existing_table.columns if " - " in col or col.isdigit()]
+if last_period_columns:
+    last_period = sorted(last_period_columns)[-1]  # Get the most recent 6-month period
 else:
     last_period = None  # If no 6-month period columns exist
 
@@ -25,34 +25,50 @@ else:  # First half of the year
 
 # Check if the new period needs to be appended
 if last_period is None or new_period > last_period:
-    # Step 4: Aggregate the new 6-month period data
-    df = spark.read.format("csv").option("header", "true").load("path_to_new_data.csv")
+    # Step 4: Load the new data
+    new_data_path = "path_to_new_data.csv"
+    new_data = spark.read.format("csv").option("header", "true").load(new_data_path)
 
-    df = df.withColumn(
-        "execution_period",
-        F.when(F.col("execution_year") >= 2024,
-               F.concat_ws(" - ",
-                           F.when(F.col("execution_month").between(1, 6), 
-                                  F.concat(F.lit("Jan "), F.col("execution_year")))
-                           .otherwise(F.concat(F.lit("Jul "), F.col("execution_year"))),
-                           F.when(F.col("execution_month").between(1, 6), 
-                                  F.concat(F.lit("Jun "), F.col("execution_year")))
-                           .otherwise(F.concat(F.lit("Dec "), F.col("execution_year")))
-               )
-        )
+    # Step 5: Filter for the new 6-month period
+    if "Jan" in new_period:
+        start_month, end_month = 1, 6
+    else:  # "Jul"
+        start_month, end_month = 7, 12
+
+    start_year = int(new_period.split(" ")[1])
+    filtered_new_data = new_data.filter(
+        (F.col("execution_year") == start_year) &
+        (F.col("execution_month").between(start_month, end_month))
     )
 
-    new_data = (
-        df.filter(F.col("execution_period") == new_period)
-        .groupby("rule_name")
+    # Step 6: Aggregate data for the new period
+    new_period_data = (
+        filtered_new_data.groupby("rule_name")
         .agg(F.sum("num_executions").alias(new_period))
         .fillna("Not Used")
     )
 
-    # Step 5: Join the new data with the existing table
-    updated_table = existing_table.join(new_data, on="rule_name", how="outer").fillna("Not Used")
+    # Step 7: Identify new rules and add them to the existing table
+    # Get all rule names from the existing table and the new period data
+    existing_rules = existing_table.select("rule_name").distinct()
+    new_rules = new_period_data.select("rule_name").distinct()
 
-    # Step 6: Save the updated table back to storage
+    # Find rules that are in the new data but not in the existing table
+    missing_rules = new_rules.subtract(existing_rules)
+
+    # Create a DataFrame for the missing rules with "Not Used" for all previous columns
+    missing_rules_df = missing_rules.select("rule_name")
+    for col in existing_table.columns:
+        if col != "rule_name":
+            missing_rules_df = missing_rules_df.withColumn(col, F.lit("Not Used"))
+
+    # Append the missing rules to the existing table
+    updated_table = existing_table.unionByName(missing_rules_df)
+
+    # Step 8: Join the new period data to the updated table
+    updated_table = updated_table.join(new_period_data, on="rule_name", how="outer").fillna("Not Used")
+
+    # Step 9: Save the updated table
     updated_table.write.format("csv").mode("overwrite").option("header", "true").save(existing_table_path)
 
     print(f"Appended new column: {new_period}")
