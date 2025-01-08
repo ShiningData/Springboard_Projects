@@ -1,62 +1,60 @@
 from pyspark.sql import functions as F
 from datetime import datetime
 
-# Step 1: Load the data (replace with your data source)
-df = spark.read.format("csv").option("header", "true").load("path_to_your_data.csv")
+# Step 1: Load the existing table
+# Replace with your storage path (e.g., CSV, Parquet, or database)
+existing_table_path = "path_to_existing_table.csv"
+existing_table = spark.read.format("csv").option("header", "true").load(existing_table_path)
 
-# Step 2: Group by for 2021-2023 yearly sums
-yearly_data = (
-    df.filter(F.col("execution_year").between(2021, 2023))
-    .groupby("rule_name")
-    .pivot("execution_year")
-    .agg(F.sum("num_executions"))
-    .fillna("Not Used")
-)
+# Step 2: Identify the last column (6-month period) in the existing table
+last_column = [col for col in existing_table.columns if " - " in col]
+if last_column:
+    last_period = sorted(last_column)[-1]  # Get the most recent 6-month period
+else:
+    last_period = None  # If no 6-month period columns exist
 
-# Step 3: Create 6-month periods for 2024 and beyond
-df = df.withColumn(
-    "execution_period",
-    F.when(F.col("execution_year") >= 2024,
-           F.concat_ws(" - ",
-                       F.when(F.col("execution_month").between(1, 6), 
-                              F.concat(F.lit("Jan "), F.col("execution_year")))
-                       .otherwise(F.concat(F.lit("Jul "), F.col("execution_year"))),
-                       F.when(F.col("execution_month").between(1, 6), 
-                              F.concat(F.lit("Jun "), F.col("execution_year")))
-                       .otherwise(F.concat(F.lit("Dec "), F.col("execution_year")))
-           )
-    )
-)
-
-six_months_data = (
-    df.filter(F.col("execution_period").isNotNull())
-    .groupby("rule_name")
-    .pivot("execution_period")
-    .agg(F.sum("num_executions"))
-    .fillna("Not Used")
-)
-
-# Step 4: Combine yearly and 6-months data
-final_df = yearly_data.join(six_months_data, on="rule_name", how="outer")
-
-# Step 5: Dynamically append new 6-month columns
-# Get the current date
+# Step 3: Determine the next period based on the current date
 current_date = datetime.now()
 current_year = current_date.year
 current_month = current_date.month
 
-# Check if it's time to add a new 6-month column
 if current_month in [7, 8, 9, 10, 11, 12]:  # Second half of the year
-    new_column_name = f"Jan {current_year} - Jun {current_year}"
+    new_period = f"Jan {current_year} - Jun {current_year}"
 else:  # First half of the year
-    new_column_name = f"Jul {current_year - 1} - Dec {current_year - 1}"
+    new_period = f"Jul {current_year - 1} - Dec {current_year - 1}"
 
-# Check if the column already exists
-if new_column_name not in final_df.columns:
-    final_df = final_df.withColumn(new_column_name, F.lit("Not Used"))
+# Check if the new period needs to be appended
+if last_period is None or new_period > last_period:
+    # Step 4: Aggregate the new 6-month period data
+    df = spark.read.format("csv").option("header", "true").load("path_to_new_data.csv")
 
-# Show the updated table
-final_df.show(truncate=False)
+    df = df.withColumn(
+        "execution_period",
+        F.when(F.col("execution_year") >= 2024,
+               F.concat_ws(" - ",
+                           F.when(F.col("execution_month").between(1, 6), 
+                                  F.concat(F.lit("Jan "), F.col("execution_year")))
+                           .otherwise(F.concat(F.lit("Jul "), F.col("execution_year"))),
+                           F.when(F.col("execution_month").between(1, 6), 
+                                  F.concat(F.lit("Jun "), F.col("execution_year")))
+                           .otherwise(F.concat(F.lit("Dec "), F.col("execution_year")))
+               )
+        )
+    )
 
-# Optionally, save the updated table
-# final_df.write.format("csv").mode("overwrite").save("path_to_output.csv")
+    new_data = (
+        df.filter(F.col("execution_period") == new_period)
+        .groupby("rule_name")
+        .agg(F.sum("num_executions").alias(new_period))
+        .fillna("Not Used")
+    )
+
+    # Step 5: Join the new data with the existing table
+    updated_table = existing_table.join(new_data, on="rule_name", how="outer").fillna("Not Used")
+
+    # Step 6: Save the updated table back to storage
+    updated_table.write.format("csv").mode("overwrite").option("header", "true").save(existing_table_path)
+
+    print(f"Appended new column: {new_period}")
+else:
+    print(f"No new 6-month column to append. Last column is: {last_period}")
