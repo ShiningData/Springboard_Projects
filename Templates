@@ -1,27 +1,72 @@
-# Construct the SQL query
-query = """
-WITH last_period AS (
-    SELECT 
-        CASE 
-            WHEN MONTH(CURRENT_DATE) >= 7 THEN YEAR(CURRENT_DATE)
-            ELSE YEAR(CURRENT_DATE) - 1
-        END AS start_year,
-        CASE 
-            WHEN MONTH(CURRENT_DATE) >= 7 THEN 1
-            ELSE 7
-        END AS start_month,
-        CASE 
-            WHEN MONTH(CURRENT_DATE) >= 7 THEN 6
-            ELSE 12
-        END AS end_month
-)
-SELECT *
-FROM pme_agg_data
-WHERE (EXECUTION_YEAR = (SELECT start_year FROM last_period)
-       AND EXECUTION_MONTH BETWEEN (SELECT start_month FROM last_period) AND (SELECT end_month FROM last_period));
-"""
+from pyspark.sql import functions as F
+from datetime import datetime
 
-# Run the SQL query and load the data into a DataFrame
-new_data = spark.sql(query)
+# Step 1: Load PME Aggregated Data
+pme_agg_data = spark.read.format("csv").option("header", "true").load("path_to_pme_agg_data.csv")
 
-# Proceed with further transformations and aggregation as needed
+# Step 2: Identify the last column (6-month period) in the existing table
+existing_table_path = "path_to_existing_table.csv"
+existing_table = spark.read.format("csv").option("header", "true").load(existing_table_path)
+
+last_period_columns = [col for col in existing_table.columns if " - " in col or col.isdigit()]
+if last_period_columns:
+    last_period = sorted(last_period_columns)[-1]  # Get the most recent 6-month period
+else:
+    last_period = None  # If no 6-month period columns exist
+
+# Step 3: Determine the next period based on the current date
+current_date = datetime.now()
+current_year = current_date.year
+current_month = current_date.month
+
+if current_month in [7, 8, 9, 10, 11, 12]:  # Second half of the year
+    new_period = f"Jan {current_year} - Jun {current_year}"
+else:  # First half of the year
+    new_period = f"Jul {current_year - 1} - Dec {current_year - 1}"
+
+# Step 4: Query PME Aggregated Data for the new period
+if last_period is None or new_period > last_period:
+    if "Jan" in new_period:
+        start_month, end_month = 1, 6
+    else:  # "Jul"
+        start_month, end_month = 7, 12
+
+    start_year = int(new_period.split(" ")[1])
+    new_data = pme_agg_data.filter(
+        (F.col("EXECUTION_YEAR") == start_year) &
+        (F.col("EXECUTION_MONTH").between(start_month, end_month))
+    )
+
+    # Step 5: Aggregate data for the new period
+    new_period_data = (
+        new_data.groupBy("UID_RULES")
+        .agg(F.sum("NUM_EXECUTIONS").alias(new_period))
+        .fillna("Not Used")
+        .withColumnRenamed("UID_RULES", "rule_name")
+    )
+
+    # Step 6: Identify new rules and add them to the existing table
+    existing_rules = existing_table.select("rule_name").distinct()
+    new_rules = new_period_data.select("rule_name").distinct()
+
+    # Find rules that are in the new data but not in the existing table
+    missing_rules = new_rules.subtract(existing_rules)
+
+    # Create a DataFrame for the missing rules with "Not Used" for all previous columns
+    missing_rules_df = missing_rules.select("rule_name")
+    for col in existing_table.columns:
+        if col != "rule_name":
+            missing_rules_df = missing_rules_df.withColumn(col, F.lit("Not Used"))
+
+    # Append the missing rules to the existing table
+    updated_table = existing_table.unionByName(missing_rules_df)
+
+    # Step 7: Join the new period data to the updated table
+    updated_table = updated_table.join(new_period_data, on="rule_name", how="outer").fillna("Not Used")
+
+    # Step 8: Save the updated table
+    updated_table.write.format("csv").mode("overwrite").option("header", "true").save(existing_table_path)
+
+    print(f"Appended new column: {new_period}")
+else:
+    print(f"No new 6-month column to append. Last column is: {last_period}")
