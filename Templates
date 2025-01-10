@@ -1,67 +1,23 @@
-from pyspark.sql import functions as F
-from datetime import datetime
+import pandas as pd
+import numpy as np
 
-# Step 1: Load PME Aggregated Data
-pme_agg_data = spark.read.format("csv").option("header", "true").load("path_to_pme_agg_data.csv")
+# Example DataFrame
+data = {'column_name': [123, 45.6, np.nan, '-', 'abc', 789, '42']}
+df = pd.DataFrame(data)
 
-# Step 2: Define periods for the first run
-# Years 2021, 2022, 2023, and 6-month intervals starting from 2024
-periods = [{"start_year": year, "start_month": 1, "end_month": 12} for year in range(2021, 2024)]
-periods += [
-    {"start_year": 2024, "start_month": 1, "end_month": 6},
-    {"start_year": 2024, "start_month": 7, "end_month": 12}
-]
+# Function to check if a value is an integer or float
+def is_number(value):
+    try:
+        # Check if the value can be converted to float
+        float(value)
+        return True
+    except (ValueError, TypeError):
+        return False
 
-# Create an empty DataFrame for the final table
-existing_table = None
+# Filter the DataFrame
+filtered_df = df[df['column_name'].apply(lambda x: is_number(x) and not pd.isna(x))]
 
-# Step 3: Process each period
-for period in periods:
-    # Define period name
-    if period["start_month"] == 1 and period["end_month"] == 12:
-        period_name = str(period["start_year"])  # Yearly data
-    elif period["start_month"] == 1:
-        period_name = f"Jan {period['start_year']} - Jun {period['start_year']}"  # First half of the year
-    else:
-        period_name = f"Jul {period['start_year']} - Dec {period['start_year']}"  # Second half of the year
+# Convert valid number strings to numeric types
+filtered_df['column_name'] = pd.to_numeric(filtered_df['column_name'])
 
-    # Filter data for the current period
-    period_data = pme_agg_data.filter(
-        (F.col("EXECUTION_YEAR") == period["start_year"]) &
-        (F.col("EXECUTION_MONTH").between(period["start_month"], period["end_month"]))
-    )
-
-    # Aggregate data for the current period
-    aggregated_data = (
-        period_data.groupBy("UID_RULES")
-        .agg(F.sum("NUM_EXECUTIONS").alias(period_name))
-        .fillna("Not Used")
-        .withColumnRenamed("UID_RULES", "rule_name")
-    )
-
-    # Handle missing rules
-    if existing_table is None:  # If this is the first period
-        existing_table = aggregated_data
-    else:
-        # Find missing rules in the current period
-        existing_rules = existing_table.select("rule_name").distinct()
-        new_rules = aggregated_data.select("rule_name").distinct()
-        missing_rules = new_rules.subtract(existing_rules)
-
-        # Create a DataFrame for the missing rules
-        if not missing_rules.isEmpty():
-            missing_rules_df = missing_rules.select("rule_name")
-            for col in existing_table.columns:
-                if col != "rule_name":
-                    missing_rules_df = missing_rules_df.withColumn(col, F.lit("Not Used"))
-
-            # Append missing rules to the existing table
-            existing_table = existing_table.unionByName(missing_rules_df)
-
-        # Join the current period data to the existing table
-        existing_table = existing_table.join(aggregated_data, on="rule_name", how="outer").fillna("Not Used")
-
-# Step 4: Save the existing table to storage
-existing_table.write.format("csv").mode("overwrite").option("header", "true").save("path_to_existing_table.csv")
-
-print("Existing table created with all periods up to the most recent.")
+print(filtered_df)
