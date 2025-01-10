@@ -1,23 +1,28 @@
-import pandas as pd
-import numpy as np
+from pyspark.sql import functions as F
 
-# Example DataFrame
-data = {'column_name': [123, 45.6, np.nan, '-', 'abc', 789, '42']}
-df = pd.DataFrame(data)
+# Step 1: Dynamically identify the columns between "business_rule" and "effective_age"
+# Get all columns
+all_columns = spark_df.columns
 
-# Function to check if a value is an integer or float
-def is_number(value):
-    try:
-        # Check if the value can be converted to float
-        float(value)
-        return True
-    except (ValueError, TypeError):
-        return False
+# Identify the start and end indices for the dynamic columns
+start_index = all_columns.index("business_rule") + 1
+end_index = all_columns.index("effective_age")
 
-# Filter the DataFrame
-filtered_df = df[df['column_name'].apply(lambda x: is_number(x) and not pd.isna(x))]
+# Dynamically get the column names between "business_rule" and "effective_age"
+dynamic_columns = all_columns[start_index:end_index]
 
-# Convert valid number strings to numeric types
-filtered_df['column_name'] = pd.to_numeric(filtered_df['column_name'])
+# Step 2: Create a new column based on the condition
+spark_df = spark_df.withColumn(
+    "New_Column",
+    F.when(
+        F.reduce(
+            lambda acc, col: acc & (F.col(col) == "Not Used"),
+            F.lit(True),
+            *[F.col(col) for col in dynamic_columns]
+        ),
+        "Not Used"
+    ).otherwise("Used")
+)
 
-print(filtered_df)
+# Step 3: Show the updated DataFrame
+spark_df.show()
