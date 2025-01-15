@@ -1,18 +1,15 @@
 from pyspark.sql.functions import concat_ws, lit, to_date
 
-# Create the 'execution_date' column
+# Add the 'execution_date' column
 prt_agg_df = prt_agg_df.withColumn(
     "execution_date",
     to_date(concat_ws("-", prt_agg_df.execution_year, prt_agg_df.execution_month, lit("01")))
 )
 
-# Rearrange the columns to place 'execution_date' after 'execution_year'
-cols = prt_agg_df.columns
-execution_year_index = cols.index("execution_year")
-new_column_order = (
-    cols[:execution_year_index + 1] + ["execution_date"] + cols[execution_year_index + 1:]
+# Select and reorder columns
+prt_agg_df = prt_agg_df.select(
+    "uid_prules", "execution_month", "execution_year", "execution_date", "num_executions"
 )
-prt_agg_df = prt_agg_df.select(*new_column_order)
 
 # Show the updated DataFrame
 prt_agg_df.show()
