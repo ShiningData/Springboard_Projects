@@ -1,14 +1,18 @@
-def preprocess_all_rule(all_rule_df):
-    """
-    Preprocesses the input DataFrame by performing the following operations:
-    1. Converts the "EFFECTIVE_DATE" column to datetime format.
-    2. Calculates the "EFFECTIVE_AGE" column as the number of days since the "EFFECTIVE_DATE".
-    3. Converts the "EFFECTIVE_AGE" column to an integer data type.
-    4. Ensures the "YEAR" column is cast to an integer data type.
+from pyspark.sql.functions import concat_ws, lit, to_date
 
-    Args:
-        all_rule_df (pd.DataFrame): Input DataFrame containing columns "EFFECTIVE_DATE" and "YEAR".
+# Create the 'execution_date' column
+prt_agg_df = prt_agg_df.withColumn(
+    "execution_date",
+    to_date(concat_ws("-", prt_agg_df.execution_year, prt_agg_df.execution_month, lit("01")))
+)
 
-    Returns:
-        pd.DataFrame: The preprocessed DataFrame with updated columns.
-    """
+# Rearrange the columns to place 'execution_date' after 'execution_year'
+cols = prt_agg_df.columns
+execution_year_index = cols.index("execution_year")
+new_column_order = (
+    cols[:execution_year_index + 1] + ["execution_date"] + cols[execution_year_index + 1:]
+)
+prt_agg_df = prt_agg_df.select(*new_column_order)
+
+# Show the updated DataFrame
+prt_agg_df.show()
