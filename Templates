@@ -1,1 +1,27 @@
+def create_all_rule_status(all_rule_df):
+    """
+    Processes a DataFrame containing rule information and returns a summarized DataFrame 
+    with rule statuses and their respective counts and percentages.
+
+    This function:
+    1. Converts column names to uppercase.
+    2. Extracts the first year and the last 6-month period from the column names.
+    3. Creates a dictionary summarizing various rule statuses such as:
+       - Total business rules.
+       - Active business rules.
+       - Deleted business rules.
+       - Rules reviewed during the current period.
+    4. Generates a summary DataFrame with rule statuses, counts, and percentages.
+
+    Parameters:
+        all_rule_df (pd.DataFrame): A DataFrame containing columns such as 'STATUS', 
+        'USED OR NOT USED', and time-related columns.
+
+    Returns:
+        pd.DataFrame: A summarized DataFrame with columns:
+            - "RULE STATUS": Description of the rule status.
+            - "COUNT": Count of rules for the corresponding status.
+            - "PERCENT (%)": Percentage of rules for the corresponding status.
+    """
+    # Function implementation
 
