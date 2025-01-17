@@ -1,18 +1,22 @@
-from pyspark.sql.functions import concat_ws, lit, to_date
+ 1. Business Value of PME/PRT Rules Report
+   - The report enables ongoing monitoring of business rules (used and unused) to maintain application hygiene and address observations raised by regulators (OC) in 2022.
+   - It helps identify rules that are obsolete and no longer in use, improving efficiency and system organization.
+   - This contributes to better management and understanding of the PME and PRT platforms, which were identified as relatively new and maturing systems.
 
-# Add the 'execution_date' column and convert it to datetime
-prt_agg_df = prt_agg_df.withColumn(
-    "execution_date",
-    to_date(concat_ws("-", prt_agg_df.execution_year, prt_agg_df.execution_month, lit("01")), "yyyy-MM-dd")
-)
+ 2. Purpose of Current Functions
+   - The automation focuses on reducing manual work (e.g., generating pivot tables and linking to other reports), saving hours for the team and MIS.
+   - The automated process consolidates all necessary data in a central database, reducing redundancy and enhancing workflow efficiency.
 
-# Select and reorder columns
-prt_agg_df = prt_agg_df.select(
-    "uid_prules", "execution_month", "execution_year", "execution_date", "num_executions"
-)
+ 3. Expected Benefits of Automation
+   - Significant time savings for the team, enabling focus on data analysis rather than report generation.
+   - Centralized storage of data, eliminating the need for repeated spreadsheet creation and manual processes.
+   - Improved readiness for potential audits and streamlined presentation of information to upper management.
 
-# Rename all columns to uppercase
-prt_agg_df = prt_agg_df.toDF(*[col.upper() for col in prt_agg_df.columns])
+ 4. Regulatory Implications
+   - No regulatory bodies need to be notified regarding the automation.
+   - An audit by regulators is possible due to previous observations by OC, so it is beneficial to have these automated processes and reports in place to address such inquiries efficiently.
 
-# Show the updated DataFrame
-prt_agg_df.show()
+ 5. Summary Presentation of PME/PRT Report
+   - A one-page tier sheet document will be created, including dashboard visuals, business rule statuses, review outcomes, and pie charts.
+   - It will be organized into two sections (PME and PRT) on a single page for clarity and concise presentation.
+   - Additional elements, such as statistical summaries, can be included if necessary.
