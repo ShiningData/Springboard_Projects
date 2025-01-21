@@ -1,19 +1,42 @@
+import streamlit as st
 import pandas as pd
-import io
+from utils import filter_data, download_excel
 
-def filter_data(data, filters):
-    """Filters the DataFrame based on the filters provided."""
-    for col, val in filters.items():
-        if isinstance(val, (list, tuple)):
-            data = data[data[col].between(*val)] if val else data
-        else:
-            data = data[data[col].isin(val)] if val else data
-    return data
+def pme_aggregated_data_page():
+    st.title("PME Aggregated Data")
 
-def download_excel(dataframe, filename):
-    """Generates an Excel file from a DataFrame for download."""
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        dataframe.to_excel(writer, index=False, sheet_name="Sheet1")
-    return output.getvalue()
+    # Example DataFrame (replace with your actual data)
+    data = pd.DataFrame({
+        "UID_PRULES": ["Rule1", "Rule2", "Rule3"],
+        "EXECUTION_MONTH": ["Jan", "Feb", "Mar"],
+        "EXECUTION_YEAR": [2023, 2024, 2025],
+        "EXECUTION_DATE": pd.date_range("2023-01-01", periods=3),
+        "NUM_EXECUTION": [10, 20, 30]
+    })
 
+    # Filters
+    rule_filter = st.multiselect("Select Rule(s)", data["UID_PRULES"].unique(), default=data["UID_PRULES"].unique())
+    month_filter = st.multiselect("Select Month(s)", data["EXECUTION_MONTH"].unique(), default=data["EXECUTION_MONTH"].unique())
+    year_filter = st.multiselect("Select Year(s)", data["EXECUTION_YEAR"].unique(), default=data["EXECUTION_YEAR"].unique())
+    start_date, end_date = st.date_input("Select Date Range", value=[data["EXECUTION_DATE"].min(), data["EXECUTION_DATE"].max()])
+    execution_range = st.slider("Execution Range", min_value=0, max_value=data["NUM_EXECUTION"].max(), value=(0, data["NUM_EXECUTION"].max()))
+
+    # Filter data
+    filters = {
+        "UID_PRULES": rule_filter,
+        "EXECUTION_MONTH": month_filter,
+        "EXECUTION_YEAR": year_filter,
+        "EXECUTION_DATE": (start_date, end_date),
+        "NUM_EXECUTION": execution_range
+    }
+    filtered_data = filter_data(data, filters)
+
+    # Display table
+    st.dataframe(filtered_data)
+
+    # Download button
+    st.download_button(
+        label="Download Data as Excel",
+        data=download_excel(filtered_data, "PME_Aggregated_Data"),
+        file_name="PME_Aggregated_Data.xlsx"
+    )
