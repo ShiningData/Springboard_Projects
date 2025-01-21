@@ -1,1 +1,19 @@
+import pandas as pd
+import io
+
+def filter_data(data, filters):
+    """Filters the DataFrame based on the filters provided."""
+    for col, val in filters.items():
+        if isinstance(val, (list, tuple)):
+            data = data[data[col].between(*val)] if val else data
+        else:
+            data = data[data[col].isin(val)] if val else data
+    return data
+
+def download_excel(dataframe, filename):
+    """Generates an Excel file from a DataFrame for download."""
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        dataframe.to_excel(writer, index=False, sheet_name="Sheet1")
+    return output.getvalue()
 
