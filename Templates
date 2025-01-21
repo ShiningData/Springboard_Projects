@@ -1,15 +1,62 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+def create_outcome_pie_chart(df_outcome):
+    """Generates a pie chart with detailed legends and properly placed labels."""
+    outcomes = df_outcome["Current Review Outcomes"].tolist()
+    percentages = df_outcome["Percent(%)"].tolist()
+    counts = df_outcome["Count"].tolist()
+
+    # Full pie chart with percentages arranged alternately
+    fig, ax = plt.subplots(figsize=(12, 8))
+    colors = plt.cm.tab20(np.arange(len(outcomes)))  # Assign colors from a colormap
+
+    # Create the full pie chart
+    wedges, texts = ax.pie(
+        counts,
+        startangle=90,
+        colors=colors,
+        wedgeprops={"edgecolor": "black"},
+        autopct=None,  # Disable default percentage placement
+    )
+
+    # Add percentages outside the pie, alternately higher and lower
+    for i, (wedge, percentage) in enumerate(zip(wedges, percentages)):
+        theta = (wedge.theta2 + wedge.theta1) / 2  # Calculate the angle
+        x = np.cos(np.deg2rad(theta))  # X-coordinate
+        y = np.sin(np.deg2rad(theta))  # Y-coordinate
+        offset = 0.15 if i % 2 == 0 else -0.15  # Adjust placement based on offset
+        ax.annotate(
+            f"{percentage:.1f}%",
+            xy=(x, y),
+            xytext=(1.3 * x, 1.3 * y + offset),
+            ha="center",
+            fontsize=10,
+            arrowprops=dict(arrowstyle="-", color="black", lw=0.5),
+        )
+
+    # Add a legend with color coding and outcome names
+    ax.legend(
+        handles=[
+            plt.Line2D([0], [0], marker="o", color="w", markersize=10, markerfacecolor=color)
+            for color in colors
+        ],
+        labels=outcomes,
+        loc="center left",
+        bbox_to_anchor=(1, 0.5),
+        title="Outcomes",
+        title_fontsize=10,
+        fontsize=12,
+    )
+
+    ax.set_title("Percentage Distribution of Outcomes", fontsize=14)
+    plt.tight_layout()
+    return fig
 
 def pme_pivot_page():
     st.title("PME PIVOT")
-
-    # Example DataFrame for Rule Status
-    rule_status_data = pd.DataFrame({
-        "Rule Status": ["Active", "Inactive"],
-        "Count": [10, 5],
-        "Percent(%)": [66.7, 33.3]
-    })
 
     # Example DataFrame for Current Review Summary
     review_summary_data = pd.DataFrame({
@@ -18,14 +65,24 @@ def pme_pivot_page():
         "Percent(%)": [57.1, 28.6, 14.3]
     })
 
-    # Display Rule Status Table
-    st.subheader("Overall Rule Status")
-    st.dataframe(rule_status_data)
+    # Filters
+    st.subheader("Filters")
+    outcome_filter = st.multiselect(
+        "Select Outcomes",
+        review_summary_data["Current Review Outcomes"].unique(),
+        default=review_summary_data["Current Review Outcomes"].unique()
+    )
 
-    # Display Review Summary Table
+    # Apply filters
+    filtered_review_summary = review_summary_data[
+        review_summary_data["Current Review Outcomes"].isin(outcome_filter)
+    ]
+
+    # Display Current Review Summary Table
     st.subheader("Current Review Summary")
-    st.dataframe(review_summary_data)
+    st.dataframe(filtered_review_summary)
 
-    # Pie chart
+    # Generate and display the pie chart
     st.subheader("Current Review Outcome Pie Chart")
-    st.write("Pie Chart Placeholder")
+    pie_chart = create_outcome_pie_chart(filtered_review_summary)
+    st.pyplot(pie_chart)
