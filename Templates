@@ -2,32 +2,37 @@ import streamlit as st
 import pandas as pd
 from utils import filter_data, download_excel
 
-def pme_aggregated_data_page():
-    st.title("PME Aggregated Data")
+def pme_all_rule_page():
+    st.title("PME All Rule")
 
     # Example DataFrame (replace with your actual data)
     data = pd.DataFrame({
-        "UID_PRULES": ["Rule1", "Rule2", "Rule3"],
-        "EXECUTION_MONTH": ["Jan", "Feb", "Mar"],
-        "EXECUTION_YEAR": [2023, 2024, 2025],
-        "EXECUTION_DATE": pd.date_range("2023-01-01", periods=3),
-        "NUM_EXECUTION": [10, 20, 30]
+        "OFFICE^TYPE^RULE_NAME": ["Office1", "Office2", "Office3"],
+        "STATUS": ["Active", "Inactive", "Active"],
+        "EFFECTIVE_DATE": pd.date_range("2023-01-01", periods=3),
+        "BUSINESS_RULE": [0, None, 0],
+        "2021": [10, 15, 20],
+        "2022": [20, 25, 30],
+        "2023": [30, 35, 40],
+        "JANUARY 2024 – JULY 2024": [40, 45, 50],
+        "JULY 2024 – DECEMBER 2024": [50, 55, 60],
+        "EFFECTIVE AGE": [5, 10, 15],
+        "YEAR": [2023, 2024, 2025],
+        "USED OR NOT USED": ["Used", "Not Used", "Used"]
     })
 
     # Filters
-    rule_filter = st.multiselect("Select Rule(s)", data["UID_PRULES"].unique(), default=data["UID_PRULES"].unique())
-    month_filter = st.multiselect("Select Month(s)", data["EXECUTION_MONTH"].unique(), default=data["EXECUTION_MONTH"].unique())
-    year_filter = st.multiselect("Select Year(s)", data["EXECUTION_YEAR"].unique(), default=data["EXECUTION_YEAR"].unique())
-    start_date, end_date = st.date_input("Select Date Range", value=[data["EXECUTION_DATE"].min(), data["EXECUTION_DATE"].max()])
-    execution_range = st.slider("Execution Range", min_value=0, max_value=data["NUM_EXECUTION"].max(), value=(0, data["NUM_EXECUTION"].max()))
+    rule_filter = st.multiselect("Select Rule(s)", data["OFFICE^TYPE^RULE_NAME"].unique(), default=data["OFFICE^TYPE^RULE_NAME"].unique())
+    status_filter = st.multiselect("Select Status", data["STATUS"].unique(), default=data["STATUS"].unique())
+    start_date, end_date = st.date_input("Select Effective Date Range", value=[data["EFFECTIVE_DATE"].min(), data["EFFECTIVE_DATE"].max()])
+    age_range = st.slider("Effective Age Range", min_value=0, max_value=data["EFFECTIVE AGE"].max(), value=(0, data["EFFECTIVE AGE"].max()))
 
     # Filter data
     filters = {
-        "UID_PRULES": rule_filter,
-        "EXECUTION_MONTH": month_filter,
-        "EXECUTION_YEAR": year_filter,
-        "EXECUTION_DATE": (start_date, end_date),
-        "NUM_EXECUTION": execution_range
+        "OFFICE^TYPE^RULE_NAME": rule_filter,
+        "STATUS": status_filter,
+        "EFFECTIVE_DATE": (start_date, end_date),
+        "EFFECTIVE AGE": age_range
     }
     filtered_data = filter_data(data, filters)
 
@@ -37,6 +42,6 @@ def pme_aggregated_data_page():
     # Download button
     st.download_button(
         label="Download Data as Excel",
-        data=download_excel(filtered_data, "PME_Aggregated_Data"),
-        file_name="PME_Aggregated_Data.xlsx"
+        data=download_excel(filtered_data, "PME_All_Rule"),
+        file_name="PME_All_Rule.xlsx"
     )
