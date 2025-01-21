@@ -1,47 +1,31 @@
 import streamlit as st
 import pandas as pd
-from utils import filter_data, download_excel
 
-def pme_all_rule_page():
-    st.title("PME All Rule")
+def pme_pivot_page():
+    st.title("PME PIVOT")
 
-    # Example DataFrame (replace with your actual data)
-    data = pd.DataFrame({
-        "OFFICE^TYPE^RULE_NAME": ["Office1", "Office2", "Office3"],
-        "STATUS": ["Active", "Inactive", "Active"],
-        "EFFECTIVE_DATE": pd.date_range("2023-01-01", periods=3),
-        "BUSINESS_RULE": [0, None, 0],
-        "2021": [10, 15, 20],
-        "2022": [20, 25, 30],
-        "2023": [30, 35, 40],
-        "JANUARY 2024 – JULY 2024": [40, 45, 50],
-        "JULY 2024 – DECEMBER 2024": [50, 55, 60],
-        "EFFECTIVE AGE": [5, 10, 15],
-        "YEAR": [2023, 2024, 2025],
-        "USED OR NOT USED": ["Used", "Not Used", "Used"]
+    # Example DataFrame for Rule Status
+    rule_status_data = pd.DataFrame({
+        "Rule Status": ["Active", "Inactive"],
+        "Count": [10, 5],
+        "Percent(%)": [66.7, 33.3]
     })
 
-    # Filters
-    rule_filter = st.multiselect("Select Rule(s)", data["OFFICE^TYPE^RULE_NAME"].unique(), default=data["OFFICE^TYPE^RULE_NAME"].unique())
-    status_filter = st.multiselect("Select Status", data["STATUS"].unique(), default=data["STATUS"].unique())
-    start_date, end_date = st.date_input("Select Effective Date Range", value=[data["EFFECTIVE_DATE"].min(), data["EFFECTIVE_DATE"].max()])
-    age_range = st.slider("Effective Age Range", min_value=0, max_value=data["EFFECTIVE AGE"].max(), value=(0, data["EFFECTIVE AGE"].max()))
+    # Example DataFrame for Current Review Summary
+    review_summary_data = pd.DataFrame({
+        "Current Review Outcomes": ["Outcome1", "Outcome2", "Not Used from Prior Rpt"],
+        "Count": [20, 10, 5],
+        "Percent(%)": [57.1, 28.6, 14.3]
+    })
 
-    # Filter data
-    filters = {
-        "OFFICE^TYPE^RULE_NAME": rule_filter,
-        "STATUS": status_filter,
-        "EFFECTIVE_DATE": (start_date, end_date),
-        "EFFECTIVE AGE": age_range
-    }
-    filtered_data = filter_data(data, filters)
+    # Display Rule Status Table
+    st.subheader("Overall Rule Status")
+    st.dataframe(rule_status_data)
 
-    # Display table
-    st.dataframe(filtered_data)
+    # Display Review Summary Table
+    st.subheader("Current Review Summary")
+    st.dataframe(review_summary_data)
 
-    # Download button
-    st.download_button(
-        label="Download Data as Excel",
-        data=download_excel(filtered_data, "PME_All_Rule"),
-        file_name="PME_All_Rule.xlsx"
-    )
+    # Pie chart
+    st.subheader("Current Review Outcome Pie Chart")
+    st.write("Pie Chart Placeholder")
