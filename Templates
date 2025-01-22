@@ -1,21 +1,72 @@
-def get_default_six_month_period():
+def apply_conditional_formatting(df):
     """
-    Calculate the default 6-month period based on the current date.
-    Returns a tuple of (begin_date, end_date).
+    Apply conditional formatting to the DataFrame.
     """
-    today = date.today()
-    first_day_of_current_month = date(today.year, today.month, 1)
-    first_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
-    max_date = date(first_day_of_previous_month.year, first_day_of_previous_month.month, 1)
+    def highlight_cells(row):
+        styles = []
+        for col in df.columns:
+            if col == "Grand Total":
+                if row[col] < 16:
+                    styles.append("background-color: red;")
+                else:
+                    styles.append("")
+            elif col == "Prior Period Grand Total":
+                if row[col] == "Review":
+                    styles.append("background-color: red;")
+                elif row[col] < 16:
+                    styles.append("background-color: yellow;")
+                else:
+                    styles.append("")
+            elif col == "Prior Period Review Decision":
+                if row[col] == "New or Used since Prior Review":
+                    styles.append("background-color: grey;")
+                elif row[col] == "Monitor":
+                    styles.append("background-color: yellow;")
+                elif row[col] == "Review":
+                    styles.append("background-color: orange;")
+                else:
+                    styles.append("")
+            elif col == "Prior Period Month Count":
+                if row[col] == "New or Used since Prior Review":
+                    styles.append("background-color: grey;")
+                elif row[col] < 3:
+                    styles.append("background-color: yellow;")
+                else:
+                    styles.append("")
+            elif col == "Current Period Month Count":
+                if row[col] == "New or Used since Prior Review":
+                    styles.append("background-color: grey;")
+                elif row[col] < 3:
+                    styles.append("background-color: yellow;")
+                else:
+                    styles.append("")
+            elif col == "Current Period Usage % +/-":
+                if row[col] < 0:
+                    styles.append("background-color: red;")
+                elif row[col] > 1:
+                    styles.append("background-color: green;")
+                else:
+                    styles.append("")
+            elif col == "Current Period Review Decision":
+                prior_decision = row.get("Prior Period Review Decision", None)
+                if prior_decision == "New or Used since Prior Review" and row[col] == "Monitor":
+                    styles.append("background-color: green;")
+                elif prior_decision == "Monitor" and pd.isnull(row[col]):
+                    styles.append("background-color: green;")
+                elif prior_decision == 0 and row[col] == "Monitor":
+                    styles.append("background-color: green;")
+                elif prior_decision == "Monitor" and row[col] == "Monitor":
+                    styles.append("background-color: yellow;")
+                elif prior_decision == "Monitor" and row[col] == "Review":
+                    styles.append("background-color: yellow;")
+                elif prior_decision == "Review" and row[col] == "Review":
+                    styles.append("background-color: orange;")
+                elif prior_decision == "Review" and pd.isnull(row[col]):
+                    styles.append("background-color: orange;")
+                else:
+                    styles.append("")
+            else:
+                styles.append("")
+        return styles
 
-    # Determine if it's the first or second half of the year
-    if max_date.month <= 6:
-        # Default period: January to June
-        begin_date = date(max_date.year, 1, 1)
-        end_date = date(max_date.year, 6, 30)
-    else:
-        # Default period: July to December
-        begin_date = date(max_date.year, 7, 1)
-        end_date = date(max_date.year, 12, 31)
-
-    return begin_date, end_date, max_date
+    return df.style.apply(highlight_cells, axis=1)
