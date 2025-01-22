@@ -1,69 +1,21 @@
-import streamlit as st
-import pandas as pd
-from utils import filter_data, download_excel
+def get_default_six_month_period():
+    """
+    Calculate the default 6-month period based on the current date.
+    Returns a tuple of (begin_date, end_date).
+    """
+    today = date.today()
+    first_day_of_current_month = date(today.year, today.month, 1)
+    first_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+    max_date = date(first_day_of_previous_month.year, first_day_of_previous_month.month, 1)
 
-def pme_report_page():
-    st.title("PME REPORT")
+    # Determine if it's the first or second half of the year
+    if max_date.month <= 6:
+        # Default period: January to June
+        begin_date = date(max_date.year, 1, 1)
+        end_date = date(max_date.year, 6, 30)
+    else:
+        # Default period: July to December
+        begin_date = date(max_date.year, 7, 1)
+        end_date = date(max_date.year, 12, 31)
 
-    # Example DataFrame (replace with your actual data)
-    data = pd.DataFrame({
-        "Report Date": pd.date_range("2023-01-01", periods=6, freq="M"),
-        "Grand Total": [50, 45, 60, 30, 80, 70],
-        "Prior Period Grand Total": [40, 35, 55, 25, 70, 65],
-        "Period over Period + / -": [10, 10, 5, 5, 10, 5],
-        "Prior Period Month Count": [3, 2, 5, 1, 6, 4],
-        "Current Period Month Count": [4, 3, 6, 2, 7, 5],
-        "Prior Period Review Decision": ["Review", "Monitor", "New", "Used", "Review", "Monitor"],
-        "Current Period Review Decision": ["Monitor", "Review", "Monitor", "Monitor", "Review", None],
-        "Current Period Usage % +/-": [1.5, 0.8, -0.5, 1.2, 2.0, 0.1],
-        "Current Period Outcomes": ["Outcome1", "Outcome2", "Outcome3", "Outcome4", "Outcome5", "Outcome6"],
-        "Prior Period Outcomes": ["Outcome2", "Outcome3", "Outcome4", "Outcome1", "Outcome5", "Outcome6"]
-    })
-
-    # Filters
-    start_date, end_date = st.date_input(
-        "Select Report Date Range", 
-        value=[data["Report Date"].min(), data["Report Date"].max()]
-    )
-    grand_total_range = st.slider("Grand Total Range", 0, data["Grand Total"].max(), (0, data["Grand Total"].max()))
-    prior_grand_total_range = st.slider("Prior Period Grand Total Range", 0, data["Prior Period Grand Total"].max(), (0, data["Prior Period Grand Total"].max()))
-    month_count_filter = st.multiselect("Select Prior Period Month Count", data["Prior Period Month Count"].unique())
-    review_decision_filter = st.multiselect("Select Prior Period Review Decision", data["Prior Period Review Decision"].unique())
-    usage_range = st.slider("Current Period Usage % +/- Range", min(data["Current Period Usage % +/-"]), max(data["Current Period Usage % +/-"]), 
-                            (min(data["Current Period Usage % +/-"]), max(data["Current Period Usage % +/-"])))
-    outcome_filter = st.multiselect("Select Current Period Outcomes", data["Current Period Outcomes"].unique())
-
-    # Filter data
-    filters = {
-        "Report Date": (start_date, end_date),
-        "Grand Total": grand_total_range,
-        "Prior Period Grand Total": prior_grand_total_range,
-        "Prior Period Month Count": month_count_filter,
-        "Prior Period Review Decision": review_decision_filter,
-        "Current Period Usage % +/-": usage_range,
-        "Current Period Outcomes": outcome_filter
-    }
-    filtered_data = filter_data(data, filters)
-
-    # Apply Conditional Formatting
-    def highlight_cells(row):
-        styles = []
-        # Grand Total < 16 -> Red
-        if row["Grand Total"] < 16:
-            styles.append("background-color: red;")
-        else:
-            styles.append("")
-        # Other conditional formatting here...
-        return styles
-
-    styled_data = filtered_data.style.apply(highlight_cells, axis=1)
-
-    # Display table
-    st.dataframe(filtered_data)
-
-    # Download button
-    st.download_button(
-        label="Download Report Data as Excel",
-        data=download_excel(filtered_data, "PME_Report"),
-        file_name="PME_Report.xlsx"
-    )
+    return begin_date, end_date, max_date
