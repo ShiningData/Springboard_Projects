@@ -1,72 +1,42 @@
-def apply_conditional_formatting(df):
-    """
-    Apply conditional formatting to the DataFrame.
-    """
-    def highlight_cells(row):
-        styles = []
-        for col in df.columns:
-            if col == "Grand Total":
-                if row[col] < 16:
-                    styles.append("background-color: red;")
-                else:
-                    styles.append("")
-            elif col == "Prior Period Grand Total":
-                if row[col] == "Review":
-                    styles.append("background-color: red;")
-                elif row[col] < 16:
-                    styles.append("background-color: yellow;")
-                else:
-                    styles.append("")
-            elif col == "Prior Period Review Decision":
-                if row[col] == "New or Used since Prior Review":
-                    styles.append("background-color: grey;")
-                elif row[col] == "Monitor":
-                    styles.append("background-color: yellow;")
-                elif row[col] == "Review":
-                    styles.append("background-color: orange;")
-                else:
-                    styles.append("")
-            elif col == "Prior Period Month Count":
-                if row[col] == "New or Used since Prior Review":
-                    styles.append("background-color: grey;")
-                elif row[col] < 3:
-                    styles.append("background-color: yellow;")
-                else:
-                    styles.append("")
-            elif col == "Current Period Month Count":
-                if row[col] == "New or Used since Prior Review":
-                    styles.append("background-color: grey;")
-                elif row[col] < 3:
-                    styles.append("background-color: yellow;")
-                else:
-                    styles.append("")
-            elif col == "Current Period Usage % +/-":
-                if row[col] < 0:
-                    styles.append("background-color: red;")
-                elif row[col] > 1:
-                    styles.append("background-color: green;")
-                else:
-                    styles.append("")
-            elif col == "Current Period Review Decision":
-                prior_decision = row.get("Prior Period Review Decision", None)
-                if prior_decision == "New or Used since Prior Review" and row[col] == "Monitor":
-                    styles.append("background-color: green;")
-                elif prior_decision == "Monitor" and pd.isnull(row[col]):
-                    styles.append("background-color: green;")
-                elif prior_decision == 0 and row[col] == "Monitor":
-                    styles.append("background-color: green;")
-                elif prior_decision == "Monitor" and row[col] == "Monitor":
-                    styles.append("background-color: yellow;")
-                elif prior_decision == "Monitor" and row[col] == "Review":
-                    styles.append("background-color: yellow;")
-                elif prior_decision == "Review" and row[col] == "Review":
-                    styles.append("background-color: orange;")
-                elif prior_decision == "Review" and pd.isnull(row[col]):
-                    styles.append("background-color: orange;")
-                else:
-                    styles.append("")
-            else:
-                styles.append("")
-        return styles
+Thank you for sharing the information. I will structure your project presentation slide in a format similar to the first image. Let me organize the content for you based on the provided text. Give me a moment to prepare it.
 
-    return df.style.apply(highlight_cells, axis=1)
+Here’s a structured presentation slide format for your project "PME/PRT Rules Report Automation," modeled after the sample slide you provided:
+
+---
+
+### **PME/PRT Rules Report Automation**
+
+---
+
+#### **Background**
+- The OCC's audit and review in 2022 highlighted that PNC's rule management platforms (PME and PRT) are relatively mature, but the growing volume of rules and associated monitoring processes has increased complexity.
+- The automation project aims to improve operational compliance and enhance efficiency by reducing redundancy and ensuring adherence to regulatory expectations.
+- This initiative supports continued refinement and understanding of PME and PRT platforms, focusing on enhanced functionality and evolving systems.
+
+---
+
+#### **Strategic Objectives**
+- **Identify and Address Redundancy**: Enhance system efficiency and organization by identifying and automating outdated or redundant tasks.
+- **Centralized Data Repository**: Consolidate critical data to eliminate manual processes and promote seamless accessibility.
+- **Streamlined Information Access**: Provide simplified access to audit data and present concise insights to upper management, improving decision-making capabilities.
+- **Regulatory Compliance**: Maintain regulatory compliance by ensuring automated processes adhere to OCC standards.
+
+---
+
+#### **Projected Benefits**
+- **Time Savings**: Minimize manual effort, enabling a shift from data preparation to strategic tasks.
+- **Improved Data Management**: Eliminate repetitive data preparation through centralized storage and access.
+- **Enhanced Reporting**: Enable flexible segmentation, filtering by date ranges, and customized reporting for management presentations.
+- **Regulatory Simplicity**: Reduce the burden of responding to inquiries from regulatory bodies by automating historical data access and reporting.
+
+---
+
+#### **Recent Accomplishments**
+- **Automation Implementation**: Automated rule management tables and linked reporting, reducing manual input.
+- **Integrated Platforms**: Established a consolidated repository for PME and PRT data, improving accuracy and productivity.
+- **Advanced Reporting**: Developed features for detailed segmentation, including rule execution counts and pie chart visualizations.
+- **Regulatory Readiness**: Ensured compliance and audit readiness by creating easily retrievable data insights.
+
+---
+
+If you’d like specific visual elements (icons, charts, or additional design), I can enhance this further. Let me know if this works for you!
