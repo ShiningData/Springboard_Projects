@@ -1,16 +1,1 @@
-We have adopted a prudent approach by initiating the process with a rule-based system. This decision was made to ensure better explainability and to facilitate the collection of more labeled data for the Machine Learning model, which we plan to transition to in the future for achieving sustainable, long-term benefits.
 
-As an enhancement to this model, we propose reducing API calls by directly interfacing with EWS to authenticate account ownership. This will involve verifying the availability of accounts within the PNC payment network as follows:
-
-- The account owner will submit beneficiary account details to the PNC Payment Network.
-- The system will verify the account’s existence within the graph database:
-  - If the account is found in the network:
-    - No API request will be sent to EWS.
-    - The response will be directly returned to the user.
-  - If the account is not found in the network:
-    - An API request will be sent to EWS.
-    - PNC will receive and parse the returned data.
-    - The model will process the parsed data.
-    - The response will then be provided to the user.
-
-This enhancement is expected to significantly reduce API request costs, saving approximately 30% of the total API requests.
