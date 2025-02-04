@@ -1,1 +1,71 @@
+---
+title: "Data Scientist Tearsheets"
+format: pdf
+engine: knitr
+output: pdf_document
+---
 
+```{r setup, include=FALSE}
+library(DBI)
+library(RSQLite)
+library(ggplot2)
+library(gridExtra)
+library(patchwork)
+
+# Connect to a database (Replace with actual credentials)
+con <- dbConnect(RSQLite::SQLite(), "database.sqlite")
+
+# Query data for the first table
+query1 <- "SELECT * FROM table1 LIMIT 10;"
+data1 <- dbGetQuery(con, query1)
+
+# Query data for the second table
+query2 <- "SELECT * FROM table2 LIMIT 10;"
+data2 <- dbGetQuery(con, query2)
+
+# Query data for the first pie chart
+query_pie1 <- "SELECT category, COUNT(*) AS count FROM pie_data1 GROUP BY category;"
+pie_data1 <- dbGetQuery(con, query_pie1)
+
+# Query data for the second pie chart
+query_pie2 <- "SELECT category, COUNT(*) AS count FROM pie_data2 GROUP BY category;"
+pie_data2 <- dbGetQuery(con, query_pie2)
+
+# Close connection
+dbDisconnect(con)
+
+# Function to create a pie chart
+create_pie_chart <- function(data, title) {
+  ggplot(data, aes(x = "", y = count, fill = category)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y", start = 0) +
+    theme_void() +
+    theme(legend.position = "bottom") +
+    labs(fill = "Category", title = title)
+}
+
+# Generate pie charts
+pie_chart1 <- create_pie_chart(pie_data1, "Pie Chart 1")
+pie_chart2 <- create_pie_chart(pie_data2, "Pie Chart 2")
+
+================
+
+# Create tables
+table1 <- gridExtra::tableGrob(data1)
+table2 <- gridExtra::tableGrob(data2)
+
+# Layout for upper half
+gridExtra::grid.arrange(
+  gridExtra::arrangeGrob(table1, table2, ncol = 1),
+  pie_chart1,
+  ncol = 2
+)
+
+=================================
+
+# Layout for lower half
+gridExtra::grid.arrange(
+  gridExtra::arrangeGrob(table1, table2, ncol = 1),
+  pie_chart2,
+  ncol = 2
+)
