@@ -7,104 +7,106 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS for fancy styling
+# Custom CSS for box styling
 st.markdown(
     """
     <style>
-        .section-header {
-            font-size: 30px;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-top: 30px;
-            margin-bottom: 10px;
-        }
-        .sub-section-header {
-            font-size: 22px;
-            font-weight: bold;
-            color: #2196F3;
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
-        .content-box {
+        .info-box {
             background-color: #F5F5F5;
             border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 20px;
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            height: 100%;
         }
-        .content-box p {
+        .info-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        .info-content {
             font-size: 16px;
-            line-height: 1.6;
             color: #333;
+            line-height: 1.6;
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Content
-st.markdown('<div class="section-header">1. Business Value of PME/PRT Rules Report</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="content-box">
-        <p>As part of the OCC's audit and review of operations in 2022, it was observed that while PNC's rules management platforms (PME and PRT) are relatively mature, the volume of rules and associated monitoring has increased significantly. This highlights the importance of maintaining effective monitoring processes to ensure operational compliance and efficiency.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# First row with 3 boxes
+col1, col2, col3 = st.columns(3)
 
-st.markdown('<div class="section-header">2. Purpose of Current Functions</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="content-box">
-        <div class="sub-section-header">Enhancements and Automation</div>
-        <p>The automation offers primarily targeted functionalities such as generating pivot tables and linking data to other reports, saving time for teams, and minimizing errors.</p>
-        <div class="sub-section-header">Centralized Data Management</div>
-        <p>The centralized storage of data eliminates the need for repeated spreadsheet creation and manual processes, promoting seamless access to critical information.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+with col1:
+    st.markdown(
+        """
+        <div class="info-box">
+            <div class="info-title">1. Business Value of PME/PRT Rules Report</div>
+            <div class="info-content">
+                As part of the OCC's audit and review of operations in 2022, it was observed that while PNC's rules management platforms (PME and PRT) are relatively mature, the volume of rules and associated monitoring has increased significantly.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-st.markdown('<div class="section-header">3. Expected Benefits of Automation</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="content-box">
-        <div class="sub-section-header">Time Savings</div>
-        <p>The automation offers significant time savings for teams, enabling a shift in focus from data preparation to analysis and strategic reporting.</p>
-        <div class="sub-section-header">Streamlined Information Access</div>
-        <p>Enhanced readiness for potential audits and simplified presentation of information to upper management reduce delays and improve decision-making capabilities.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+with col2:
+    st.markdown(
+        """
+        <div class="info-box">
+            <div class="info-title">2. Purpose of Current Functions</div>
+            <div class="info-content">
+                The automation primarily targets functionalities like generating pivot tables and linking data to other reports, saving time for teams, and minimizing errors.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-st.markdown('<div class="section-header">4. Regulatory Implications</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="content-box">
-        <p>No new regulatory body notifications are required for this automation.</p>
-        <p>The automation facilitates the ability to address potential inquiries from regulatory bodies, such as OCC, regarding provisions.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+with col3:
+    st.markdown(
+        """
+        <div class="info-box">
+            <div class="info-title">3. Expected Benefits of Automation</div>
+            <div class="info-content">
+                Time Savings: The automation offers significant time savings for teams, enabling a shift in focus from data preparation to analysis and strategic reporting.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-st.markdown('<div class="section-header">5. Automated PME and PRT Platforms</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="content-box">
-        <p>The PME and PRT Rules Automation Reports and Tables include the following features:</p>
-        <ul>
-            <li>PME/PRT Aggregated Data: Covers data from 2021 to the most recent month, including rule execution counts by month and year.</li>
-            <li>PME/PRT All Rule: Includes all statistical data of rules since 2021.</li>
-            <li>PME/PRT Pivot: Provides insights into rule status, review outcomes, and distribution.</li>
-            <li>PME/PRT Report: Offers flexible options for segmentation and reporting.</li>
-        </ul>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# Second row with 2 boxes
+col4, col5 = st.columns(2)
 
-# Add a button for navigation (optional)
-st.markdown('<div style="text-align: center; margin-top: 30px;"><a href="#" class="st-button">Explore Dashboard</a></div>', unsafe_allow_html=True)
+with col4:
+    st.markdown(
+        """
+        <div class="info-box">
+            <div class="info-title">4. Regulatory Implications</div>
+            <div class="info-content">
+                No new regulatory body notifications are required for this automation. The automation facilitates the ability to address potential inquiries from regulatory bodies, such as OCC, regarding provisions.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+with col5:
+    st.markdown(
+        """
+        <div class="info-box">
+            <div class="info-title">5. Automated PME and PRT Platforms</div>
+            <div class="info-content">
+                The PME and PRT Rules Automation Reports and Tables include the following features:
+                <ul>
+                    <li>PME/PRT Aggregated Data</li>
+                    <li>PME/PRT All Rule</li>
+                    <li>PME/PRT Pivot</li>
+                    <li>PME/PRT Report</li>
+                </ul>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
