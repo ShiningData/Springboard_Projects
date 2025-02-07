@@ -1,36 +1,78 @@
-def preprocess_all_rule(all_rule_df):
+import streamlit as st
+
+# Page configuration
+st.set_page_config(
+    page_title="Welcome PME PRT Rules Monitoring Dashboard",
+    page_icon="📊",
+    layout="wide",
+)
+
+# Custom CSS for styling
+st.markdown(
     """
-    Preprocesses the input DataFrame by performing the following operations:
-    1. Converts the "EFFECTIVE_DATE" column to datetime format.
-       - If "EFFECTIVE_DATE" is None, assigns it a default value of "9999-09-09".
-    2. Calculates the "EFFECTIVE_AGE" column as the number of days since the "EFFECTIVE_DATE".
-       - If "EFFECTIVE_DATE" is None, assigns "EFFECTIVE_AGE" a default value of 9999.
-    3. Converts the "EFFECTIVE_AGE" column to an integer data type.
-    4. Ensures the "YEAR" column is cast to an integer data type.
-       - If "YEAR" is None, assigns it a default value of 99.
+    <style>
+        .main-header {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            color: #4CAF50;
+            margin-top: 20px;
+        }
+        .sub-header {
+            font-size: 24px;
+            font-style: italic;
+            text-align: center;
+            color: #2196F3;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background-color: #F5F5F5;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .info-box p {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .button-center {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-    Parameters:
-        all_rule_df (pd.DataFrame): Input DataFrame containing columns "EFFECTIVE_DATE" and "YEAR".
+# Main content
+st.markdown('<div class="main-header">WELCOME TO THE PME PRT RULES MONITORING REPORTING DASHBOARD</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Your one-stop solution for PME data insights and analysis</div>', unsafe_allow_html=True)
 
-    Returns:
-        pd.DataFrame: The preprocessed DataFrame with updated columns.
+# Info box with description
+st.markdown(
     """
-    all_rule_df["EFFECTIVE_DATE"] = pd.to_datetime(
-        all_rule_df["EFFECTIVE_DATE"], errors="coerce"
-    )
-    # Handle None values for EFFECTIVE_DATE
-    all_rule_df["EFFECTIVE_DATE"].fillna(pd.Timestamp("9999-09-09"), inplace=True)
+    <div class="info-box">
+        <p>
+        This dashboard provides an intuitive interface to monitor and analyze PME PRT rules effectively. 
+        Leverage interactive visualizations, customizable filters, and insightful metrics to gain a deeper understanding 
+        of your execution data. Designed to improve operational efficiency, this tool enables you to:
+        </p>
+        <ul>
+            <li>Track execution metrics in real-time.</li>
+            <li>Identify trends and patterns in PME rule execution.</li>
+            <li>Optimize decision-making with accurate and actionable insights.</li>
+        </ul>
+        <p>
+        Explore the features of the dashboard to uncover valuable insights and drive your PME operations forward.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    current_date = pd.Timestamp.now()
-    all_rule_df["EFFECTIVE_AGE"] = (
-        current_date - all_rule_df["EFFECTIVE_DATE"]
-    ).dt.days
-    # Handle None values for EFFECTIVE_AGE
-    all_rule_df.loc[all_rule_df["EFFECTIVE_DATE"] == pd.Timestamp("9999-09-09"), "EFFECTIVE_AGE"] = 9999
+# Button for navigation (example)
+st.markdown('<div class="button-center"><a href="#" class="st-button">Get Started</a></div>', unsafe_allow_html=True)
 
-    all_rule_df["EFFECTIVE_AGE"] = all_rule_df["EFFECTIVE_AGE"].astype("Int64")
-
-    # Handle None values for YEAR
-    all_rule_df["YEAR"] = all_rule_df["YEAR"].fillna(99).astype("Int64")
-
-    return all_rule_df
+# Optional: Add an image or logo
+st.image("https://via.placeholder.com/600x200.png?text=PME+Dashboard+Welcome", use_column_width=True)
