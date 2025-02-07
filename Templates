@@ -7,72 +7,104 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS for styling
+# Custom CSS for fancy styling
 st.markdown(
     """
     <style>
-        .main-header {
-            font-size: 48px;
+        .section-header {
+            font-size: 30px;
             font-weight: bold;
-            text-align: center;
             color: #4CAF50;
-            margin-top: 20px;
+            margin-top: 30px;
+            margin-bottom: 10px;
         }
-        .sub-header {
-            font-size: 24px;
-            font-style: italic;
-            text-align: center;
+        .sub-section-header {
+            font-size: 22px;
+            font-weight: bold;
             color: #2196F3;
-            margin-bottom: 30px;
+            margin-top: 10px;
+            margin-bottom: 10px;
         }
-        .info-box {
+        .content-box {
             background-color: #F5F5F5;
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
         }
-        .info-box p {
-            font-size: 18px;
+        .content-box p {
+            font-size: 16px;
             line-height: 1.6;
             color: #333;
-        }
-        .button-center {
-            text-align: center;
-            margin-top: 20px;
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Main content
-st.markdown('<div class="main-header">WELCOME TO THE PME PRT RULES MONITORING REPORTING DASHBOARD</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Your one-stop solution for PME data insights and analysis</div>', unsafe_allow_html=True)
-
-# Info box with description
+# Content
+st.markdown('<div class="section-header">1. Business Value of PME/PRT Rules Report</div>', unsafe_allow_html=True)
 st.markdown(
     """
-    <div class="info-box">
-        <p>
-        This dashboard provides an intuitive interface to monitor and analyze PME PRT rules effectively. 
-        Leverage interactive visualizations, customizable filters, and insightful metrics to gain a deeper understanding 
-        of your execution data. Designed to improve operational efficiency, this tool enables you to:
-        </p>
-        <ul>
-            <li>Track execution metrics in real-time.</li>
-            <li>Identify trends and patterns in PME rule execution.</li>
-            <li>Optimize decision-making with accurate and actionable insights.</li>
-        </ul>
-        <p>
-        Explore the features of the dashboard to uncover valuable insights and drive your PME operations forward.
-        </p>
+    <div class="content-box">
+        <p>As part of the OCC's audit and review of operations in 2022, it was observed that while PNC's rules management platforms (PME and PRT) are relatively mature, the volume of rules and associated monitoring has increased significantly. This highlights the importance of maintaining effective monitoring processes to ensure operational compliance and efficiency.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-# Button for navigation (example)
-st.markdown('<div class="button-center"><a href="#" class="st-button">Get Started</a></div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">2. Purpose of Current Functions</div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="content-box">
+        <div class="sub-section-header">Enhancements and Automation</div>
+        <p>The automation offers primarily targeted functionalities such as generating pivot tables and linking data to other reports, saving time for teams, and minimizing errors.</p>
+        <div class="sub-section-header">Centralized Data Management</div>
+        <p>The centralized storage of data eliminates the need for repeated spreadsheet creation and manual processes, promoting seamless access to critical information.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-# Optional: Add an image or logo
-st.image("https://via.placeholder.com/600x200.png?text=PME+Dashboard+Welcome", use_column_width=True)
+st.markdown('<div class="section-header">3. Expected Benefits of Automation</div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="content-box">
+        <div class="sub-section-header">Time Savings</div>
+        <p>The automation offers significant time savings for teams, enabling a shift in focus from data preparation to analysis and strategic reporting.</p>
+        <div class="sub-section-header">Streamlined Information Access</div>
+        <p>Enhanced readiness for potential audits and simplified presentation of information to upper management reduce delays and improve decision-making capabilities.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown('<div class="section-header">4. Regulatory Implications</div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="content-box">
+        <p>No new regulatory body notifications are required for this automation.</p>
+        <p>The automation facilitates the ability to address potential inquiries from regulatory bodies, such as OCC, regarding provisions.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown('<div class="section-header">5. Automated PME and PRT Platforms</div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="content-box">
+        <p>The PME and PRT Rules Automation Reports and Tables include the following features:</p>
+        <ul>
+            <li>PME/PRT Aggregated Data: Covers data from 2021 to the most recent month, including rule execution counts by month and year.</li>
+            <li>PME/PRT All Rule: Includes all statistical data of rules since 2021.</li>
+            <li>PME/PRT Pivot: Provides insights into rule status, review outcomes, and distribution.</li>
+            <li>PME/PRT Report: Offers flexible options for segmentation and reporting.</li>
+        </ul>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Add a button for navigation (optional)
+st.markdown('<div style="text-align: center; margin-top: 30px;"><a href="#" class="st-button">Explore Dashboard</a></div>', unsafe_allow_html=True)
