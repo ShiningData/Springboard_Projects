@@ -1,144 +1,17 @@
-import streamlit as st
-from pathlib import Path
+PME PRT RULES MONITORING DASHBOARD
+I’m excited to introduce the PME PRT Rules Report Automation Dashboard—a transformative solution for optimizing transaction rule management and reporting.
+PME PRT Rules and Workflow
+The foundation of this dashboard lies in the complex PME PRT business rules that govern transaction processing. These rules, such as authority limit checks and sanction screenings, are essential for ensuring compliance and operational integrity. Each transaction generates an audit trail of executed rules, with some triggering multiple rules simultaneously. 
+Foundation:
+Monitoring these rules is a direct response to a 2022 payment review, demonstrating a proactive approach to rule review and satisfying audit requirements. The OCC's audit and review in 2022 highlighted that PNC's rule management platforms (PME and PRT) are relatively mature, but the growing volume of rules and monitoring processes associated has increased complexity.
+Dashboard Features and Impact
+This business automation intelligence aims to improve operational compliance and enhance efficiency by reducing redundancy,  and ensuring adherence to regulatory expectations.
+This dashboard will;
+-	Automate outdated processes improves efficiency.
+-	Provide a consolidated repository enhances accessibility and eliminate manual input.
+-	Presents tailored insights for upper management with flexible filters and time segmentation.
+-	Reduce reducing the burden of regulatory inquiries and ensure regulatory readiness by aligning all processes with compliance standards.
+-	This frees up valuable time for deeper data analysis, enhancing decision-making capabilities. Moreover, we’ve integrated additional analytical elements. 
+Conclusion
+In essence, this dashboard is more than a tool—it’s a step forward in aligning efficiency, compliance, and strategic decision-making. By reducing manual tasks, improving reporting accuracy, and meeting audit requirements, we’re empowering teams to focus on what truly matters: driving business growth and innovation.
 
-# Page configuration
-st.set_page_config(
-    page_title="Welcome PME PRT Rules Monitoring Dashboard",
-    page_icon="📊",
-    layout="wide",
-)
-
-# Custom CSS for uniform box sizes and styling
-st.markdown(
-    """
-    <style>
-        .info-box {
-            background-color: #F5F5F5;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-            text-align: left;
-            height: 250px; /* Set a fixed height for all boxes */
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .info-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-bottom: 10px;
-        }
-        .info-content {
-            font-size: 16px;
-            color: #333;
-            line-height: 1.6;
-        }
-        .download-section {
-            margin-top: 20px;
-            text-align: center;
-            padding: 20px;
-            background-color: #e8f5e9;
-            border-radius: 10px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .download-link {
-            font-size: 18px;
-            font-weight: bold;
-            color: #1565C0;
-            text-decoration: none;
-        }
-        .download-link:hover {
-            color: #0D47A1;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Sub-header before the first row
-st.markdown('<h2 style="text-align: center; color: #4CAF50;">What is PME and PRT Rules?</h2>', unsafe_allow_html=True)
-
-# First row with 3 boxes
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown(
-        """
-        <div class="info-box">
-            <div class="info-title">1. Business Value of PME/PRT Rules Report</div>
-            <div class="info-content">
-                As part of the OCC's audit and review of operations in 2022, it was observed that while PNC's rules management platforms (PME and PRT) are relatively mature, the volume of rules and associated monitoring has increased significantly.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with col2:
-    st.markdown(
-        """
-        <div class="info-box">
-            <div class="info-title">2. Purpose of Current Functions</div>
-            <div class="info-content">
-                The automation primarily targets functionalities like generating pivot tables and linking data to other reports, saving time for teams, and minimizing errors.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with col3:
-    st.markdown(
-        """
-        <div class="info-box">
-            <div class="info-title">3. Expected Benefits of Automation</div>
-            <div class="info-content">
-                Time Savings: The automation offers significant time savings for teams, enabling a shift in focus from data preparation to analysis and strategic reporting.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Second row with 2 boxes (4th section and download link in same row)
-col4, col5 = st.columns(2)
-
-with col4:
-    st.markdown(
-        """
-        <div class="info-box">
-            <div class="info-title">4. Regulatory Implications</div>
-            <div class="info-content">
-                No new regulatory body notifications are required for this automation. The automation facilitates the ability to address potential inquiries from regulatory bodies, such as OCC, regarding provisions.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with col5:
-    # Local path to the download icon in your repo
-    icon_path = Path("path/to/local/download_icon.png")  # Update this path to your local icon
-
-    # Display download section
-    st.markdown(
-        """
-        <div class="download-section">
-            <p><b>Download the Executive Summary</b></p>
-            <p>The Executive Summary provides a comprehensive overview of the PME/PRT Rules Monitoring System, including key insights, benefits, and regulatory impacts.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Display the icon and link together
-    col5.image(icon_path, width=50)
-    st.markdown(
-        """
-        <a href="path/to/executive_summary.pdf" download class="download-link">
-            Click here to download the Executive Summary
-        </a>
-        """,
-        unsafe_allow_html=True,
-    )
