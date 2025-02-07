@@ -7,7 +7,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS for box styling
+# Custom CSS for styling
 st.markdown(
     """
     <style>
@@ -29,11 +29,33 @@ st.markdown(
             color: #333;
             line-height: 1.6;
         }
+        .download-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e8f5e9;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .download-link {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1565C0;
+            text-decoration: none;
+        }
+        .download-link:hover {
+            color: #0D47A1;
+        }
+        .download-icon {
+            vertical-align: middle;
+            margin-right: 10px;
+        }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+# Content with grid layout
 # First row with 3 boxes
 col1, col2, col3 = st.columns(3)
 
@@ -110,3 +132,18 @@ with col5:
         """,
         unsafe_allow_html=True,
     )
+
+# Section for the "Executive Summary" download link
+st.markdown(
+    """
+    <div class="download-section">
+        <p><b>Download the Executive Summary</b></p>
+        <p>The Executive Summary provides a comprehensive overview of the PME/PRT Rules Monitoring System, including key insights, benefits, and regulatory impacts.</p>
+        <a href="path/to/executive_summary.pdf" download class="download-link">
+            <img src="https://img.icons8.com/ios-filled/50/1565C0/download.png" class="download-icon"/> 
+            Click here to download the Executive Summary
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
