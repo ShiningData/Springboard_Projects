@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 
 # Page configuration
 st.set_page_config(
@@ -7,7 +8,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS for styling
+# Custom CSS for uniform box sizes and styling
 st.markdown(
     """
     <style>
@@ -16,7 +17,11 @@ st.markdown(
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-            height: 100%;
+            text-align: left;
+            height: 250px; /* Set a fixed height for all boxes */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .info-title {
             font-size: 24px;
@@ -30,11 +35,11 @@ st.markdown(
             line-height: 1.6;
         }
         .download-section {
-            margin-top: 30px;
+            margin-top: 20px;
+            text-align: center;
             padding: 20px;
             background-color: #e8f5e9;
             border-radius: 10px;
-            text-align: center;
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
         }
         .download-link {
@@ -46,16 +51,14 @@ st.markdown(
         .download-link:hover {
             color: #0D47A1;
         }
-        .download-icon {
-            vertical-align: middle;
-            margin-right: 10px;
-        }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Content with grid layout
+# Sub-header before the first row
+st.markdown('<h2 style="text-align: center; color: #4CAF50;">What is PME and PRT Rules?</h2>', unsafe_allow_html=True)
+
 # First row with 3 boxes
 col1, col2, col3 = st.columns(3)
 
@@ -98,7 +101,7 @@ with col3:
         unsafe_allow_html=True,
     )
 
-# Second row with 2 boxes
+# Second row with 2 boxes (4th section and download link in same row)
 col4, col5 = st.columns(2)
 
 with col4:
@@ -115,35 +118,27 @@ with col4:
     )
 
 with col5:
+    # Local path to the download icon in your repo
+    icon_path = Path("path/to/local/download_icon.png")  # Update this path to your local icon
+
+    # Display download section
     st.markdown(
         """
-        <div class="info-box">
-            <div class="info-title">5. Automated PME and PRT Platforms</div>
-            <div class="info-content">
-                The PME and PRT Rules Automation Reports and Tables include the following features:
-                <ul>
-                    <li>PME/PRT Aggregated Data</li>
-                    <li>PME/PRT All Rule</li>
-                    <li>PME/PRT Pivot</li>
-                    <li>PME/PRT Report</li>
-                </ul>
-            </div>
+        <div class="download-section">
+            <p><b>Download the Executive Summary</b></p>
+            <p>The Executive Summary provides a comprehensive overview of the PME/PRT Rules Monitoring System, including key insights, benefits, and regulatory impacts.</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-# Section for the "Executive Summary" download link
-st.markdown(
-    """
-    <div class="download-section">
-        <p><b>Download the Executive Summary</b></p>
-        <p>The Executive Summary provides a comprehensive overview of the PME/PRT Rules Monitoring System, including key insights, benefits, and regulatory impacts.</p>
+    # Display the icon and link together
+    col5.image(icon_path, width=50)
+    st.markdown(
+        """
         <a href="path/to/executive_summary.pdf" download class="download-link">
-            <img src="https://img.icons8.com/ios-filled/50/1565C0/download.png" class="download-icon"/> 
             Click here to download the Executive Summary
         </a>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        """,
+        unsafe_allow_html=True,
+    )
