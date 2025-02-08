@@ -1,17 +1,1 @@
-PME PRT RULES MONITORING DASHBOARD
-I’m excited to introduce the PME PRT Rules Report Automation Dashboard—a transformative solution for optimizing transaction rule management and reporting.
-PME PRT Rules and Workflow
-The foundation of this dashboard lies in the complex PME PRT business rules that govern transaction processing. These rules, such as authority limit checks and sanction screenings, are essential for ensuring compliance and operational integrity. Each transaction generates an audit trail of executed rules, with some triggering multiple rules simultaneously. 
-Foundation:
-Monitoring these rules is a direct response to a 2022 payment review, demonstrating a proactive approach to rule review and satisfying audit requirements. The OCC's audit and review in 2022 highlighted that PNC's rule management platforms (PME and PRT) are relatively mature, but the growing volume of rules and monitoring processes associated has increased complexity.
-Dashboard Features and Impact
-This business automation intelligence aims to improve operational compliance and enhance efficiency by reducing redundancy,  and ensuring adherence to regulatory expectations.
-This dashboard will;
--	Automate outdated processes improves efficiency.
--	Provide a consolidated repository enhances accessibility and eliminate manual input.
--	Presents tailored insights for upper management with flexible filters and time segmentation.
--	Reduce reducing the burden of regulatory inquiries and ensure regulatory readiness by aligning all processes with compliance standards.
--	This frees up valuable time for deeper data analysis, enhancing decision-making capabilities. Moreover, we’ve integrated additional analytical elements. 
-Conclusion
-In essence, this dashboard is more than a tool—it’s a step forward in aligning efficiency, compliance, and strategic decision-making. By reducing manual tasks, improving reporting accuracy, and meeting audit requirements, we’re empowering teams to focus on what truly matters: driving business growth and innovation.
 
