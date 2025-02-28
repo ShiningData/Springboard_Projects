@@ -1,24 +1,18 @@
-The conversation provides a good example of how multiple business rules work together in the context of a large transaction.  Here's a breakdown:
+# Helpful dates
+CURRENT_MONTH=$(date +%m)
+CURRENT_YEAR=$(date +%Y)
 
-1.  Trigger: A branch-initiated payment exceeding $1 million is submitted.
+if [[ "$CURRENT_MONTH" -eq 07 ]]; then
+    NEXT_RUN=$(date -d "$CURRENT_YEAR-07-08 01:00" "+%Y-%m-%dT%H:%M")
+elif [[ "$CURRENT_MONTH" -eq 01 ]]; then
+    NEXT_RUN=$(date -d "$CURRENT_YEAR-01-08 01:00" "+%Y-%m-%dT%H:%M")
+else
+    # If not January or July, find the next occurrence
+    if [[ "$CURRENT_MONTH" -lt 07 ]]; then
+        NEXT_RUN=$(date -d "$CURRENT_YEAR-07-08 01:00" "+%Y-%m-%dT%H:%M")
+    else
+        NEXT_RUN=$(date -d "$((CURRENT_YEAR + 1))-01-08 01:00" "+%Y-%m-%dT%H:%M")
+    fi
+fi
 
-2.  Initial Rule (Dual Authorization):  A rule is triggered because the transaction amount is over $1 million. This rule requires dual authorization. The transaction is routed to a "dollar authority" status.
-
-3.  Dollar Authority Check (Soft Check): A "limit category" rule performs a *soft* check on the submitter's authority limit.  Even if the user *has* sufficient authority, the large transaction amount triggers the next step.  This is a 'soft' check because it doesn't immediately reject the transaction if the limit is exceeded, but rather flags it for further review.
-
-4.  Dollar Authority Approval: A user with the appropriate permissions approves the transaction from the "dollar authority" status.
-
-5.  Dollar Authority Check (Hard Check): *Another* limit category rule, specifically for "non-repeat domestic" transactions, performs a *hard* check on the *approver's* authority limit. This is a crucial step to ensure the approver has the authority to sign off on such a large sum. This is a 'hard' check because if the limit is exceeded, the transaction would be rejected.
-
-6.  Workflow Progression:  If the *hard* check passes, the transaction moves to the "verify" status.
-
-7.  Further Approvals and Checks: The transaction goes through additional approval steps, with *more* rules and checks being applied at each stage (e.g., another approval, more limit checks, fraud checks, etc.).  The conversation mentions the transaction going to "frontline in process" and continuing through the workflow.
-
-Key Points:
-
-*   Sequential Execution: The rules are executed in a specific sequence. The outcome of one rule (e.g., the dual authorization requirement) determines which rules are applied next.
-*   Context-Specific Rules: Different rules are applied based on the transaction type (branch-initiated, domestic, over $1 million) and the user's role (submitter, approver).
-*   Hard vs. Soft Checks: The example demonstrates the difference between "soft" and "hard" checks. Soft checks might flag something for review, while hard checks will halt the transaction if the condition isn't met.
-*   Complex Interactions:  While this example highlights a few rules, the meeting revealed that a single transaction can involve *hundreds* of rules, making the overall system quite complex.  It's difficult to visualize the entire chain of rule executions for every possible scenario.
-
-This example from the conversation illustrates how business rules are chained together to enforce policies, manage risk, and control the flow of transactions within the payment system.
+SCHEDULE="$NEXT_RUN"
