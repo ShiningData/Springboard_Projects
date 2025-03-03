@@ -1,18 +1,17 @@
-# Helpful dates
-CURRENT_MONTH=$(date +%m)
-CURRENT_YEAR=$(date +%Y)
+Types of Classification
+Binary Classification
 
-if [[ "$CURRENT_MONTH" -eq 07 ]]; then
-    NEXT_RUN=$(date -d "$CURRENT_YEAR-07-08 01:00" "+%Y-%m-%dT%H:%M")
-elif [[ "$CURRENT_MONTH" -eq 01 ]]; then
-    NEXT_RUN=$(date -d "$CURRENT_YEAR-01-08 01:00" "+%Y-%m-%dT%H:%M")
-else
-    # If not January or July, find the next occurrence
-    if [[ "$CURRENT_MONTH" -lt 07 ]]; then
-        NEXT_RUN=$(date -d "$CURRENT_YEAR-07-08 01:00" "+%Y-%m-%dT%H:%M")
-    else
-        NEXT_RUN=$(date -d "$((CURRENT_YEAR + 1))-01-08 01:00" "+%Y-%m-%dT%H:%M")
-    fi
-fi
+The simplest type of classification, where there are only two possible outcomes.
+Example: Spam Detection – Emails are classified as either Spam or Not Spam.
+Common algorithms: Logistic Regression, Random Forest, Support Vector Machines (SVM).
+Multiclass Classification
 
-SCHEDULE="$NEXT_RUN"
+More than two classes, but each instance belongs to only one class.
+Example: Digit Recognition – Classifying handwritten digits (0-9).
+Common algorithms: Decision Trees, XGBoost, Neural Networks.
+Multi-label Classification
+
+Each instance can belong to multiple categories at the same time.
+Example: Movie Genre Prediction – A movie can be labeled as Action, Comedy, and Sci-Fi at the same time.
+Common algorithms: Neural Networks, Multi-label Random Forest, and specialized versions of classifiers with Sigmoid activation.
+Each type has different challenges and requires different evaluation metrics (e.g., Accuracy vs. Precision-Recall trade-offs in multi-label classification).
