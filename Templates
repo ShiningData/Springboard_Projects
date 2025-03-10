@@ -1,25 +1,55 @@
-Subject: Annual Review Update: MRMG Documentation Review - Input Required
+GeeksforGeekshttps://www.geeksforgeeks.orgTypes of Regression Techniques in ML
 
-Hello,
+GeeksforGeekshttps://www.geeksforgeeks.orgRegression in machine learning
 
-I have completed reviewing all submitted documents for the Annual MRMG assessment and have summarized the areas where I need your input in the attached document:
+Beginners Guide to Regression Analysis and Plot Interpretations Tutorials & Notes | Machine Learning | HackerEarth
 
-For Amanda/Jerry:
- Pages 4-5: Are there additional model versioning and change logs for 2021-2022 that should be included in the document?
- Pages 6-7: Do you have any updates regarding Model Business Objectives, Uses, Risks, Downstream Impacts, Scope, Exposure, or Output Governance?
- Pages 8-9: We will be using only FMOL and Grady 835/837 data with RDC_yes files to engineer target variables in our model. Previously used CMS and Scraped Service code hierarchies will not be included. I will update the document accordingly.
- Page 16: Should we maintain the current operational workflow section as is?
- Page 21: Is the current model risk assessment approach still appropriate?
 
-For Anjaneyulu:
- Pages 4-5: Are there any other model versioning and change logs from 2021-2022 that need to be incorporated?
- Pages 10-12: Is the data validation process still accurate as described?
- Could you clarify the input data validation process with the new API requirements?
+REGRESSION MASTER NOTEBOOK
 
-For Sundeep/Anjaneyulu:
- Page 19: Please provide input on the model monitoring and performance benchmark approach. Should we maintain the current monitoring metrics?
+GitHub - junzis/course-regression: Notebooks for CS4305TU Regression Lectures
 
-I have scheduled time to discuss your feedback on the items above. Your collaboration is greatly appreciated as we work to complete this annual MRMG review process.
 
-Thank you,
-[Your Name]
+
+https://docs.databricks.com/en/machine-learning/automl/how-automl-works.html
+
+📚 AutoML - Regression part1
+
+
+
+Tutorial - Regression.ipynb - Colab. Pycaret
+
+AutoML using Pycaret with a Regression Use-Case
+
+Tutorials | Docs
+
+
+Regression Tutorial Level Beginner - REG101
+
+Regression Tutorial Level Intermediate - REG102
+
+
+Beginner’s Guide to AutoML with an Easy AutoGluon Example
+
+
+
+Stats model
+
+Read “Mastering Linear Regression with Statsmodels“ by Luís Fernando Torres on Medium: https://medium.com/latinxinai/mastering-linear-regression-with-statsmodels-95233a2a602e
+
+
+
+OLS regression tutorial with statsmodels in Python · GitHub
+
+Introduction to Regression with statsmodels in Python Course | DataCamp
+
+Introduction to Regression with statsmodels in Python Course | DataCamp
+
+
+https://www.linkedin.com/posts/banias_are-you-still-using-shap-for-explaining-machine-activity-7304063370981203968-zrv_?utm_source=share&utm_medium=member_ios&rcm=ACoAACGln5wBQuD0-2kHFzsVhwkO7VqGKBprzR4
+
+
+
+******
+
+https://www.linkedin.com/posts/mehrahmad_comprehensive-machine-learning-process-activity-7303430108323700736-pCwd?utm_source=share&utm_medium=member_ios&rcm=ACoAACGln5wBQuD0-2kHFzsVhwkO7VqGKBprzR4 
