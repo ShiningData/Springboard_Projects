@@ -1,48 +1,19 @@
-Okay, let's dive deeper into the Market Rates and Intel discussion, extracting more granular details from the transcript:
+Okay, here's the added detail on the Downloadable Reports section, based on the transcript:
 
-*   *Importance of Fed Data (High Priority):*
-    *   The team universally agreed on the high importance of Federal Reserve data.
-    *   This data drives a significant portion of their decision-making processes.
-    *   Specific uses of Fed data weren't explicitly detailed, but it's implied they use it for setting rates and understanding market trends.
+*   *Focus on TAP Section:* The discussion started with the TAP (Target Account Profile) section of the downloadable reports.
 
-*   *CME FedWatch Tool (Medium Priority):*
-    *   The CME FedWatch Tool is used to assess the probability of changes in the Federal Funds Rate.
-    *   It helps the team anticipate potential shifts in monetary policy.
-    *   It's not used as frequently as direct Fed data, hence the medium priority.
+*   *TAP Prioritization:*
+    *   *Liquidity or Sheet (TAP):* This report was considered medium priority, primarily used when looking at a specific client.
+    *   *Daily Download Analytics Suite (TAP):* This and the following report were considered high priority, used for analytics on a daily or every-other-day basis.
+    *   *CD Reporting (TAP):* This report was used less frequently, more on a weekly or bi-monthly basis.
 
-*   *Data Source Accessibility:*
-    *   The team discussed the accessibility of market rate data from various sources like CME and Bloomberg.
-    *   While some data is publicly available, CME requires a (free) login.
-    *   The team expressed a desire for a consolidated data feed to avoid manually checking multiple sources.
+*   *TAP Sales vs. TAP Product:* It was clarified that the team uses both TAP Sales and TAP Product. There is also a liquidity-specific TAP that is only for the liquidity team.
 
-*   *International Market Rates:*
-    *   The international team confirmed they do not regularly monitor these specific market rates.
-    *   This suggests a potential area for tailoring the data provided based on team responsibilities.
+*   *Deep Dive Needed:* It was recognized that a more in-depth discussion is needed to fully understand how the team uses TAP and what information they extract from it.
 
-*   *Frequency of Use:*
-    *   The frequency of use varies depending on the specific role and task:
-        *   *Daily:* Quoting rates to customers requires daily monitoring.
-        *   *Weekly:* Managerial tasks and trend analysis are typically done weekly.
-        *   *Ad Hoc:* Rates are checked as needed when specific questions arise or when analyzing particular situations.
+*   *Potential Strategy:* The initial strategy might be to embed TAP reports into the new system rather than immediately recreating everything from TAP.
 
-*   *Short Term Rates Report (Funding Desk):*
-    *   This report is a key source of market rate information.
-    *   It includes data on the Effective Federal Funds Rate (EFFR) and other short-term rates.
-    *   It's used at least every other day by some team members.
-
-*   *Dashboard Preference:*
-    *   The team expressed a strong preference for having market rates readily available on a dashboard.
-    *   This would streamline their workflow and reduce the need to manually gather data from multiple sources.
-
-*   *Specific Data Points (Implied):*
-    *   While not explicitly listed, the discussion implies that the team monitors:
-        *   Effective Federal Funds Rate (EFFR)
-        *   T-bill rates
-        *   Swap rates
-        *   Other short-term rates
-
-In essence, the Market Rates and Intel discussion highlighted the importance of readily accessible, consolidated, and role-relevant market data for informed decision-making. The team relies heavily on Fed data and the short-term rates report, and they would benefit from a dashboard that provides a comprehensive view of key market indicators.
-
+In summary, the Downloadable Reports section discussion focused on prioritizing the TAP reports and recognizing the need for a deeper dive into how TAP is used. The initial approach might be to integrate existing TAP reports rather than immediately rebuilding them.
 ++++++++++++++++++++++++++++++++++++++++++++++++++
 Okay, let's break down the discussion that occurred right after the pause and regrouping in more detail:
 
