@@ -1,12 +1,25 @@
-Subject: Next Steps for Updated MRMG Documentation
+Subject: Annual Review Update: MRMG Documentation Review - Input Required
 
-Hi [Client’s Name],
+Hello,
 
-Thanks for reaching out! I appreciate you keeping this on track. I’m happy to take the lead and ensure we complete the updated documentation smoothly within the deadline.
+I have completed reviewing all submitted documents for the Annual MRMG assessment and have summarized the areas where I need your input in the attached document:
 
-Yesterday, I had a meeting with Daniel and Monika to clarify our roadmap from the MRMG standpoint, including which documents we need to prepare and how to expedite this process. I assume this is why Monika reached out to you as well.
+For Amanda/Jerry:
+ Pages 4-5: Are there additional model versioning and change logs for 2021-2022 that should be included in the document?
+ Pages 6-7: Do you have any updates regarding Model Business Objectives, Uses, Risks, Downstream Impacts, Scope, Exposure, or Output Governance?
+ Pages 8-9: We will be using only FMOL and Grady 835/837 data with RDC_yes files to engineer target variables in our model. Previously used CMS and Scraped Service code hierarchies will not be included. I will update the document accordingly.
+ Page 16: Should we maintain the current operational workflow section as is?
+ Page 21: Is the current model risk assessment approach still appropriate?
 
-I’ll review the documents today and set up a meeting with you to discuss our approach and any areas that may need your input. This will help us align on the best way to proceed efficiently.
+For Anjaneyulu:
+ Pages 4-5: Are there any other model versioning and change logs from 2021-2022 that need to be incorporated?
+ Pages 10-12: Is the data validation process still accurate as described?
+ Could you clarify the input data validation process with the new API requirements?
 
-You can expect a calendar invite shortly. Looking forward to working through this with you.
+For Sundeep/Anjaneyulu:
+ Page 19: Please provide input on the model monitoring and performance benchmark approach. Should we maintain the current monitoring metrics?
 
+I have scheduled time to discuss your feedback on the items above. Your collaboration is greatly appreciated as we work to complete this annual MRMG review process.
+
+Thank you,
+[Your Name]
