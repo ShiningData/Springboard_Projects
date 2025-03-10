@@ -1,55 +1,464 @@
-GeeksforGeekshttps://www.geeksforgeeks.orgTypes of Regression Techniques in ML
+Okay, let's break down the discussion that occurred right after the pause and regrouping in more detail:
 
-GeeksforGeekshttps://www.geeksforgeeks.orgRegression in machine learning
+   Focus on Market Rates and Intel/Internal Rates: The group decided to focus first on market rates and intel, followed by internal rates, as these areas had the most "green" (high priority) sticky notes on the whiteboard.
 
-Beginners Guide to Regression Analysis and Plot Interpretations Tutorials & Notes | Machine Learning | HackerEarth
+   Market Rates and Intel Discussion:
+       Importance of Fed Data: It was confirmed that data from the Federal Reserve is critical for decision-making.
+       FF Watch Tool: The CME FedWatch tool was considered medium priority, used to check the probability of interest rate changes.
+       Data Source Accessibility: There was a discussion about whether market rate data from CME, Bloomberg, etc., requires subscriptions or is publicly accessible. It was noted that CME requires a login (but is free), and the group expressed interest in a data feed rather than manual checks.
+       International Market Rates: It was clarified that the international team does not regularly look at market rates.
+       Frequency of Use: The frequency of use for market rates varies: daily for quoting rates to customers, weekly for managerial tasks, and ad hoc as needed.
+       Short Term Rates Report: A "short term rates" report from the funding desk was identified as a key source of market rate information, used at least every other day.
+       Dashboard Preference: There was a general desire to have these rates readily available on a dashboard.
 
+   Internal Rates: All internal rates were marked as high priority.
 
-REGRESSION MASTER NOTEBOOK
+   Email Reports Discussion:
+       Source of Email Reports: The sources of various email reports were clarified (e.g., daily short term rates from the funding desk, weekly market update from the corporate strategy group, money market fund ratio from capital markets).
+       Content of Weekly Market Update: The weekly market update includes information on the S&P, stock market, and commentary from the Fed.
+       Internal vs. External: It was clarified that while some reports (MMF rate sheet, daily FX commentary) are distributed externally, the liquidity team primarily uses them for internal consumption.
+       Tableau and SharePoint: The group discussed the nature of the Tableau and SharePoint data sources, clarifying that the Tableau reports are often received as PDFs via email, and the SharePoint source was related to the "Daily Large Movers" report.
 
-GitHub - junzis/course-regression: Notebooks for CS4305TU Regression Lectures
+   Daily Large Movers Report:
+       Importance: The PDF report on large balance changes (greater than $75 million) is reviewed first thing in the morning.
+       Persona-Based Priority: The priority of the "Daily Large Movers" report can vary depending on the user's role and current task. It can be high priority when investigating unexpected deposit changes or medium priority for general reporting.
 
+==========================================================================================
 
+Data Management
+Notes created on March 10, 2025 at 2:00 PM by Minutes AI
+Introductions
+• Naren from DSI introduced himself and his colleagues.
+• They report to Biddell, who reports to Tom.
+• They work on data-driven projects at the bank focusing on TM.
+• The team consists of data scientists, data analysts, software and data engineers,
+and data architecture and engineering.
+• They also have engineers and product management folks who helped build
+applications like the MC Squared application for BIM sponsorship.
+• Emily gave an abridged introduction for the liquidity side.
+• Everyone on the liquidity team reports to Scott Horan, who heads deposits and
+liquidity products for Treasury Management interest bearing and sweep.
+• Rocio Yaskanich heads that up, and Jennifer Adkins, Melissa Swiger (who heads
+TM Liquidity product delivery group), and Emily are under Rocio.
+• Tim Satterfield covers non-interest bearing and specialty products, with Alicia
+D'Amico, Dominic Cosentino, and Jody Wyman under him.
+• Rob Sant covers escrow agent paying agent, and Alyssa Brandemart reports to
+him.
+• Dan Petrilla and Bill Poteet are liquidity product advisors reporting to Scott.
+• Connor Nichols and Joanna Chow are the team's analysts.
+Purpose of the Meeting
+• Enable business growth in a scalable and sustainable way.
+• Build an all-encompassing environment for the team to perform core data-driven tasks.
+• Tasks that require automation, decision support, integration of data, and
+consolidation of disparate data sources.
+These notes were taken with Minutes AI (https://myminutes.ai)
+• Core questions to consider:
+• What does a liquidity data warehouse look like?
+• What does an ideal application look like?
+• How do you envision workflows scaling with increased volume?
+• What are short-term, low-effort, high-value targets?
+Data and Job Sets
+• Daily dashboard: Consolidates data sources for daily viewing.
+• Analytics: Focuses on balance volatility.
+• Real-time insights: Aims to provide near real-time data instead of a one-day lag.
+Goals for the Workshop
+• Understand data sources, processes, and pain points.
+• Prioritize important tasks and goals.
+• Define features to target.
+• Consider Personas for individual roles and teams.
+• What is the archetypical user?
+• How do they interact with data?
+• Think about the ideal state of how you want to work.
+Team Considerations
+• Pain points, priorities, what can be automated, and the ideal state.
+• Per-team goals and requirements.
+• Must-have features.
+• Wishlist features.
+• Ideal features.
+• Natural ways to organize workflows.
+These notes were taken with Minutes AI (https://myminutes.ai)
+Data Access and Personas
+• Data access patterns:
+• Should access patterns be siloed?
+• OIM entitlements for different parts of the data.
+• Granularity of data access.
+• Personas:
+• Consider archetypical users and their data interaction.
+Whiteboarding Session
+• Naren will put a link in the chat to a whiteboard for interactive brainstorming.
+• If the link doesn't work, participants should let him know.
+Data Visualization of Data Sources
+• The speaker took the Excel file of data sources and visualized them to identify high,
+medium, and low priority data sources.
+• The goal is to create a pipeline that integrates all data sources, prioritizing higher priority
+targets for faster results.
+Whiteboard Instructions
+• The whiteboard is similar to Mural or Envision, with infinite zoom capabilities.
+• The workshop is intended to be interactive, encouraging questions, comments, and
+requests.
+• The whiteboard link will remain active after the call for later additions or notes.
+Explanation of the Whiteboard
+• The whiteboard is based on the Excel file, with data sources categorized into containers
+like market rates, email reports, internal rates, dashboards, downloadable reports, and
+resources for the monthly liquidity meeting.
+These notes were taken with Minutes AI (https://myminutes.ai)
+• Each rectangle represents a data source with the name listed.
+• Background colors indicate the data source origin:
+• Red: External data source
+• Blue: Email data source
+• Yellow: Tableau
+• Green: SharePoint
+• Pink: Intranet
+• Light Blue: DSI team
+• Orange: Tap
+• Bluish Gray: XNET systemware
+• Purple: Risk management tool
+• Dark Gray: Other
+• Border patterns indicate whether the data source is static, manipulated, or external.
+• Dotted: External
+• Solid: Static
+• Dash-dot: Manipulated
+• Background color patterns indicate the teams or groups of teams using the data source.
+• No pattern: Used by everyone
+Team Prioritization
+• The speaker asks Rocio's team to identify high, medium, and low priority data sources
+for the Daily Dashboard.
+• Participants can copy and paste post-it notes to mark the priority of each data source.
+• The team can go through each bucket of data sources, starting with market rates, or
+focus on the most important bucket first.
+Discussion on Information Usage and Classification
+These notes were taken with Minutes AI (https://myminutes.ai)
+• A participant suggests discussing how information is used before classifying it.
+• Another participant agrees, noting potential confusion with the current approach of
+everyone adding information to a single poster.
+• Emily's method of consolidating notes into one post-it is mentioned as an alternative to
+creating multiple post-its.
+• Concern is raised about the potential for the notes to become jumbled and the issue of
+multiple people using the same color post-it.
+Addressing Duplicate Post-its and Prioritization
+• Cindy suggests using "+1" on existing post-its to indicate agreement and prioritize
+information based on the number of endorsements.
+• The idea of including how each team uses the information on the sticky note is
+proposed.
+• It's clarified that green post-its indicate high priority, and additional notes can be added
+to them.
+• Sandeep mentions that different people may label the same data source as high priority
+for different reasons, which could be noted with separate "+1" comments.
+Technical Difficulties and Solutions
+• Participants notice that the chart was moved.
+• The suggestion of having one champion per team is made.
+• The location of some of the moved post-its is identified.
+• A participant explains how to use the hand tool to move the background image without
+affecting the sticky notes.
+Tableau Report
+• The report used is in Tableau.
+• The report name is "CNIV data analytics solution."
+• It allows users to select and download fields needed for various uses.
+These notes were taken with Minutes AI (https://myminutes.ai)
+• Includes P times V Revenue and deposit revenue.
+• A link to the report will be shared.
+Meeting Pause and Regroup
+• A pause is taken to regroup and discuss progress.
+• Focus will be on sections with the most green post-it notes: market rates/intel and
+internal rates.
+• Preference is to start with market rates/intel, then internal rates.
+Market Rates and Intel Discussion
+• Internal rates are marked as high priority (green post-it notes).
+• Market rates and intel discussion includes data from the Fed and CME.
+• Fed data drives a lot of decision-making.
+• External Fed rates and T-bills have significant weight.
+• FF watch tool is medium priority for monitoring probability of changes.
+• Fed rates are a big part of how rates are set.
+Data Access and Usage
+• CME data requires a login with email and password for access.
+• The possibility of a feed for market rates is discussed.
+• International team does not look at market rates.
+• Market rates and internal rates are heavily correlated.
+• Frequency of looking at rates:
+• Daily when quoting rates to customers.
+• Weekly from a management perspective.
+• Ad hoc when asked about a rate.
+Summarizing Rate Quoting Frequency
+These notes were taken with Minutes AI (https://myminutes.ai)
+• Daily quoting is for customers.
+• Weekly quoting is for managerial purposes.
+• Ad hoc quoting is ever-present.
+Short Term Rates Report
+• Rocio often uses the short term rates report from the funding desk to view market rates
+and intel.
+• The short term rates report includes "so far effective" rates that can change daily.
+• The frequency of use depends on the time of the month and what is being analyzed, but
+is generally weekly.
+• The funding desk also sends swap rates, which are in the "cost of fund daily rates"
+column.
+Rate Usage
+• Dinner and adult use the rates every day and prefer them on a dashboard.
+Email Reports
+• The weekly market update and daily short term distribution are internal reports from the
+funding desk.
+• The weekly market update includes information on the S&P, stock market, and
+commentary from the Fed.
+• The money market fund ratio comes from capital markets.
+• The original spreadsheet provided includes a document owner column indicating the
+source of the reports.
+Positioning on Screen
+• Discussion about the positioning of "post-it" notes on the screen.
+• Effective Fed funds should be in the top left corner.
+• Downloadable reports may be harder to create and may need to be discussed separately.
+These notes were taken with Minutes AI (https://myminutes.ai)
+Email Reports (cont.)
+• The MMF rate sheet and daily FX commentary were marked as external on the Excel
+sheet, specifically external to liquidity, not the entire bank.
+• The money market fund rates are sent by the capital market group, and they likely obtain
+the rates externally.
+• The MMF and DailyFX are listed as external because of their external distribution and
+source.
+• All reports are used for internal consumption, although some are produced externally by
+other groups.
+Clarification on Distribution
+• Originally, "it goes to like client. Those go to customers. It goes to both. Right. Internally
+and pnc and then it can also go to clients."
+• Liquidity doesn't handle distribution.
+SharePoint and Email Reports
+• Daily Large Movers report was marked as SharePoint but was found in the email report
+section.
+• The PDF report for $75 million and above daily large movers is reviewed first thing in the
+morning.
+• The Daily Large Movers report was likely consolidated.
+Prioritization and Persona
+• Priority depends on the "Persona" at the time.
+• The daily large mover report can be used for reporting (medium priority) or for
+urgent investigation (high priority).
+• Follow-up workshops will aim to identify the multiple ways each data source is used.
+Downloadable Reports - TAP Section
+These notes were taken with Minutes AI (https://myminutes.ai)
+• TAP reports are used for customer interaction planning and internal/global strategy
+decisions.
+• Liquidity sheet is medium priority because it's client-related and not looked at daily.
+• The first two reports are high priority and used for daily analytics.
+• TAP Sales and TAP Product are both used, including a liquidity-specific TAP.
+• "We probably need an exercise where we go through and talk through how we
+use those cabs and what we use them for because there's tons of information
+there, right?"
+Next Steps
+• Follow-up calls will be scheduled with individual teams for more detailed discussions.
+• The goal is to determine what's important and what's not for each team.
+• The whiteboard link will remain open for additional thoughts and input.
 
-https://docs.databricks.com/en/machine-learning/automl/how-automl-works.html
+=============================
 
-📚 AutoML - Regression part1
+fff Mar 10, 2025
+Meeting Mar 10, 2025 at 14:00 EDT - Transcript
+00:00:00
+ 
+: Looks like more people are rolling in. We're going to give it a couple more minutes. Afternoon, everyone. We're waiting for the last couple folks to come on in. Just a quick question. Is my audio okay? Can you all see my screen share? Perfect. Thank you. Give it another minute or two. Lauren, let's get started. Yep. I was just waiting for Scott and there he is. All righty. So, thank you everyone for joining. I know we've got a big group today. Uh and also thank you everyone on the liquidity side for putting together all the various data sources and scouring all of them for us. Uh I wanted to get everyone today want to get us on a call together and also to go through that list of data sources and we'll spend a lot of time brainstorming today what we want to get out of it. Uh with that let me jump ahead just a bit and set the agenda for the call.
+ 
+ 
+00:02:56
+ 
+: Uh so this is going to be our first workshop and you might be asking what's it for? We'll get to that in just a second. Uh we'll do a very very short set of introductions. So short it'll be a bridged uh that'll be followed by a quick overview of the project and that's when we'll really get into the meat and potatoes. We'll go over everything you're currently doing or as much as we can and try and synthesize that into uh a coherent synthesized uh user experience or we'll work our way towards it uh for what an ideal state of things should look like. So very very quickly uh hi everyone. I'm Larraine from the DSi side. I'm a data scientist here and I'm joined with uh by a bunch of my colleagues as well. Uh we all report to Bedell who I think some of you have met already reports to Tom and we work on various datadriven projects at the banks focusing on TM as you may guess. uh we're made up of data scientists and data analysts and we also work with some software and data engineers and also uh on the data architecture and engineering side of things and pipelining and we also have uh some engineers and product management folks from uh who've helped build applications like the MC squared application for bin sponsorship and we'll be leaning heavily on them as well for uh some of the work we plan on doing here.
+ 
+ 
+00:04:24
+ 
+: Uh, in terms of time saving, I asked Emily to make an a bridged introduction for the liquidity side. So, Emily, if you don't mind. Sure. Um, anyone on the liquidity team, if I don't do your team justice, please slap my hand after the call. Um, we all report to Scott Heran, who heads deposits and liquidity products for Treasury Management, uh, interestbearing and sweep here on the slide. Rosioa Scanage heads that up. uh Jennifer Atkins, Melissa Swiger who heads our um TM liquid TM liquidity product delivery group and then myself or under Rosio, Tim Satderfield covers non-interest bearing and then our specialty products he has Alicia De Mo, Dominic Costantino and Jody Wyman under him. Rob Sant covers escort agent paying agent. Um Alyssa Brandemart uh reports up to him is on the call. Dan Patrella and Bill Potit are our liquidity product advisors reporting to Scott and then we have Connor Nichols and Joanna Chow who are our team's analysts on the call as well. Perfect. Thank you for that.
+ 
+ 
+00:05:35
+ 
+: Uh jumping straight into things then. So why are we here? Why are we meeting? Uh at a very very high level uh we want to enable your business to grow in a scalable and sustainable way. And we want to do that using or by building an all-encompassing environment where your team can perform their core data driven tasks any of them that require automation or decision support or just integration of data and consolidation of uh disparate data sources. Uh so some core questions I want all of you to have in the back of your mind as we go through today is what exactly does a liquidity data warehouse look like? You've got data sources from really everywhere already that you work with. So uh if we were to consolidate all of that and pipeline it all together, what what would be the ideal state for you there? Uh what does an ideal application look like? And when I say application, I mean an environment where you do all your day-to-day work, what does what does that ideal state look like?
+ 
+ 
+00:06:33
+ 
+: Uh and in keeping with the word ideal, uh given your current workflows or your future workflows, how do you envision those scaling? Say if you were to have uh five times the volume in terms of growth and kind of taking us back down to earth a little bit. What are short-term or loweffort highv value targets that'll help us prioritize what we should get started with? Uh there were three work sets in the Excel file that your team shared with us uh previously and I've tried to organize them a little bit but very very uh at a very high level. first being a a daily dashboard that helps inform uh you know consolidates all the data sources for you to be able to view on a day-to-day basis uh or just keeping up with what's happening in the liquidity space. But then slightly more longer term, there were two other uh job sets in there. One was around analytics in terms of balance volatility and also around getting real-time insight. So instead of having that one day lag in your data, you're able to see things in near real time.
+ 
+ 
+00:07:40
+ 
+: And what do we want out of today's meeting? Uh it's going to be workshop one out of possibly many. Uh some of the later ones will be more targeted with individual teams. But we want to set the stage here to help us on the data on the DSI side understand your data sources, your processes, your pain points. Uh help us prioritize what are important, what your goals are and get, you know, pen to paper and figure out exactly what we want to do. uh and define the features that we want to target. I also want you to think about we're not going to answer this question today, but think about uh what I'm calling personas for your uh individual selves and also for your teams. Uh what is the archypical user? What do they do? Is it as broad as just something at a managerial role and an analyst role or are there much more granular ways people interact with data? And as always, think about the ideal state of how you want to work and we will try and work towards building that out.
+ 
+ 
+00:08:43
+ 
+: Uh before I jump ahead, any questions, concerns? All right, jumping ahead. Uh this is just for your to again for you to think about. Uh we've already gone over the various teams on the liquidity side. I want all each team to basically think about what your pain points are, priorities, what can be automated, and what's the ideal state. Uh, and we'll get into brainstorming in just a session, but I I really do want you to keep this in the back of your mind. And also, as we discuss uh slightly more granularly, I'm really trying to drive this home. What are the per team goals and requirements? What are the must have features? what would be a sort of wishlist feature. Uh what's ideal as always that's going to really drive a lot of this. Uh what are the natural ways you organize your workflows already? uh more questions to think about again going back to those personas and also uh data access patterns is should any of those access patterns be siloed in any ways in an ideal state would you want to have different teams have their own OIM entitlements for different parts of their data or would you prefer there be say one OIM entitlement for all of liquidity and anyone who has that can access all the liquidity data.
+ 
+ 
+00:10:10
+ 
+: So, what granularity would you want your data to be accessed at in an ideal world? And we talked a little bit about personas already. And with all those uh things to think about, I'm going to jump into a more whiteboarding session and hopefully that'll be more uh interactive than me just telling you what to think about. So, what I'm going to do and is I'm going to put a link in the chat and it's going to be to a whiteboard that I've tried to make sure everyone has ha has access to who's on this call. If the link does not work for you, please let me know and uh I'll explain what we're doing and try and give you access as well. While you're all loading that up on your end, a little bit of background. I took the Excel file of data sources that you had sent over and I think there was about a hundred or so records in there, some of those repeated. Um, and tried to visualize them in a way that we could stare at it and potentially go through these team by team.
+ 
+ 
+00:11:14
+ 
+: Uh, figure out what high priority data sources are, what less high priority data sources are, what's medium priority. Uh the end goal of course is that we have a pipeline that integrates all these data sources, but we want to do it in such a way that we're attacking those higher priority targets first so we can put something in front of you faster. So I'll give a couple minutes while everyone tries to load up the actual whiteboard. And I see some people are already in there and we'll we'll go through this team by team. to give it a couple more minutes you over here. I'll explain what we're doing in a little more detail in just a second, but uh anyone have any questions or concerns? Everyone able to access the whiteboard? Yes, perfect. Uh, okay. So, let me request for Sorry, I just requested for the access. Seems like it's not for me. Let me pull that up on my end. All right. Hopefully that comes through.
+ 
+ 
+00:13:09
+ 
+: Okay. Last call for anyone who's not also able to access this. All right, I think we're good then. Uh, just a quick commentary on two things. The first for anyone who has used mural or in vision, this is the same idea. This is infinitely infinitely zoom almost infinitely zoomable, right? You can zoom in any area and uh art commentaries everywhere similar to mirror and vision. And the second thing is we intend that and still intend for this workshop to be very much interactive. So please you know ask questions, make commentaries uh uh make comments and uh request whatever you think whatever is top of mind please bring it bring it up and uh in the best of cases this is not the presentation or you know a one to many from Narin to everyone or Narin and Emily to everyone but collaborative and interactive as much as possible. Yep. Thank you Belle. Um, and on that note, the whiteboard session itself, so the link will work continue to work after the call.
+ 
+ 
+00:14:24
+ 
+: So if there's something we miss or you want to quickly add a note on, feel free to do that. We'll leave it open for a couple of days. Um, all right, that being said, let me zoom in a bit on what's on the screen here and try and explain what's happening. So, as I mentioned before, I this was heavily heavily inspired by the Excel uh file you all had sent over. Uh the way to read this, there's a blurb at the top there, but real quick, the way to stare at this is that there's large containers containing very roughly the uh breakdown that was in the Excel report to begin with. So that's the data sources for market rates, the emailed reports, internal rates, dashboards, downloadable reports, and then the resources used for the monthly liquidity meeting. Uh within each of these is a rectangle, and each of those rectangles is data source. You'll see the name listed on each of those. But where did that go? Oh, did we lose it? It's up there now.
+ 
+ 
+00:15:34
+ 
+: Okay. Can I fix this in place? I cannot. That's fine. So, as I was saying, each rectangle here represents a data source. Uh you'll notice each of them have slightly different background colors. These indicate the rough uh data source for where this each data point comes from. So, red for example is an external data source. Blue is an email data source. Yellow is Tableau. Green is a SharePoint. Uh this pink is the internet. This light blue is from us the DSI team. Orange is tap. It's bluish gray is XNET systemware. Purple I believe is the risk management tool itself. And then there's some other ones that I've just called other these dark gray ones. You'll also notice that there's a pattern uh on the border for each of these. And if you refer to the legend here, you'll see that it corresponds to whether something is a static report or data source or a manipulated one or if it's just external.
+ 
+ 
+00:16:40
+ 
+: So the ones with the clear with the small dots, those are external. The ones with the solid outline, those are static. and the ones with the dash dot pattern, those are uh manipulated reports. And lastly, you'll notice that there are patterns in the background color itself. This one is probably the hardest to make out, so apologies in advance for that, but they correspond to either individual teams or groups of teams uh or a glow effect for Dan and Bill who uh also happen to use some data sources in there. If there is no pattern, that just means in the Excel file, it was noted as being used by everyone. All right, with that being said, uh let me ask, was that any questions on how to read this before we jump into uh staring at the spy team? All right, everyone is an expert on it then. So, Oh, go ahead. Was there a question? Just my speaker playing tricks on me. All right. Uh why don't we start with uh Rosio's team fun?
+ 
+ 
+00:18:26
+ 
+: And what I'm is think about the following question. What as we think about the the daily dashboard uh asks are and feel free to come off mute, talk out loud if there's a particular uh data source or discussion we want to have. And I'm thinking what we can do is we can go through each bucket, each of these bucket by buckets. So we can start with market rates. Uh what's important here uh and then work our way say clockwise through the buckets in here. Alternatively, if there's a bucket of data sources that's more important, we can start with that one. I'm desperately trying to copy and paste like you said, but it's not working. So, um, a bunch of copies. Can I just uh here I made a bunch of copies of the high priority ones. I'll make a bunch of copies of the medium priority postits as well and should be able to use those. Are you able to interact with those copies? Uh yeah, perfect. And what I was uh thinking, sorry I wasn't clear, is that we could just either uh put the post-it notes right next to one of the data sources as appropriate and we can resize them.
+ 
+ 
+00:20:35
+ 
+: Uh or put multiple uh it doesn't have to be off to the side. It can be right with the particular data source. Let me know if you run into any issues there. Just a question. Would it be useful to talk about what you use information for and then start classifying it as opposed to just everybody taking everything and sticking it into a particular postit? I I just this whole kind of posted things got me a little bit um confused. Sure. Uh that makes sense for me. I I don't know. Everybody like I could I could be completely off base. Everybody else is kind of going with the flow and if that's the case that's fine. We'll do what the majority wanting for. Anybody else have any preferences? I think that's what I was struggling a little bit. Um I I think probably that will make more that would make sense to me. But again, I mean it's just two of us out of 26 here.
+ 
+ 
+00:22:32
+ 
+: So no, I kind of liked what Emily was doing as well when she was writing all the notes in the one postit. Like here's all of mine instead of maybe making 10 different postits and putting them in there. she was just making a full list. So, I was kind of following the lead there as well. But yeah, I think it the only thing I see is that it's going to probably just get really jumbled after a while the more notes we add. And also, if somebody else added a green posted, I just moved on because that's also a green posted for me. So, I said, "All right, I'll just move mine somewhere else so I don't have 10 on the same one." But I don't know if that's helpful, but that's kind of my thoughts. Now that makes sense. Uh in terms of go ahead. So Dan what happens if you see a green node you should technically you should not move on. What should you do is all the green node you set plus one.
+ 
+ 
+00:23:24
+ 
+: So that way at the end of the day we will know that 10 of you have thought that like say effective federal fundamental funding right that's the most priority because 10 of you thought like that and the other one might be priority but then I mean only one of you have thought that it is high priority. so that we can see what is the actual real pattern those two. So if you see something you also think it is hypotic there's a green already just put plus one there. So to that end, um, what if we put kind of to Dan's point on each sticky note, so if there's five of us that think that, this is a basic example, but five of us think that we look at the Fed funds rate daily and that it's high priority. Could we put how we use it on that sticky note? Yes. Okay, that might be helpful to you all because then you can because you can you see who put the particular sticky note and then you could trace it back to how the different teams use it.
+ 
+ 
+00:24:31
+ 
+: And and just to add to that, uh the green in and of itself means higher priority. So feel free to delete that. And if you want to put any other notes on it, by all means, please do so. In fact, uh to Sep's point, what may end up happening is that people may label one data source as high priority, but for different reasons. And it may be useful to have that split out and different reasons could get different plus one uh comments after the fact as well. I think somebody deleted the whole chart. Yeah, I was just going to ask. It looks like it's moving, jumping around on my end as well. It moved. Yeah, it didn't delete. It moved. We might need We might need one champion per team. I I moved it because I couldn't see it. Okay. Yeah, all the pieces I put on here moved, so I don't know where mine went. All right, everyone, let's pause for just a second.
+ 
+ 
+00:25:55
+ 
+: Uh, let's see if we can get this back hopefully close to where it was. I'm going to have to rely on you. Uh for those that found a little bit. Yeah. Yeah. Those top two green ones on the left affect the set funds. I remember putting one there. I think Emily put one there. And then the yellow one I put on CME Fed watch tool. So that's right on. Okay. And all the postits on the right, I wasn't sure. Those look like they followed the background picture when it moved. So are those all in the right spot? The one on finance new deposit report currently that one I'm not sure I don't know who put those there. If you if you use the hand at the bottom you can move the whole picture and not move the sticky notes around. It'll just move it so you can view different sections. So rather than having the arrow you would have the hand if you click on Yeah.
+ 
+ 
+00:27:07
+ 
+: right there. Yep. So hopefully everyone Thank you. I tend to use is in table and it's um Emily, what is the name of that report? The one that has the is it client revenue detail the tear sheet. No, the the one that I download sometimes to get uh trying to find that here. I might have missed that. Let me check the original list. Okay. Just to filter it. But it it would be it would either be in dashboards or downloadable reports and if it wasn't you, it may have been me who missed it while putting this together. Um, also, uh, I think we'll go at this for another couple of minutes and we'll take a quick break and just review what we have on the screen. So maybe this data analytics solution we can connect offline. I'm looking. That would be a man one for me. Yes, it's that one. Select and download fields needed for various uses. PZ revenue deposit revenue.
+ 
+ 
+00:33:44
+ 
+: The CNI that the last one on the dashboard. I'll send you the link to it on the side just so you can make sure that that's the one that I think I just All right, it's 2:35. I know there's probably lots more to go through, but if you all don't mind, why don't we pause for a second, regroup, and uh talk about what we have already just because I see lots of postits and I just want to go through it before uh we I know we have lots to go through. So, all righty. Why don't we Is there a particularly important section? I see the most green postits and either the market rate internal rate section. So, uh we can start with either of those. Uh Rosie, any preference? Sorry, what was the question? I just wanted to pause and uh take the temperature of where things stand for a second. Uh, I saw the most green post-it notes and market rates slintel and internal rates. I was uh I wanted to just I figured those would be the most important ones to start with uh in terms of just walking through them for a little bit.
+ 
+ 
+00:36:44
+ 
+: Sure. So I was wondering do you prefer starting with market rates or internal rates? Yeah, let's just start like you know I mean my last year right um you know yeah market market rates Intel then internal rates and then move from there. All righty. Okay. So well internal rates are all green right. So those are all high which is interesting. So I don't think we have any low priority. I haven't seen any. Or maybe it's a pink one. It's a pink one. I put a couple up there just so we had them. Yeah. There there's some uh if I go further to the right, but I figured let's start with the highest priority. Alternatively, we could start with the lowest ones if that's what people want. No, go go go with what you were going to do. All righty. So, why don't we start with market rates and intel? I see a lot of things around I guess data from the Fed.
+ 
+ 
+00:37:41
+ 
+: Uh some of the CME things. We got one medium priority and two high priority. Uh, let me take a pulse here. Uh, I take it Fed data drives a lot of decisioning, so that's why that has green postits everywhere. But what are your thoughts? Yeah, from my perspective, I I will agree, right? I mean, we we all look at, you know, what is what are the, you know, externally the Fed rates, you know, what are they planning on doing the T bills. So I think that this has a lot of weight into what we do. So that's why you see a lot of greens um and uh the fed tool is probably priority medium just because you know we all know what when things are going to happen and we tend to check as to see what is the percentage of probability of things changing. So that's that's my perspective. Yeah, I concur with you, Rosio. You know, Fed rates of what market rates are um is a big part of how reset rates, right?
+ 
+ 
+00:38:47
+ 
+: So, nothing surprising. Makes sense. And um for the market rate slash Yeah, for the Fed, I assume there's no like subscription to get their data, but for the market rate, thanks from CME, Bloomberg, etc. Is that something where it's all public data or is it accessed via some sort of subscription to CME that we would have to account for or Bloomberg? I'm I'm pretty sure it's public to a certain extent. I know that I was able to access it without signing up for anything at all, but CME was one that eventually made me either subscribe or find those rings somewhere else. So, I don't know everybody else ran into that same wall with CME data. Yeah, CME requires a login, but it's as simple as just putting your email in there and then you and creating a password and then you can access it. Yeah, this is public information. Now, if if you're going to be getting a feed from something, I don't know if that would require a subscription or what not, but we are all accessing this without having any subscription.
+ 
+ 
+00:40:01
+ 
+: Well, and at the end of the day, isn't it where we want to look at some sort of feed, right? So, how today versus me going to each one of these, right, on a Bloomberg or something, some sort of feed that would give you all that. Yeah. The other the other question I would have is I know I've got my international folks on. There's no market rates you guys look at a regular basis, Tom. No, no, I was about We actually don't look at Okay, that's good. Yeah, just just ask. No, it's good. Sorry. Was said you said you don't look at market rates for international just No. Okay, gotcha. And yeah, I know you're going to go into internal rates, but I will think that they both are kind of go heavily correlated hand in hand, you know. Yeah. Gotcha. Um, and in terms of how you use the the rates like on a like things dayto day or week to week or month to month, is it that you would maybe have like all the tabs open for the Federal Reserve website as you need them?
+ 
+ 
+00:41:17
+ 
+: Uh, and it's it is something you look at daily or would it be something I I understand it drives a lot but is it something you look at daily or would be more say weekly or monthly? depends on the job we have, right? So depending on if if we're quoting race to customers a lot, it's probably a daily exercise. From a management perspective, unless I'm involved in that, I'm going to be looking at it probably on a weekly basis. But somebody asks me about a rate, then I've got to go in and pull it that day, right? So it's ad hoc as well. All right. So to summarize, if you're quoting to customers or something to that effect, daily more managerial would be weekly and then ad hoc is always ever present. I mean that's my take. Rosio, what's your your Yeah. Yeah. I think I think that's correct. Um, you know, I was just thinking about this and I don't see it here, but one of the reports that we get from the funding desk is the short-term rates that includes a lot of what it is in this quadrant market rates intel, right?
+ 
+ 
+00:42:24
+ 
+: Um so you know to me I go there a lot of the time if I want to look at you know sulfur fans effective those can move you know daily not in big ways but you know that can happen. Is that it? The report that sent her email reports the second one. No. Yeah, I don't know. I And it might be duplicated. So I think it's there's the daily shortterm. Uh oh, that there is. Yep. Okay. There is it'll be both sections, I believe. Okay. So anyway, so I I go to that almost every I mean I would say at least every other day. about Tim. To your point, it depends on where we're in the, you know, in the month and what are we looking at probably weekly just because they don't tend to change often, right? Uh unless we're looking at the T bills for example and you know Dan bill are might be looking to see how RCD rates compared to that or the swap rates uh that is also sent by the funding desk which is in the in that cost of fund daily rates uh kind of column.
+ 
+ 
+00:43:28
+ 
+: So yeah. So, from a Dan or a Bill, do you guys use these rates every day where you want them on a dashboard? I like them on a dashboard. I use them every day. We're not making your job easy, right? We want everything. Everything's high priority, right? Next is going to be rand high priority. We might have to, but we'll we'll get there. Get there. Uh, okay. Quick question on the email report. So, these are these three, the weekly HA, weekly market update, daily short-term distribution. These are all internal reports that you get, you said, from the funding desk. Uh I know the daily shortterm one uh comes from from that team. Uh I don't know where who sent H8 and market up that might come from the uh strategic relationships. I don't know. I call it investors relation but it might be a different group. It's the uh corporate strategy group I think. There you go.
+ 
+ 
+00:44:44
+ 
+: I that was almost there. Save that. And then the money market fund ratio that comes from capital markets. What does the weekly market update include? Because I'm trying to picture that report. What will happen during the week with the S&P with the stock with, you know, commentary from the Fed if anything happened. If you get email Yeah. Yeah. Okay. Yeah. If you get one email from from them, you're getting them all. So, yep. And narrain, in the original spreadsheet that we provided you, not all of them have a document owner, but um there is a document owner column that has where we get them get those reports from for the most part. Gotcha. Okay. Thank you for that. Yeah, looks like the picture moved again. So, I'm going to try and rely on you to guide me back to where we were. Uh, okay. So, looks like it moved a lot. Let's get I would just put effective funds top left corner again.
+ 
+ 
+00:46:05
+ 
+: Yeah. Oh, I you have to go left. Left right where my cursor is. This should be at the top right of effective headphones. Right. That looks right. Closer. Closer. Closer. Closer. You're in the right ballpark. Ballpark looks right. But yeah, some stuff's not sure if I should go further. I'm going have to go a little further right. Yeah, maybe that should be in in the uh left corner. Maybe that got moved. Yeah, there you go. That big L. That's There it is. Closer. You're closer. Yeah, closer. I'm a little worried about the downloadable reports. Looks like that's the one that will be harder to make. I might have to just talk through that. I think maybe actually even go further right again. I think I might have been duplicating those top four in the top left. Uh, I don't know that those were assigned to anything.
+ 
+ 
+00:47:05
+ 
+: Yeah. So, I think it might start further over. Yeah. I think was it one of those email reports had a yellow on it. So, that makes Yeah, because you got to have Yeah, the ones that are in that top right box can't be there, right? You wouldn't have put any there. I think that's because I I put I put some that overlap a few things so I won't have to put too many. If you go Yeah, there you go. Go up a little because I know my medium purple one was on trend code trending purple one. There's a few of those right there. Right where you're at. Needs to go up. Yeah, you have to go up. Okay. The other way. The other up. Keep going. Keep going. Yeah. But then the other Yeah, you're off over there. Yeah. Yeah. I think it's just because it's the I we can just walk talk through the downloadable reports.
+ 
+ 
+00:48:04
+ 
+: All right. What I'm going to do is let me try and get just the market rates and intel when I'll take a screenshot of that. Yeah. So, let's say this one. Yeah. I think that's a lot right for the first two. Let me take that screenshot. Okay. Oh, and Randy just messaged me saying we can lock it in place. I think that There we go. Okay. So, we That should do it. Now, it's not going to move anymore. Or whoever moves it owes five bucks. I don't know. That's fine. Uh so, apologies. Uh we may have to adjust some of these post-its a little bit. We we'll get to those on a section by section basis. And I know we're running out of time a little bit, so let's jump ahead. So, we talked about market rates and Intel internal rates. Looks like everything is high priority. Uh, which makes sense, I suppose.
+ 
+ 
+00:49:33
+ 
+: And let me before we go to downloadable reports, let's take a look at email reports for a second. um on the Excel sheet, the MMF rate sheet and the daily FX commentary, those are marked as external, but are those external in the sense that they're external to liquidity or external to the bank liquid? Well, it's liquidity, right? Because the money MMF rates come Do we get that outside the bank or is that come from that? that is sent by the capital market group that was on the top uh on the top uh box as well. Uh I am assuming they get those externally. I don't know how they put them together but you know that's the select money market fund rates that we follow institutional money funds. I think I might have marked those as external because they're distributed externally. Like they go both internally and then to I should have clarified that but um to Rosio's point they also yeah like those money market fund rates would come externally to begin with but it was more around the distribution.
+ 
+ 
+00:50:44
+ 
+: Got it. And that that actually leads into my next question about the emailed reports, which is can are these all reports that the liquidity team sends outwards or are some of these that reports that you ingest and then use for uh internal analytics or whatnot. I I think we in I I can't speak for EAPA, but I mean they all come in into us and we use them however we see it fit. Not sure about EAP balances or CMA balance. I don't think they go up outside either, but Alisa or Rob can talk about it. So, those just come to to me. Okay. So, yeah. So, everything is internal consumption, I think. Got it. Okay, perfect. That's what I figured. But I want Produced externally by by other groups. M. So yeah, the MMF and Daily FX those were listed as external like you said because they have both the external distribution and also the external source. Emily, was that I just want to make sure I understood fully what you meant.
+ 
+ 
+00:51:55
+ 
+: Yeah, that's correct. Originally I meant it because it's it goes to like client those go to customers. Oh, it goes to both, right? Yeah, internally and PNC and then it can also go to clients. It's clear for external distribution but we don't distri but the liquidity doesn't distribute that. Okay. Okay. So liquidity is not the one doing distributing. Exactly. Okay. So for for our for our intents and purposes let's Yeah, it probably makes more sense. Yeah. Internal. Yeah. Sorry about that. You're all good. Uh okay. Okay, so with that out of the way, so a couple of these. So there's there is a SharePoint source listed in there and the two Tableau ones. So let me start with the easier ones. I assume the Tableau ones are an email that says that the Tableau report has been refreshed or something along those lines or a screenshot or a PDF of the resulting Tableau workbook uh or dashboard.
+ 
+ 
+00:52:52
+ 
+: Is that uh a fair assessment or let's say balances and CMA echo? Yeah. And for the SharePoint is the daily large movers. Is that um is there some sort of workflow? I use the I use the email on those. I don't or the PDF that comes in the email. Uh okay. Right. There's that's for the 75 million and above large move. Gotcha. Okay. I was wondering because it was marked as SharePoint uh in the but it was in the email report section. So I wasn't sure what the interplay was. Maybe like the sourcing was that was the old one that was out of OVIE. So we had them listed twice. There was the large daily large movers which was an OVI report that was all account changes greater than 10 million and then there's the large balance change greater than 75 million which is the emailed report. Okay. So, we have them listed separately on here somewhere or is it those combined in that square?
+ 
+ 
+00:54:02
+ 
+: Good question. Let's see. are trers. I assume if it's not in the downloadable report, then might be listed in the extra details of the Excel file. Yeah. All I know is the PDF we get on the 75 million or more I look at first thing every morning. Gotcha. Okay. Yeah. I think probably the daily large movers one was probably consolidated between the two of those. Makes sense. So I would say flip that to an emailed report and market high priority. That's that's also you know from my perspective one of the problems that I was having with the way we're doing this and it gets back to your idea around personas. depending on the persona that I'm happen to be in at that time, things could be more important than than at than other times. I I could be using the daily large mover report for something kind of more of a reporting function or I could be looking at it at first thing in the day in the morning because we get surprised with a lot of deposit change one way or the other and I'm trying to figure out where it came from.
+ 
+ 
+00:55:25
+ 
+: Got it. So one is kind of much more moderate kind of an important medium priority. The other is high priority. So that was my initial kind of depending on my the persona I happen to be sitting in at the time I'm thinking about these things. I might put a different priority on these boxes. That makes sense. So, that's actually one of the things I I'm hoping to tease out more as we we'll have follow-up workshops is, you know, we have five minutes left on the clock, but we we'll follow up with individual teams and we'll we'll try and nail down the exact uh or rather the multiple ways one can stare at uh each of these data sources. So, thank you for that call out, Scott. And for the time being, I'll leave both the high and medium priority in here. Um Tim just to clarify that when you said you shared it first thing in the morning that's the high priority use case I assume not the medium priority one. Yes.
+ 
+ 
+00:56:32
+ 
+: Okay. Good. Good. So I'll update that one. Uh jumping ahead. Let's go to uh those downloadable reports next or we've got three minutes maybe. Let's do dashboards. That doesn't have as many postits. Let's go where the postits are. Uh downloadable reports. We'll see how far we can get. So, why don't we start? I assume there we can break it up into a couple of sections. There's the tab section in here. Uh there is the XNET systemware section. Let's start those with the tap section that looks like it has tap and tap. Those look like they have a fair amount of greed postits there. Uh starting with tap I suppose uh I assume that it's going to be a similar theme here right the some of it is used for thinking about and planning for customer interaction some of it is more for internal decisioning uh or more global decisioning related to strategy so what are uh thoughts around what distinguishes say the medium priority ones here from the higher priority ones.
+ 
+ 
+00:57:57
+ 
+: So I I put medium priority I think in a liquidity or sheet just because that is not that's something that I would look if I'm looking at a client. So it's not something that I look like I look daily or you know uh every it's dependent it's depending on the situation right. Uh the other ones I will I will say is high priority. The first two for example those I will use for analytics that can happen on any given day could be daily it could be every other day. So I think that's the difference for me for the top two and then liquidity care sheet. Um and the C reporting I think is more it's not as used as often. Emily, I know you use that, but it's it's more about weekly or probably by by monthly. Yeah, exactly. Gotcha. One more question within tap. I know there's tap sales and tap product. I assume you all just use the tap product version or is it I use both both. We also have a liquidity specific tab.
+ 
+ 
+00:59:10
+ 
+: Yeah. That's only for our team. So a lot of the like the daily download analytic suite CD reporting tear sheet the tear sheet is in tap sales as well but the those first three are all liquidity facing liquidity only if you're going to deep dive the tap right you probably need an exercise where we go through and talk through how we use those tabs and what we use them for because there's tons of information there right? Oh, there's a lot. Yep. And then then that goes back to Scott's comment about the persona, right? Yep. That being said, for TAP, uh, for a first pass, it might be the case that we kind of embed TAP or reports from TAP into what we're doing rather than recreating everything in TAP, at least step zero. Uh, step three, step four may involve recreating things. Uh, on that note though, I know we're at times. I assume some people will have to drop. Uh, what I will do is I will set up follow-up calls with slightly smaller in nature because I know there's been there's a lot of people on the one call.
+ 
+ 
+01:00:18
+ 
+: So, we'll go at it team by team I think will be the best approach. Um, and we'll spend more time in more detail staring at what's important, what's not. Uh, same end goal as always, but like I said, we'll more workshops with individual teams. How does that sound to everyone? Yep. Sorry, what was that? I need to drop I need to drop. Sounds good. And I need to drop Tim too, I think. So, all right, perfect. I assume other people will have a place that they need to go to as well. So, this link to the whiteboard was going to continue to stay open. If there's something you want to add or just random thoughts, feel free to put that anywhere. There's infinite space. I'll put more things on the calendar for us. Thank you all so much for joining today. Uh, and I'll talk to you in the next set of workshops. Thanks, R. Thank you. Thank you. Thank you. Thank you all. Byebye.
+ 
+ 
+Transcription ended after 01:01:42
 
-
-
-Tutorial - Regression.ipynb - Colab. Pycaret
-
-AutoML using Pycaret with a Regression Use-Case
-
-Tutorials | Docs
-
-
-Regression Tutorial Level Beginner - REG101
-
-Regression Tutorial Level Intermediate - REG102
-
-
-Beginner’s Guide to AutoML with an Easy AutoGluon Example
-
-
-
-Stats model
-
-Read “Mastering Linear Regression with Statsmodels“ by Luís Fernando Torres on Medium: https://medium.com/latinxinai/mastering-linear-regression-with-statsmodels-95233a2a602e
-
-
-
-OLS regression tutorial with statsmodels in Python · GitHub
-
-Introduction to Regression with statsmodels in Python Course | DataCamp
-
-Introduction to Regression with statsmodels in Python Course | DataCamp
-
-
-https://www.linkedin.com/posts/banias_are-you-still-using-shap-for-explaining-machine-activity-7304063370981203968-zrv_?utm_source=share&utm_medium=member_ios&rcm=ACoAACGln5wBQuD0-2kHFzsVhwkO7VqGKBprzR4
-
-
-
-******
-
-https://www.linkedin.com/posts/mehrahmad_comprehensive-machine-learning-process-activity-7303430108323700736-pCwd?utm_source=share&utm_medium=member_ios&rcm=ACoAACGln5wBQuD0-2kHFzsVhwkO7VqGKBprzR4 
+This editable transcript was computer generated and might contain errors. People can also change the text after it was created.
