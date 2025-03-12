@@ -1792,3 +1792,404 @@ if __name__ == "__main__":
 """
 
 # End of Notebook
+
+============================================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import ElasticNet
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import xgboost as xgb
+import warnings
+warnings.filterwarnings('ignore')
+
+# Load the dataset
+def load_data(file_path):
+    """
+    Load the housing dataset from the given file path
+    """
+    df = pd.read_csv(file_path)
+    print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns")
+    return df
+
+# Data exploration
+def explore_data(df):
+    """
+    Perform exploratory data analysis on the dataset
+    """
+    # Basic statistics
+    print("Basic Statistics for Numerical Features:")
+    print(df.describe().T)
+    
+    # Missing values
+    missing_values = df.isnull().sum()
+    missing_percent = (missing_values / len(df)) * 100
+    missing_data = pd.DataFrame({'Missing Values': missing_values, 
+                                 'Percentage': missing_percent})
+    print("\nMissing Values:")
+    print(missing_data[missing_data['Missing Values'] > 0].sort_values(
+        'Missing Values', ascending=False))
+    
+    # Distribution of target variable
+    plt.figure(figsize=(10, 6))
+    sns.histplot(df['SalePrice'], kde=True)
+    plt.title('Distribution of Sale Prices')
+    plt.xlabel('Sale Price')
+    plt.savefig('sale_price_distribution.png')
+    
+    # Correlation with SalePrice
+    numeric_features = df.select_dtypes(include=['int64', 'float64']).columns
+    correlation = df[numeric_features].corr()['SalePrice'].sort_values(ascending=False)
+    print("\nTop 10 Features Correlated with Sale Price:")
+    print(correlation[:11])  # Including SalePrice itself
+    
+    # Correlation matrix heatmap for top features
+    plt.figure(figsize=(12, 10))
+    top_features = correlation[:11].index
+    top_corr = df[top_features].corr()
+    sns.heatmap(top_corr, annot=True, cmap='coolwarm')
+    plt.title('Correlation Matrix of Top Features')
+    plt.savefig('correlation_heatmap.png')
+    
+    # Scatter plots for top 5 numeric features vs SalePrice
+    top_numeric = correlation[1:6].index  # Exclude SalePrice
+    plt.figure(figsize=(15, 10))
+    for i, feature in enumerate(top_numeric):
+        plt.subplot(2, 3, i+1)
+        plt.scatter(df[feature], df['SalePrice'], alpha=0.5)
+        plt.title(f'{feature} vs SalePrice')
+        plt.xlabel(feature)
+        plt.ylabel('SalePrice')
+    plt.tight_layout()
+    plt.savefig('top_features_scatter.png')
+    
+    # Box plots for categorical features
+    cat_features = ['MSZoning', 'Neighborhood', 'BldgType', 'HouseStyle', 'SaleCondition']
+    plt.figure(figsize=(15, 15))
+    for i, feature in enumerate(cat_features):
+        plt.subplot(3, 2, i+1)
+        sns.boxplot(x=feature, y='SalePrice', data=df)
+        plt.title(f'{feature} vs SalePrice')
+        plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig('categorical_boxplots.png')
+    
+    return correlation
+
+# Feature selection and preprocessing
+def preprocess_data(df, top_n_features=20):
+    """
+    Preprocess the data and select important features
+    """
+    # Remove Id column
+    if 'Id' in df.columns:
+        df = df.drop('Id', axis=1)
+    
+    # Target variable
+    y = df['SalePrice']
+    X = df.drop('SalePrice', axis=1)
+    
+    # Identify numeric and categorical features
+    numeric_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    categorical_features = X.select_dtypes(include=['object']).columns.tolist()
+    
+    # Important features based on correlation and domain knowledge
+    # You can modify this list based on your EDA findings
+    important_numeric = [
+        'OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 
+        'YearBuilt', '1stFlrSF', 'FullBath', 'YearRemodAdd', 
+        'GarageArea', 'LotArea', 'MasVnrArea', 'Fireplaces',
+        'BsmtFinSF1', 'WoodDeckSF', 'OpenPorchSF', '2ndFlrSF',
+        'BsmtQual', 'ExterQual', 'KitchenQual', 'GarageFinish'
+    ]
+    
+    important_categorical = [
+        'Neighborhood', 'MSZoning', 'BldgType', 'SaleCondition',
+        'HouseStyle', 'GarageType', 'Foundation', 'HeatingQC',
+        'Exterior1st', 'KitchenQual', 'CentralAir'
+    ]
+    
+    # Ensure all important features are in the dataframe
+    important_numeric = [col for col in important_numeric if col in X.columns]
+    important_categorical = [col for col in important_categorical if col in X.columns]
+    
+    selected_features = important_numeric + important_categorical
+    print(f"Selected {len(selected_features)} features for modeling")
+    
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(
+        X[selected_features], y, test_size=0.2, random_state=42)
+    
+    return X_train, X_test, y_train, y_test, important_numeric, important_categorical
+
+# Create preprocessing pipeline
+def create_preprocessing_pipeline(numeric_features, categorical_features):
+    """
+    Create a preprocessing pipeline for numeric and categorical features
+    """
+    numeric_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', StandardScaler())
+    ])
+    
+    categorical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ])
+    
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numeric_transformer, numeric_features),
+            ('cat', categorical_transformer, categorical_features)
+        ])
+    
+    return preprocessor
+
+# Train and evaluate models
+def train_and_evaluate_models(X_train, X_test, y_train, y_test, preprocessor):
+    """
+    Train multiple models and evaluate their performance
+    """
+    # Define models
+    models = {
+        'RandomForest': RandomForestRegressor(random_state=42),
+        'GradientBoosting': GradientBoostingRegressor(random_state=42),
+        'ElasticNet': ElasticNet(random_state=42),
+        'XGBoost': xgb.XGBRegressor(random_state=42)
+    }
+    
+    # Results dictionary
+    results = {}
+    
+    # Transform target variable (log transformation)
+    y_train_log = np.log1p(y_train)
+    
+    for name, model in models.items():
+        print(f"\nTraining {name}...")
+        
+        # Create pipeline
+        pipeline = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('model', model)
+        ])
+        
+        # Train model
+        pipeline.fit(X_train, y_train_log)
+        
+        # Make predictions
+        y_pred_log = pipeline.predict(X_test)
+        y_pred = np.expm1(y_pred_log)
+        
+        # Evaluate
+        mse = mean_squared_error(y_test, y_pred)
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        
+        print(f"{name} - RMSE: ${rmse:.2f}, MAE: ${mae:.2f}, R²: {r2:.4f}")
+        
+        results[name] = {
+            'model': pipeline,
+            'rmse': rmse,
+            'mae': mae,
+            'r2': r2
+        }
+    
+    # Find best model
+    best_model = min(results.items(), key=lambda x: x[1]['rmse'])
+    print(f"\nBest Model: {best_model[0]} with RMSE: ${best_model[1]['rmse']:.2f}")
+    
+    return results, best_model[1]['model']
+
+# Tune the best model
+def tune_best_model(X_train, y_train, best_model_name, preprocessor):
+    """
+    Perform hyperparameter tuning on the best model
+    """
+    print(f"\nTuning {best_model_name} model...")
+    
+    # Log transform target
+    y_train_log = np.log1p(y_train)
+    
+    # Define parameter grid based on the best model
+    if best_model_name == 'RandomForest':
+        model = RandomForestRegressor(random_state=42)
+        param_grid = {
+            'model__n_estimators': [100, 200, 300],
+            'model__max_depth': [None, 10, 20, 30],
+            'model__min_samples_split': [2, 5, 10],
+            'model__min_samples_leaf': [1, 2, 4]
+        }
+    elif best_model_name == 'GradientBoosting':
+        model = GradientBoostingRegressor(random_state=42)
+        param_grid = {
+            'model__n_estimators': [100, 200, 300],
+            'model__learning_rate': [0.01, 0.05, 0.1],
+            'model__max_depth': [3, 5, 7]
+        }
+    elif best_model_name == 'XGBoost':
+        model = xgb.XGBRegressor(random_state=42)
+        param_grid = {
+            'model__n_estimators': [100, 200, 300],
+            'model__learning_rate': [0.01, 0.05, 0.1],
+            'model__max_depth': [3, 5, 7],
+            'model__colsample_bytree': [0.6, 0.8, 1.0]
+        }
+    else:  # ElasticNet
+        model = ElasticNet(random_state=42)
+        param_grid = {
+            'model__alpha': [0.001, 0.01, 0.1, 1.0],
+            'model__l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9]
+        }
+    
+    # Create pipeline with the preprocessor
+    pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('model', model)
+    ])
+    
+    # Grid search with cross-validation
+    grid_search = GridSearchCV(
+        pipeline, param_grid, cv=5, scoring='neg_mean_squared_error', n_jobs=-1
+    )
+    
+    grid_search.fit(X_train, y_train_log)
+    
+    print(f"Best parameters: {grid_search.best_params_}")
+    print(f"Best CV RMSE: ${np.sqrt(-grid_search.best_score_):.2f}")
+    
+    return grid_search.best_estimator_
+
+# Feature importance analysis
+def analyze_feature_importance(model, numeric_features, categorical_features, preprocessor):
+    """
+    Analyze and visualize feature importances from the model
+    """
+    # Check if the model is a pipeline with a model that supports feature importances
+    if not hasattr(model, 'named_steps'):
+        print("Model is not a pipeline, skipping feature importance analysis")
+        return
+    
+    model_step = model.named_steps.get('model', None)
+    if not hasattr(model_step, 'feature_importances_'):
+        print("Model does not support feature importances, skipping analysis")
+        return
+    
+    # Get feature names from the preprocessing pipeline
+    preprocessor = model.named_steps['preprocessor']
+    cat_idx = preprocessor.transformers_[1][2]  # Get categorical feature indices
+    cat_features = [categorical_features[i] for i in range(len(categorical_features))]
+    
+    # Get one-hot encoded feature names
+    ohe = preprocessor.transformers_[1][1].named_steps['onehot']
+    cat_feature_names = []
+    for i, feature in enumerate(cat_features):
+        categories = ohe.categories_[i]
+        for category in categories:
+            cat_feature_names.append(f"{feature}_{category}")
+    
+    # Combine numeric and categorical feature names
+    feature_names = numeric_features + cat_feature_names
+    
+    # Get feature importances
+    importances = model_step.feature_importances_
+    
+    # Handle length mismatch if needed
+    if len(importances) != len(feature_names):
+        print(f"Warning: Number of importances ({len(importances)}) doesn't match number of feature names ({len(feature_names)})")
+        # Just use indices as names if there's a mismatch
+        feature_names = [f"Feature_{i}" for i in range(len(importances))]
+    
+    # Sort features by importance
+    indices = np.argsort(importances)[::-1]
+    
+    # Print top 20 features
+    print("\nTop 20 most important features:")
+    for i in range(min(20, len(indices))):
+        idx = indices[i]
+        if idx < len(feature_names):
+            print(f"{feature_names[idx]}: {importances[idx]:.4f}")
+    
+    # Plot feature importances
+    plt.figure(figsize=(12, 8))
+    plt.bar(range(min(20, len(indices))), 
+            [importances[i] for i in indices[:20]], 
+            align='center')
+    plt.xticks(range(min(20, len(indices))), 
+               [feature_names[i] if i < len(feature_names) else f"Feature_{i}" 
+                for i in indices[:20]], 
+               rotation=90)
+    plt.title('Feature Importances')
+    plt.tight_layout()
+    plt.savefig('feature_importances.png')
+
+# Predict function for new data
+def predict_price(model, new_data, numeric_features, categorical_features):
+    """
+    Predict house prices for new data
+    """
+    # Ensure new_data has all required features
+    for feature in numeric_features + categorical_features:
+        if feature not in new_data.columns:
+            new_data[feature] = np.nan
+    
+    # Select only the features used in training
+    new_data = new_data[numeric_features + categorical_features]
+    
+    # Make prediction (with log transformation)
+    y_pred_log = model.predict(new_data)
+    y_pred = np.expm1(y_pred_log)
+    
+    return y_pred
+
+# Main function
+def main():
+    # Load data
+    df = load_data('Houston House Price Prediction.csv')
+    
+    # Explore data
+    correlation = explore_data(df)
+    
+    # Preprocess data
+    X_train, X_test, y_train, y_test, numeric_features, categorical_features = preprocess_data(df)
+    
+    # Create preprocessing pipeline
+    preprocessor = create_preprocessing_pipeline(numeric_features, categorical_features)
+    
+    # Train and evaluate models
+    results, best_model = train_and_evaluate_models(
+        X_train, X_test, y_train, y_test, preprocessor)
+    
+    # Find the best model name
+    best_model_name = min(results.items(), key=lambda x: x[1]['rmse'])[0]
+    
+    # Tune the best model
+    tuned_model = tune_best_model(
+        X_train, y_train, best_model_name, preprocessor)
+    
+    # Evaluate tuned model
+    y_pred = np.expm1(tuned_model.predict(X_test))
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    r2 = r2_score(y_test, y_pred)
+    print(f"\nTuned Model - RMSE: ${rmse:.2f}, R²: {r2:.4f}")
+    
+    # Analyze feature importance
+    analyze_feature_importance(
+        tuned_model, numeric_features, categorical_features, preprocessor)
+    
+    # Save model (optional - requires joblib or pickle)
+    # import joblib
+    # joblib.dump(tuned_model, 'houston_house_price_model.pkl')
+    
+    print("\nModel building and evaluation complete!")
+
+if __name__ == "__main__":
+    main()
