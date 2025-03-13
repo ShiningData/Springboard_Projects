@@ -1,46 +1,61 @@
-# 6.2 Performance Metrics
+# 6.3 Current Performance Thresholds, Triggers and Corrective Actions
 
-These are the metrics that the model owner will/does use to determine if model change, redevelopment, or compensating measures are needed. These metrics will also drive overall performance rating of the model.
+For primary metrics described in Section 6.2 above, note the specific thresholds established for the metrics. Discuss the rationale supporting the chosen thresholds. Thresholds on performance metrics are an important component of model monitoring. Model performance metrics may be categorized into two groups: Primary Metrics and Secondary Metrics. Primary metrics and associated thresholds are required and must be defined by the Model Owner and are used to identify when a Model is beginning to deteriorate for a given use.
 
-For each model business objective, describe the primary metric or set of metrics used to compare predicted outcomes to actual outcomes and measure the model performance. Discuss the rationale for the choice of each of these particular metrics.
+Primary metric thresholds must be meaningful and should not be set at a level that can rarely or never be breached. Further, primary metric thresholds should be set relative to the value the performance metrics are able to achieve for the particular data set and modeling problem in focus.
 
-## 6.2.1 Primary Metrics
+## Primary Metric Thresholds:
 
-For the healthcare claim denial predictor model, it is crucial to predict denial outcomes with high performance. A significant challenge when developing prediction models with healthcare claims data is balancing precision and recall, which is why we use the F1 score as our primary evaluation metric.
+**F1 Score:** The F1 Score threshold for our healthcare claim denial predictor is set at ≥ 0.85. This threshold was established based on extensive validation testing and represents a balance between precision and recall that optimizes both the accurate identification of claims likely to be denied and minimizing unnecessary reviews. In the healthcare claims context, this balance is critical as we need to identify potential denials without overwhelming the claims team with false alerts.
 
-To clarify this evaluation metric, we need to detail precision and recall metrics in our binary classification model:
+**Precision:** While F1 is our primary metric, we also monitor precision with a threshold of ≥ 0.80. This ensures that at least 80% of claims flagged as potential denials are actually denied in practice. This threshold was chosen based on operational capacity considerations - the claims review team can effectively manage a false positive rate of up to 20% without significantly impacting workflow efficiency.
 
-**Precision:**
-Precision measures the accuracy of positive predictions made by the model. In the context of our claim denial predictor, precision is the ratio of correctly predicted denials to the total claims predicted as denials. A higher precision indicates that the model is making fewer false positive predictions, which means fewer claims are unnecessarily flagged for review.
+**Recall:** We maintain a recall threshold of ≥ 0.90, reflecting the high importance of capturing true denials. Missing a denial that later occurs results in additional administrative costs, delayed reimbursement, and potential write-offs. The 90% threshold ensures we catch the vast majority of denials while acknowledging that some unusual or novel denial patterns may initially be missed.
 
-Formula for Precision:
-Precision = True Denials / (True Denials + False Denials)
+## Actions for Breached Thresholds:
 
-**Recall:**
-Recall measures the ability of the model to capture all actual denial instances. In our healthcare claims context, recall is the ratio of correctly predicted denials to the total actual denials. A higher recall indicates that the model is effectively identifying most of the claims that would be denied, which helps prevent revenue loss.
+If any of the primary metric thresholds are breached, the following actions will be taken:
 
-Formula for Recall:
-Recall = True Denials / (True Denials + Missed Denials)
+1. **Alert Key Stakeholders:** Notify the revenue cycle management team, claims processing department, and model development team about the performance degradation.
 
-In healthcare claims data, there is typically an imbalance between denied and paid claims, with denials representing a smaller percentage of overall claims. This imbalance makes it challenging for the model to perform well on the minority class (denials). Accuracy alone can be misleading in such cases because it may appear high due to the dominant class (paid claims), while the model might struggle to identify actual denials.
+2. **Investigate Root Causes:** Conduct a thorough analysis to determine if the breach is due to:
+   - Data drift in incoming claims patterns
+   - Changes in payer denial behavior
+   - Seasonal variations in healthcare service utilization
+   - Introduction of new procedure codes or billing practices
 
-F1 score is a harmonic mean of precision and recall, and it accounts for both false positives and false negatives. It is well-suited for our imbalanced claims dataset because it balances precision and recall, providing a more comprehensive evaluation of the model's performance.
+3. **Model Recalibration:** Based on the investigation, implement appropriate recalibration strategies:
+   - Retrain the model with more recent claims data
+   - Adjust classification thresholds
+   - Update feature importance weights
+   - Fine-tune the ensemble weighting between AUTOGLUON and Catboost components
 
-Formula for F1 score:
-F1 score = 2 * (Precision * Recall) / (Precision + Recall)
+4. **Implement Compensating Measures:** While the model is being recalibrated, implement temporary manual review procedures for claims types showing the highest error rates.
 
-By using the F1 score, we consider the trade-off between precision and recall, making it a more suitable metric to assess the performance of our claim denial predictor on an imbalanced dataset. A high F1 score indicates that the model is both precise in its denial predictions and able to capture most of the actual denials, which is critical for optimizing revenue cycle operations.
+5. **Performance Assessment Impact:** Document the breach and corrective actions for quarterly model performance assessment and regulatory compliance reporting.
 
-## 6.2.2 Secondary Metrics
+## Secondary Metric Thresholds:
 
-**Precision-Recall Curve:**
-We also use the Precision-Recall Curve as one of our secondary metrics. This curve shows the trade-off between Precision and Recall across different probability thresholds. For various threshold values between 0 and 1, the precision and recall are calculated, and these pairs are plotted against each other. This allows us to identify the optimal threshold for our model that balances the need to catch actual denials while minimizing unnecessary claim reviews.
+**Precision-Recall Curve:** The area under the Precision-Recall curve should remain ≥ 0.87. This threshold ensures the model maintains good performance across various operating points and can adapt to different business priorities as needed.
 
-**ROC AUC Curve:**
-To demonstrate that our model performs better than random selection, we use the Receiver Operating Characteristic (ROC) Curve. This is done by plotting the true positive rate against the false positive rate of the model. We also calculate the area under the curve (ROC AUC). A larger ROC AUC indicates better performance than a baseline random classifier (which has an ROC AUC of 0.5). With our ensemble approach combining AUTOGLUON and Catboost models, we've achieved an ROC AUC close to 0.9, confirming that our model significantly outperforms random classification.
+**ROC AUC:** The threshold for ROC AUC is set at ≥ 0.90. This high threshold confirms the model's ability to distinguish between claims that will be paid versus denied significantly better than random chance.
 
-**Cost Savings Metric:**
-As an additional secondary metric, we track the estimated cost savings from prevented denials. By calculating the average cost of denial processing and the average revenue impact of denied claims, we can quantify the financial benefit of the model's implementation. This business-oriented metric helps demonstrate the ROI of the model to stakeholders.
+**Cost Savings Metric:** We track the estimated cost savings with a threshold of ≥ $750,000 quarterly. If savings drop below this threshold, it signals that either the model's accuracy has degraded or operational implementation has issues.
 
-**Claims Processing Efficiency:**
-We also monitor the impact on claims processing time to ensure that the integration of our model into the workflow doesn't negatively affect overall processing efficiency while providing valuable denial prediction capabilities.​​​​​​​​​​​​​​​​
+**Claims Processing Efficiency:** The threshold is set as a maximum 5% increase in average processing time compared to the baseline. This ensures the model integration doesn't negatively impact workflow efficiency.
+
+## Actions for Breached Secondary Metric Thresholds:
+
+If secondary metric thresholds are breached, the following actions will be taken:
+
+1. **Review Prediction Distribution:** Analyze the distribution of prediction probabilities to identify shifts that might indicate changing patterns in claims data or payer behavior.
+
+2. **Evaluate Payer-Specific Performance:** Assess if performance degradation is concentrated in specific payers or claim types that might require targeted model adjustments.
+
+3. **Fine-Tuning Strategies:** Implement specialized fine-tuning for the specific aspects showing degradation, such as adjusting thresholds for particular claim types or payers.
+
+4. **Workflow Assessment:** Review how the model's predictions are being utilized in the claims workflow process and identify any implementation issues that may be affecting performance.
+
+5. **Data Quality Review:** Verify that data inputs to the model maintain consistent quality and completeness, addressing any data pipeline issues.
+
+These thresholds and corrective actions ensure that our healthcare claim denial predictor model maintains optimal performance in reducing denial rates, improving cash flow, and enhancing revenue cycle operations efficiency.​​​​​​​​​​​​​​​​
