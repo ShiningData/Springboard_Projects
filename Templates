@@ -1,11 +1,19 @@
-# PII and PHI Data Management
+# 3.2 Data Quality and Representativeness
 
-Our healthcare claim denial predictor model operates under a comprehensive data governance framework that prioritizes the security and confidentiality of sensitive healthcare information. All data exchange processes with client healthcare organizations adhere to industry-leading security protocols:
+Our healthcare claim denial predictor implements a sophisticated data quality assurance framework throughout the production pipeline, which integrates 837 claim submission data with corresponding 835 remittance advice information. This framework encompasses multiple validation protocols to ensure optimal data integrity and model performance:
 
-- **Secure File Transmission**: Data transmissions utilize established health data-sensitive protocols, implemented through Enterprise File Transfer (EFX) and Connect Direct systems. EFX serves as our dedicated team managing SFTP transmissions from external healthcare partners with appropriate encryption and authentication measures. Once received, Connect Direct facilitates secure internal file transfers from the EFX platform to the designated processing environment within our secure infrastructure.
+## Quality Assurance Protocols
 
-- **PHI/PII Exclusion Verification**: We have conducted rigorous column-level validation to ensure all data elements incorporated in our model are exclusively non-PHI related. This verification process was executed in collaboration with our internal compliance stakeholders and data governance specialists to confirm adherence to HIPAA regulations and organizational data handling policies.
+1. **Type Conformance Validation**: The system executes comprehensive validation of data types across all columns, comparing incoming data against predefined specifications to ensure structural consistency and prevent type-related anomalies during processing.
 
-- **Enhanced Storage Security**: As an additional safeguard, all model data is housed within a PHI-certified server environment within our Technical Development Laboratory (TDL). This measure provides an extra layer of protection, implementing technical controls that meet or exceed regulatory requirements for protected health information, despite our model utilizing only de-identified data.
+2. **Mandatory Field Completeness**: The system systematically excludes records with null values in business-critical fields—specifically claimUniqueId, serviceLineProcedureCode, and payerName. This quality control measure ensures prediction generation occurs only for service lines with complete essential information, preserving the integrity of the prediction outputs.
 
-This multi-layered approach to data privacy and security demonstrates our commitment to maintaining the highest standards of compliance while delivering advanced predictive capabilities for healthcare revenue cycle management.
+3. **Categorical Domain Monitoring**: Automated detection mechanisms identify novel categorical values in production data that were not present in the original training datasets from Franciscan Missionaries of Our Lady Health System (FMOL) and Grady Health System. This monitoring enables appropriate handling of emerging categorical values to maintain model robustness.
+
+## Feature Engineering and Response Definition
+
+The model leverages a carefully curated feature set that combines direct extractions from 837 EDI transactions with engineered features designed to capture complex relationships within claims data. This engineering process transforms raw transactional attributes into meaningful predictive indicators.
+
+The target variable definition (denial status) employs a sophisticated mapping methodology tailored to each healthcare organization's specific workflows. This mapping correlates Claim Adjustment Reason Codes (CARCs) from remittance advice exports obtained from Epic EHR systems with the creation of Bad Debt Collection (BDC) records. This client-specific approach ensures the model's definition of "denial" precisely aligns with each organization's revenue cycle operations and financial classification systems.
+
+This methodical approach to data quality management and feature engineering establishes a foundation for reliable predictions that accurately reflect the likelihood of claim denials within each healthcare organization's unique payer environment.
