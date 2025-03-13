@@ -1,61 +1,11 @@
-# 6.3 Current Performance Thresholds, Triggers and Corrective Actions
+# General Description of Data
 
-For primary metrics described in Section 6.2 above, note the specific thresholds established for the metrics. Discuss the rationale supporting the chosen thresholds. Thresholds on performance metrics are an important component of model monitoring. Model performance metrics may be categorized into two groups: Primary Metrics and Secondary Metrics. Primary metrics and associated thresholds are required and must be defined by the Model Owner and are used to identify when a Model is beginning to deteriorate for a given use.
+## ANSWER:
 
-Primary metric thresholds must be meaningful and should not be set at a level that can rarely or never be breached. Further, primary metric thresholds should be set relative to the value the performance metrics are able to achieve for the particular data set and modeling problem in focus.
+The healthcare claim denial predictor model leverages historical standard data extracted from 837 and 835 healthcare claim forms spanning an 18-month period from November 2022 to January 2023. All data fields utilized are de-identified/non-PHI compliant, ensuring regulatory compliance while maintaining analytical value. These two data sources (835 and 837 forms) are systematically matched through a proprietary matching algorithm to construct a comprehensive final dataset for each client, which serves as the foundation for model training.
 
-## Primary Metric Thresholds:
+In the training pipeline, we utilize a robust feature set comprising 34 baseline features supplemented by critical denial indicators: adjustmentGroupCode and adjustmentReasonCode. These indicators are sourced from client-specific RMC_ID_BDC_yes.csv files that define the denial reason codes uniquely for each client. This customization is crucial as each client maintains their own RMC_ID_BDC_yes.csv file that specifies which group and reason codes should be classified as denials, allowing for tailored prediction models that accommodate variations in payer behavior and client-specific denial patterns.
 
-**F1 Score:** The F1 Score threshold for our healthcare claim denial predictor is set at ≥ 0.85. This threshold was established based on extensive validation testing and represents a balance between precision and recall that optimizes both the accurate identification of claims likely to be denied and minimizing unnecessary reviews. In the healthcare claims context, this balance is critical as we need to identify potential denials without overwhelming the claims team with false alerts.
+For the prediction pipeline, we implement sophisticated feature engineering and entity resolution processes on the incoming data. The system receives 34 raw features which undergo transformation and enrichment to produce 33 model input features (comprising 15 derived features and 18 original features) that feed into the ensemble model. This feature engineering process optimizes the signal-to-noise ratio in the data, enhancing the model's predictive accuracy for identifying claims at high risk of denial.
 
-**Precision:** While F1 is our primary metric, we also monitor precision with a threshold of ≥ 0.80. This ensures that at least 80% of claims flagged as potential denials are actually denied in practice. This threshold was chosen based on operational capacity considerations - the claims review team can effectively manage a false positive rate of up to 20% without significantly impacting workflow efficiency.
-
-**Recall:** We maintain a recall threshold of ≥ 0.90, reflecting the high importance of capturing true denials. Missing a denial that later occurs results in additional administrative costs, delayed reimbursement, and potential write-offs. The 90% threshold ensures we catch the vast majority of denials while acknowledging that some unusual or novel denial patterns may initially be missed.
-
-## Actions for Breached Thresholds:
-
-If any of the primary metric thresholds are breached, the following actions will be taken:
-
-1. **Alert Key Stakeholders:** Notify the revenue cycle management team, claims processing department, and model development team about the performance degradation.
-
-2. **Investigate Root Causes:** Conduct a thorough analysis to determine if the breach is due to:
-   - Data drift in incoming claims patterns
-   - Changes in payer denial behavior
-   - Seasonal variations in healthcare service utilization
-   - Introduction of new procedure codes or billing practices
-
-3. **Model Recalibration:** Based on the investigation, implement appropriate recalibration strategies:
-   - Retrain the model with more recent claims data
-   - Adjust classification thresholds
-   - Update feature importance weights
-   - Fine-tune the ensemble weighting between AUTOGLUON and Catboost components
-
-4. **Implement Compensating Measures:** While the model is being recalibrated, implement temporary manual review procedures for claims types showing the highest error rates.
-
-5. **Performance Assessment Impact:** Document the breach and corrective actions for quarterly model performance assessment and regulatory compliance reporting.
-
-## Secondary Metric Thresholds:
-
-**Precision-Recall Curve:** The area under the Precision-Recall curve should remain ≥ 0.87. This threshold ensures the model maintains good performance across various operating points and can adapt to different business priorities as needed.
-
-**ROC AUC:** The threshold for ROC AUC is set at ≥ 0.90. This high threshold confirms the model's ability to distinguish between claims that will be paid versus denied significantly better than random chance.
-
-**Cost Savings Metric:** We track the estimated cost savings with a threshold of ≥ $750,000 quarterly. If savings drop below this threshold, it signals that either the model's accuracy has degraded or operational implementation has issues.
-
-**Claims Processing Efficiency:** The threshold is set as a maximum 5% increase in average processing time compared to the baseline. This ensures the model integration doesn't negatively impact workflow efficiency.
-
-## Actions for Breached Secondary Metric Thresholds:
-
-If secondary metric thresholds are breached, the following actions will be taken:
-
-1. **Review Prediction Distribution:** Analyze the distribution of prediction probabilities to identify shifts that might indicate changing patterns in claims data or payer behavior.
-
-2. **Evaluate Payer-Specific Performance:** Assess if performance degradation is concentrated in specific payers or claim types that might require targeted model adjustments.
-
-3. **Fine-Tuning Strategies:** Implement specialized fine-tuning for the specific aspects showing degradation, such as adjusting thresholds for particular claim types or payers.
-
-4. **Workflow Assessment:** Review how the model's predictions are being utilized in the claims workflow process and identify any implementation issues that may be affecting performance.
-
-5. **Data Quality Review:** Verify that data inputs to the model maintain consistent quality and completeness, addressing any data pipeline issues.
-
-These thresholds and corrective actions ensure that our healthcare claim denial predictor model maintains optimal performance in reducing denial rates, improving cash flow, and enhancing revenue cycle operations efficiency.​​​​​​​​​​​​​​​​
+The complete model dataset is maintained with appropriate access controls and is available for review upon authorized request, subject to compliance with data governance protocols.​​​​​​​​​​​​​​​​
