@@ -1,19 +1,65 @@
-# 3.2 Data Quality and Representativeness
+If you're calling Java directly from your Python script, you're likely using a bridge technology like JPype, Py4J, or JayDeBeApi. In this case, the memory issues are still occurring in the Java Virtual Machine (JVM) that's being spawned by your Python process, not in Python itself.
 
-Our healthcare claim denial predictor implements a sophisticated data quality assurance framework throughout the production pipeline, which integrates 837 claim submission data with corresponding 835 remittance advice information. This framework encompasses multiple validation protocols to ensure optimal data integrity and model performance:
+Here's how to address Java memory issues when calling Java from Python:
 
-## Quality Assurance Protocols
+### 1. Set JVM Parameters When Initializing Java
 
-1. **Type Conformance Validation**: The system executes comprehensive validation of data types across all columns, comparing incoming data against predefined specifications to ensure structural consistency and prevent type-related anomalies during processing.
+If you're using JPype, you can set memory parameters when starting the JVM:
 
-2. **Mandatory Field Completeness**: The system systematically excludes records with null values in business-critical fields—specifically claimUniqueId, serviceLineProcedureCode, and payerName. This quality control measure ensures prediction generation occurs only for service lines with complete essential information, preserving the integrity of the prediction outputs.
+```python
+import jpype
 
-3. **Categorical Domain Monitoring**: Automated detection mechanisms identify novel categorical values in production data that were not present in the original training datasets from Franciscan Missionaries of Our Lady Health System (FMOL) and Grady Health System. This monitoring enables appropriate handling of emerging categorical values to maintain model robustness.
+# Set JVM memory options before starting
+jpype.startJVM(jpype.getDefaultJVMPath(), 
+               "-Xmx4g",  # Maximum heap size (4GB in this example)
+               "-Xms1g",  # Initial heap size
+               classpath="path/to/your/java/classes")
+```
 
-## Feature Engineering and Response Definition
+For Py4J, you might need to configure the gateway:
 
-The model leverages a carefully curated feature set that combines direct extractions from 837 EDI transactions with engineered features designed to capture complex relationships within claims data. This engineering process transforms raw transactional attributes into meaningful predictive indicators.
+```python
+from py4j.java_gateway import JavaGateway, GatewayParameters, launch_gateway
 
-The target variable definition (denial status) employs a sophisticated mapping methodology tailored to each healthcare organization's specific workflows. This mapping correlates Claim Adjustment Reason Codes (CARCs) from remittance advice exports obtained from Epic EHR systems with the creation of Bad Debt Collection (BDC) records. This client-specific approach ensures the model's definition of "denial" precisely aligns with each organization's revenue cycle operations and financial classification systems.
+# Launch JVM with custom parameters
+port = launch_gateway(jarpath="path/to/py4j.jar", 
+                      die_on_exit=True,
+                      javaopts=["-Xmx4g", "-XX:+UseG1GC"])
 
-This methodical approach to data quality management and feature engineering establishes a foundation for reliable predictions that accurately reflect the likelihood of claim denials within each healthcare organization's unique payer environment.
+gateway = JavaGateway(gateway_parameters=GatewayParameters(port=port))
+```
+
+### 2. Check Which Java Bridge You're Using
+
+First, identify which Java bridge technology your code is using. Look for imports like:
+- `import jpype`
+- `import py4j`
+- `import jaydebeapi`
+
+### 3. Optimize Your Algorithm
+
+If you can't allocate more memory:
+- Process data in smaller batches
+- Reduce the number of models in your ensemble
+- Add explicit calls to release resources when they're no longer needed
+
+### 4. Monitor Memory Usage
+
+Add code to monitor memory consumption:
+
+```python
+# For monitoring Python memory
+import psutil
+process = psutil.Process()
+print(f"Memory usage: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+
+# For monitoring JVM memory if using JPype
+if "jpype" in sys.modules:
+    runtime = jpype.java.lang.Runtime.getRuntime()
+    total_memory = runtime.totalMemory() / 1024 / 1024
+    free_memory = runtime.freeMemory() / 1024 / 1024
+    used_memory = total_memory - free_memory
+    print(f"JVM Memory: Used {used_memory:.2f} MB, Free {free_memory:.2f} MB, Total {total_memory:.2f} MB")
+```
+
+Could you share which specific Java bridge you're using and a simplified version of how you're initializing it? That would help me provide more specific guidance.
