@@ -1,43 +1,43 @@
-# Key Assumptions
+ Key Assumptions
 
 Our healthcare claim denial prediction model and its interpretability framework are built upon several fundamental assumptions that influence model performance, operational implementation, and monitoring requirements. These assumptions have been carefully considered during model development and are continuously assessed as part of our governance process.
 
-## Model Learning and Prediction Assumptions
+ Model Learning and Prediction Assumptions
 
-1. **Payer Process Variability**: A critical assumption is that our model can effectively learn patterns despite inherent variability in payer decisioning processes. We acknowledge that each payer operates with unique internal rules, and human decisioning within payer organizations introduces an element of irreducible error. This variability represents a fundamental boundary to model performance that must be accepted rather than eliminated.
+1. Payer Process Variability: A critical assumption is that our model can effectively learn patterns despite inherent variability in payer decisioning processes. We acknowledge that each payer operates with unique internal rules, and human decisioning within payer organizations introduces an element of irreducible error. This variability represents a fundamental boundary to model performance that must be accepted rather than eliminated.
 
-2. **Training Data Limitations**: We recognize that our training datasets, while comprehensive, cannot encompass every possible special case or rare denial scenario. The model assumes that the patterns learned from available historical data will generalize sufficiently to most future claims, while acknowledging that novel or unusual cases may fall outside learned patterns.
+2. Training Data Limitations: We recognize that our training datasets, while comprehensive, cannot encompass every possible special case or rare denial scenario. The model assumes that the patterns learned from available historical data will generalize sufficiently to most future claims, while acknowledging that novel or unusual cases may fall outside learned patterns.
 
-3. **Computational Constraints**: Our methodology balances predictive performance with practical computational limitations. We assume that the selected training time parameters (e.g., 1200 seconds for AUTOGLUON) provide sufficient optimization without requiring excessive computational resources, acknowledging that theoretically superior models might exist with unlimited computation.
+3. Computational Constraints: Our methodology balances predictive performance with practical computational limitations. We assume that the selected training time parameters (e.g., 1200 seconds for AUTOGLUON) provide sufficient optimization without requiring excessive computational resources, acknowledging that theoretically superior models might exist with unlimited computation.
 
-## Operational Implementation Assumptions
+ Operational Implementation Assumptions
 
-1. **Human-in-the-Loop Requirement**: A foundational assumption is that the model serves as a decision support tool rather than an autonomous system. We explicitly do not expect 100% accurate classification and assume that human expertise will remain essential in the claims review process, with the model augmenting rather than replacing human judgment.
+1. Human-in-the-Loop Requirement: A foundational assumption is that the model serves as a decision support tool rather than an autonomous system. We explicitly do not expect 100% accurate classification and assume that human expertise will remain essential in the claims review process, with the model augmenting rather than replacing human judgment.
 
-2. **Predictive Power Variability**: We assume that predictive capability varies across denial types and scenarios. Some denial categories may exhibit clear, learnable patterns, while others may prove inherently unpredictable from available features. This asymmetric predictability is an accepted limitation of the approach.
+2. Predictive Power Variability: We assume that predictive capability varies across denial types and scenarios. Some denial categories may exhibit clear, learnable patterns, while others may prove inherently unpredictable from available features. This asymmetric predictability is an accepted limitation of the approach.
 
-3. **Selective Implementation**: An operational assumption is that denial categories with insufficient predictive performance may be selectively disabled in production. In such cases, claims that would fall into these categories will default to standard manual review workflows, optimizing the model's focus on denial types where it provides demonstrable value.
+3. Selective Implementation: An operational assumption is that denial categories with insufficient predictive performance may be selectively disabled in production. In such cases, claims that would fall into these categories will default to standard manual review workflows, optimizing the model's focus on denial types where it provides demonstrable value.
 
-## RulexAI Interpretability Assumptions
+ RulexAI Interpretability Assumptions
 
-1. **Explanation Fidelity**: When using RulexAI for local explanations, we assume that the rule-based approximations adequately represent the complex ensemble model's decision process for individual instances, acknowledging some simplification in the translation from ensemble predictions to explanable rules.
+1. Explanation Fidelity: When using RulexAI for local explanations, we assume that the rule-based approximations adequately represent the complex ensemble model's decision process for individual instances, acknowledging some simplification in the translation from ensemble predictions to explanable rules.
 
-2. **Actionability of Explanations**: We assume that the explanations provided by RulexAI are sufficiently detailed and accessible to enable meaningful interventions by revenue cycle staff. This assumes alignment between explanation format and operational decision points in the claims preparation process.
+2. Actionability of Explanations: We assume that the explanations provided by RulexAI are sufficiently detailed and accessible to enable meaningful interventions by revenue cycle staff. This assumes alignment between explanation format and operational decision points in the claims preparation process.
 
-## Healthcare Domain Assumptions
+ Healthcare Domain Assumptions
 
-1. **Pattern Consistency**: Despite acknowledging payer variability, we assume sufficient consistency exists in denial patterns to make prediction valuable. This assumes that most denials occur due to systematic rather than random factors.
+1. Pattern Consistency: Despite acknowledging payer variability, we assume sufficient consistency exists in denial patterns to make prediction valuable. This assumes that most denials occur due to systematic rather than random factors.
 
-2. **Feature Relevance**: We assume that the features available in standard healthcare claims data (procedure codes, diagnosis codes, provider information, etc.) contain meaningful signal for predicting denials, while recognizing that some denial factors may exist outside our observable data.
+2. Feature Relevance: We assume that the features available in standard healthcare claims data (procedure codes, diagnosis codes, provider information, etc.) contain meaningful signal for predicting denials, while recognizing that some denial factors may exist outside our observable data.
 
-## Monitoring and Validation
+ Monitoring and Validation
 
 These key assumptions are continuously monitored through:
 
-1. **Performance Segmentation**: Regular analysis of model performance by denial category, payer, and claim type to identify areas where assumptions about predictability may not hold.
+1. Performance Segmentation: Regular analysis of model performance by denial category, payer, and claim type to identify areas where assumptions about predictability may not hold.
 
-2. **Human-Model Collaboration Assessment**: Ongoing evaluation of how effectively revenue cycle staff integrate model predictions into their workflows, validating the human-in-the-loop assumption.
+2. Human-Model Collaboration Assessment: Ongoing evaluation of how effectively revenue cycle staff integrate model predictions into their workflows, validating the human-in-the-loop assumption.
 
-3. **Computational Efficiency Tracking**: Monitoring of training and inference time requirements to ensure continued alignment with operational constraints.
+3. Computational Efficiency Tracking: Monitoring of training and inference time requirements to ensure continued alignment with operational constraints.
 
 Should any of these key assumptions be violated, our monitoring framework triggers appropriate adjustments, from selective feature engineering to category-specific performance enhancements or workflow modifications, ensuring the model maintains its value proposition within acknowledged limitations.
