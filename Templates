@@ -1,93 +1,210 @@
- 5. Development Testing
+Notes on Data Pipeline Workshop
 
- Testing Methodology and Performance Evaluation
+Created on March 14, 2025 at 11:03 AM by Minutes AI
 
-The healthcare claim denial predictor model underwent rigorous testing to ensure its effectiveness, reliability, and appropriateness for deployment in healthcare revenue cycle operations. Our development testing framework was designed to validate the model across multiple dimensions including predictive accuracy, generalizability, interpretability, and operational relevance.
+---
 
- Performance Metrics and Objective Function
+Introduction
+- The goal is to consolidate data sources into a pipeline for easier, faster, and more robust data handling.
+- The workshop focuses on mapping out user roles to identify data access patterns, workflows, and data sequestration needs.
+- The first work set will likely be building a daily dashboard.
 
-During model training, we optimized for F1 score as our primary objective function. This choice was deliberate given the inherent class imbalance in healthcare claims data, where denied claims typically represent a minority class. The F1 score, as the harmonic mean of precision and recall, provides a balanced assessment that prevents the model from achieving superficial accuracy by simply predicting the majority class (paid claims).
 
-Secondary training metrics included:
-- Precision: To minimize false positives that would result in unnecessary claim reviews
-- Recall: To ensure comprehensive identification of potential denials
-- Area Under the Precision-Recall Curve: To evaluate performance across different threshold settings
+Whiteboard Session
+- The whiteboard session will be structured, with the speaker doing most of the writing.
+- Participants can "like" notes that apply to them.
+- Participants initially had view-only access, but this was updated.
 
- Model Selection Rationale
 
-The final ensemble model combining AUTOGLUON and Catboost was selected based on a comprehensive evaluation framework that considered:
+User Personas
+- Initial personas: managerial role and analyst role.
+- Additional roles suggested: product manager and admin.
+- The admin role would have access to everything, including making changes within the application.
 
-1. Cross-Validation Performance: We implemented a rigorous 5-fold cross-validation strategy, stratified by denial status to maintain class distribution. The AUTOGLUON-Catboost ensemble demonstrated superior and consistent F1 scores (≥0.85) across all folds compared to single-algorithm alternatives.
 
-2. Temporal Validation: To test the model's resilience to temporal shifts in claims patterns, we conducted chronological validation by training on older claims data and testing on more recent periods. The ensemble model demonstrated minimal performance degradation (less than 5% F1 score reduction) compared to random cross-validation, indicating robust temporal generalization.
+Admin Role Discussion
+- The admin function could be used to set system defaults.
+- The team manager could potentially serve as the admin if they have access to do everything.
+- The admin role could potentially make changes to default filters or drop-down menu values.
+- "Before we would ever go down this route, we would determine what specifically you would want to be able to have access to change. So it's more of like a be able to have like a self maintenance option."
 
-3. Client-Specific Performance: Given the variability in coding practices and payer relationships across healthcare providers, we validated model performance separately for each client dataset. The ensemble approach consistently outperformed alternatives across diverse provider environments, demonstrating adaptability to organization-specific patterns.
 
-4. Operational Metrics: Beyond statistical performance, we evaluated practical operational metrics including:
-   - Estimated reduction in denial-related revenue loss
-   - Required review capacity for flagged claims
-   - Projected impact on claims processing timelines
 
-The final model selection prioritized balanced performance across these dimensions rather than optimizing for a single metric in isolation.
+Admin Role
+- The speaker believes a product manager could also have the admin role.
+- For risk purposes, it's better to keep an admin-specific role because risk partners are particular about who can make changes.
+- It's beneficial to have individual roles defined with specific functionality, especially when dealing with risk partners.
 
- Validation Strategy and Overfitting Prevention
 
-To address the critical concern of overfitting, we implemented a multi-layered validation strategy:
+Product Advisors
+- Naren is meeting with product advisors Bill and Dan next week for a workshop to see how they interface with the teams.
+- Product advisors are the first line of defense for anything liquidity-related before it reaches Naren or Tim.
+- The speaker was initially concerned about separating liquidity roles because they use similar processes and reports.
 
-1. Data Partitioning: For each client, we partitioned data into training (70%), validation (15%), and holdout test sets (15%). Model selection decisions were based exclusively on validation set performance, with the holdout test set reserved for final performance verification.
 
-2. Payer-Stratified Sampling: Validation and test sets were stratified by payer to ensure representative coverage of different payer behaviors and denial patterns.
+Scott's Role
+- Scott is the "super user" or "super group product manager" who sees everything.
+- It was suggested to call him "product manager, super user" in case he sees the notes.
 
-3. Procedure Complexity Stratification: We ensured validation samples included appropriate representation across procedure complexity categories to prevent bias toward simple or complex claims.
 
-4. Time-Series Validation: In addition to random sampling, we performed forward-chaining time-series validation to assess performance stability over time.
+Team Roles Clarification
+- The speaker prefers to be called "team manager" instead of "group product manager."
+- Melissa is the operations manager.
+- Melissa believes her team will primarily pull data and may fall into the "analyst" category.
 
-Performance degradation between training and validation samples was minimal (less than 7% reduction in F1 score), indicating effective generalization without significant overfitting. Where performance variations were observed across different healthcare organizations, these differences were attributable to documented variations in coding practices and payer relationships rather than model instability.
 
- Feature Importance and Interpretability Analysis
+Persona Identification
+- Participants were asked to "like" the relevant post-it note if a Persona applied to them.
+- Rocio, Emily, and Jen are admins.
+- Rocio is a team manager.
+- Emily and Jen are product managers.
+- Melissa is an operations manager.
+- Revamp is an analyst.
+- Joanna and Connor are analysts who rotate through the groups.
 
-We employed multiple complementary approaches to assess feature importance and ensure model interpretability:
 
-1. RulexAI Local Explanations: As detailed in our methodology section, RulexAI provides instance-level explanations that identify the specific factors contributing to individual denial predictions. Testing confirmed that these explanations aligned with domain expert understanding of denial factors in over 85% of evaluated cases.
+- Team members should have access to view data across different teams (Team's world, Rob's, Michaelihan's).
+  - The goal is to ensure everyone can see the entire balance sheet of deposits and products.
+  - Access should be at least "view only" to promote standardization.
 
-2. SHAP (SHapley Additive exPlanations) Analysis: We calculated SHAP values to quantify the contribution of each feature to model predictions. This analysis revealed that:
-   - Procedure code-diagnosis code combinations consistently ranked among the top predictive features
-   - Payer identity showed significant influence, reflecting real-world variations in payer behavior
-   - Prior denial history for similar claims emerged as a strong predictor
-   - Patient demographic factors showed minimal impact, confirming the model's focus on clinical and administrative factors rather than potentially biasing patient characteristics
+- Read-only vs. read and write access:
+  - There should be options for read-only access or the ability to delineate which areas can be read or written.
+  - "Read meaning you can only view it, right, meaning you can edit it."
+  - Multiple entitlements: The entitlement with the most access will be dominant.
 
-3. Partial Dependence Plots: For key numerical features (e.g., claim amount, service units), we generated partial dependence plots to visualize their relationship with denial probability. These plots revealed meaningful thresholds that aligned with known payer policies and billing guidelines.
+- Concern about being too restrictive:
+  - The aim is to avoid limiting data use and manipulation.
+  - "Today we all manipulate data and the different sources we all filter and you know, I'm thinking of tap for example, we all have access to build our reports the way we want to build it. Or I just want to make sure that it's not very restrictive."
+  - The system should be as open as possible within the confines of the entitlement system.
 
-4. Feature Interaction Analysis: We identified and quantified significant feature interactions, particularly between procedure codes and diagnoses, that reflected clinical coding requirements and medical necessity rules.
+- User activities and personas:
+  - Personas inform entitlements and the design of the data pipeline.
+  - Different personas inform access patterns, which influence how data is stored for quick retrieval.
+  - Entitlements are flexible and can be as large or small as needed.
 
-These analyses confirmed that the model's decision-making process aligns with healthcare revenue cycle domain knowledge while capturing nuanced patterns that would be difficult to encode in explicit rules.
+- Admin role:
+  - Traditionally has access to everything and can engage in all functionality and access data.
+  - Approving other OIMs is a separate conversation.
 
- Hyperparameter Sensitivity Testing
+- Team manager role (Rosie's input):
+  - Daily review of various reports drives research.
+  - Research involves downloading data from various sources like tap, CDM, Tableau, Salesforce, billing systems, and XNET reports.
+  - Different team members use the same information in different ways.
 
-We conducted comprehensive sensitivity testing for critical hyperparameters to ensure model stability and optimal configuration:
 
-1. AUTOGLUON Time Limit: We tested training time limits ranging from 600 to 3600 seconds, finding that performance plateaued after approximately 1200 seconds, confirming our selected configuration balances performance and computational efficiency.
 
-2. Catboost Depth and Iterations: Sensitivity analysis across tree depths (3-12) and iteration counts (100-2000) revealed diminishing returns beyond our selected ranges, with minimal performance improvement (<2% F1 score gain) for substantially increased computational cost.
+Research Examples
+- Rocio looks at the daily balance mover report from finance to spot large jumps or declines.
+  - If the reason isn't obvious, she downloads data from tap or asks Emily or Jennifer to research.
+- For exception rate approvals, Rocio checks client profitability in Salesforce and balance composition in the liquidity sheet.
+  - She may also review downloads to make an informed decision.
+- Rocio uses data for research and decision-making across various liquidity products.
 
-3. Ensemble Weighting: We tested various weighting schemes between AUTOGLUON and Catboost predictions (from 0.3:0.7 to 0.7:0.3), finding that equal weighting (0.5:0.5) consistently provided optimal balance between the complementary strengths of both algorithms.
 
-4. Class Weight Parameters: We systematically varied class weighting parameters to assess the trade-off between precision and recall, selecting configurations that aligned with operational priorities for each client implementation.
+Assigning Research
+- Rocio prefers to discuss research needs with Emily and Jennifer rather than using a tool for handing off tasks.
+  - Emily and Jennifer agree that the tool may not be the primary source for identifying research needs.
 
-This sensitivity testing confirmed that our model performance remains stable across reasonable variations in hyperparameters, indicating robust configuration rather than chance optimization.
 
- Bias and Fairness Assessment
+Product Manager and Operations Manager Overlap
+- Emily and Jennifer's research overlaps with Rocio's, but they also have task-based responsibilities.
+  - Rocio's examples of reports used for exception requests or large movers are relevant.
+- Emily focuses on interest-bearing deposit products, while Jennifer focuses on sweeping products.
+  - They may use the same data but manipulate it differently.
 
-Given the nature of healthcare claim prediction, we conducted thorough bias and fairness assessments in collaboration with compliance and legal experts. Our analysis focused on:
 
-1. Protected Characteristic Independence: We verified that model predictions showed no statistically significant correlation with patient demographic factors (age, gender, race, ethnicity) beyond their legitimate relationship with medical necessity and appropriate care patterns.
+Task-Based Reports and Automation
+- Emily and Jennifer build Excel reports by downloading and formatting data from tap.
+  - There is potential for automation in these processes.
+- They perform similar initial manipulations, such as filtering for specific lines of business.
+  - They may filter out different train codes or product codes, but use the same source data.
 
-2. Geographic Equity: We analyzed model performance across different geographic regions to ensure consistent effectiveness regardless of provider location or patient population served.
 
-3. Claim Type Fairness: We assessed whether the model demonstrated bias toward or against specific service types, confirming balanced performance across inpatient, outpatient, and professional claims.
 
-4. Financial Impact Distribution: We evaluated whether denial predictions disproportionately affected any specific patient populations, finding that prediction patterns reflected legitimate clinical and administrative factors rather than potentially discriminatory elements.
+Pulse Origins and Concerns
+- Pulse started with the goal of automating some of the data used.
+- There's a concern about over-engineering the system, making it difficult to access specific data needed by individuals like Emily.
 
-Through this comprehensive assessment process, in collaboration with Enterprise Compliance and Legal Department review, we confirmed that the model poses minimal bias or fairness risks. The model's focus on objective claim characteristics rather than patient demographic factors mitigates potential discrimination concerns, while its transparent explanations enable appropriate human oversight of predictions.
 
-Our development testing framework demonstrates that the healthcare claim denial predictor model is sound, appropriate for its intended use, and capable of delivering meaningful operational value while maintaining ethical standards and interpretability.
+Proposed Solution and Data Accessibility
+- A tool similar to the rate cuts tool on the interest-bearing side is envisioned, allowing users to pull in large data chunks and manually set filters based on products of interest.
+- The goal is to have the bulk of the data available with editable filters, addressing concerns about data accessibility.
+- Question: "How do I get to the source data?"
+  - The current app primarily presents data from Core and Agilytics in different slices.
+  - The ideal scenario involves making source data easily accessible within the app, either directly or through links.
+
+
+Entitlements and Data Views
+- Export features could be used to organize and export data into Excel or CSV files.
+- The team wants to see the same initial data snapshots, similar to current entitlements for products.
+- "We all want to see the same initial data of what are all of these accounts within our products or our liquidity world. How are they doing?"
+- There is a need for one entitlement for liquidity, potentially with separate entitlements for liquidity product and liquidity operations.
+
+
+Dashboard Vision and Automation
+- The vision is for a daily dashboard that aggregates reports and allows for specialized reports.
+- The long-term goal is to automate more day-to-day workflows and recurring reports.
+- "It would be some place place where you could do almost all your day to day activities."
+- Claire is asked to give a quick demo of Cam to give a sense of something else they built.
+
+
+
+Different Conversations
+- The speaker believes there are two different conversations:
+  - High level: source data is the same, viewing similar things.
+  - Day-to-day workflows: an individual conversation with each person to determine priorities for automation, reports used, and how they are manipulated.
+- From a high-level perspective, everyone needs to see the same stuff, but day-to-day tasks can differ depending on how granular you go.
+
+
+CAM Overview
+- CAM was recently built to support different types of incoming data and display it in various formats.
+- It has chart formats, export/import features, and bulk update options.
+- There is both reporting and decisioning capabilities, allowing users to take actions similar to a pricing tool.
+
+
+Envisioned Implementation
+- The speaker envisions a daily snapshot view as a landing page, which could be the first page tackled due to its simplicity.
+- Workflows could be additional pages for high-priority tasks that can be automated or supported with data.
+- There is a lot of flexibility, and things will evolve.
+
+
+Melissa's Tasks
+- Melissa's tasks are more daily, weekly, or monthly, rather than researching individual clients.
+- The team is familiar with task-driven notification systems, which could help with reconciliations.
+- Tasks include reconcilements on sweep accounts and promontory clients daily, quarterly, monthly, and annually.
+- Files are sent to CAA monthly through MC Squared tools, with associated tasks.
+
+
+Reconciliation and External Portals
+- Balances and totals from sweep account reconciliations are entered into an external portal for money market accounts like BlackRock, Federated, and Fidelity.
+- A future state wish is an API to connect the reconciliation process to the external source, eliminating manual entry.
+
+
+Research Functionality
+- Research includes both predefined research from reports and the ability to conduct research on data displayed on the UI.
+- The initial view of data drives further investigation, conversations, or ad hoc analytics.
+- Each team member may use the data differently, requiring an understanding of their specific use cases.
+
+
+
+Rosalie's Role
+- Rosalie is an analyst.
+- She supports ad hoc analytics and research.
+- She works with business requirements from a project perspective and is involved with FDIC 370.
+
+
+Next Steps
+- Follow up more on individual work streams.
+- Rosalie can add a post-it to the whiteboard if anything was missed.
+
+
+Upcoming Meetings
+- Meeting with Cop Teams team next week.
+  - They have slightly different things with DACAs and sub accounting.
+- Meeting with Dan and Bill on Wednesday.
+- Meeting with Rob's team the week after that.
+- Plan to meet with Mike Holyhan's team.
+
+
+Conclusion
+- Digest the information and come back with potentially individual whiteboards or workshops.
