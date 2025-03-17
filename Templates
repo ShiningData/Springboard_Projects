@@ -1,210 +1,35 @@
-Notes on Data Pipeline Workshop
+# Material Change Summary
 
-Created on March 14, 2025 at 11:03 AM by Minutes AI
+## Strategic Enhancement of the Healthcare Claims Denial Predictor Model
 
----
+The Healthcare Claims Denial Predictor continues to serve its established business use case while undergoing comprehensive enhancements to improve predictive performance and operational value. After systematic evaluation of the model architecture, feature engineering approach, and implementation workflow, we have implemented strategic improvements that address identified limitations while preserving the core business functionality.
 
-Introduction
-- The goal is to consolidate data sources into a pipeline for easier, faster, and more robust data handling.
-- The workshop focuses on mapping out user roles to identify data access patterns, workflows, and data sequestration needs.
-- The first work set will likely be building a daily dashboard.
+## Enhanced Feature Engineering Framework
 
+Our analysis of the current model revealed that the existing feature set at the claim service line level was not fully capturing the complex patterns associated with denial outcomes. Through rigorous feature importance analysis and domain expert consultation, we identified significant opportunities to enhance predictive power through:
 
-Whiteboard Session
-- The whiteboard session will be structured, with the speaker doing most of the writing.
-- Participants can "like" notes that apply to them.
-- Participants initially had view-only access, but this was updated.
+1. **Refined Feature Selection**: We conducted a systematic review of both original and derived features, eliminating redundant or low-signal attributes while preserving critical predictive indicators.
 
+2. **Advanced Feature Derivation**: We developed sophisticated derived features that better capture the relationships between procedure codes, diagnoses, and payer-specific patterns, significantly improving the model's ability to identify subtle denial risk factors.
 
-User Personas
-- Initial personas: managerial role and analyst role.
-- Additional roles suggested: product manager and admin.
-- The admin role would have access to everything, including making changes within the application.
+These feature engineering enhancements have yielded substantial improvements in model performance metrics while maintaining interpretability and operational relevance.
 
+## Architectural Optimization
 
-Admin Role Discussion
-- The admin function could be used to set system defaults.
-- The team manager could potentially serve as the admin if they have access to do everything.
-- The admin role could potentially make changes to default filters or drop-down menu values.
-- "Before we would ever go down this route, we would determine what specifically you would want to be able to have access to change. So it's more of like a be able to have like a self maintenance option."
+The previous implementation relied exclusively on a Catboost model without systematic hyperparameter optimization. Our architectural enhancements include:
 
+1. **Ensemble Methodology Implementation**: We developed a sophisticated ensemble approach combining AUTOGLUON and Catboost models, leveraging their complementary strengths to achieve superior predictive performance compared to either algorithm in isolation.
 
+2. **Automated Hyperparameter Optimization**: We incorporated automated parameter optimization workflows for both model components, ensuring optimal configuration without manual tuning requirements.
 
-Admin Role
-- The speaker believes a product manager could also have the admin role.
-- For risk purposes, it's better to keep an admin-specific role because risk partners are particular about who can make changes.
-- It's beneficial to have individual roles defined with specific functionality, especially when dealing with risk partners.
+3. **Threshold Normalization**: The enhanced model architecture demonstrates robust performance at the standard classification threshold (0.5), eliminating the need for the suboptimal approach of artificially lowering thresholds (previous values: FMOL: 0.207; Grady: 0.1479) to capture denied claims. This represents a significant methodological improvement that enhances both statistical rigor and operational clarity.
 
+## Interpretability Enhancement
 
-Product Advisors
-- Naren is meeting with product advisors Bill and Dan next week for a workshop to see how they interface with the teams.
-- Product advisors are the first line of defense for anything liquidity-related before it reaches Naren or Tim.
-- The speaker was initially concerned about separating liquidity roles because they use similar processes and reports.
+In response to client requirements for more actionable insights, we have upgraded the model's local interpretability framework:
 
+1. **RulexAI Implementation**: We have transitioned from SHAP-based feature attribution to the RulexAI approach, which provides more intuitive and operationally relevant explanations of the factors contributing to individual denial predictions.
 
-Scott's Role
-- Scott is the "super user" or "super group product manager" who sees everything.
-- It was suggested to call him "product manager, super user" in case he sees the notes.
+2. **Context-Aware Explanations**: The new interpretability framework presents contributing features in a format that aligns more directly with revenue cycle workflow decision points, enhancing the actionability of model outputs.
 
-
-Team Roles Clarification
-- The speaker prefers to be called "team manager" instead of "group product manager."
-- Melissa is the operations manager.
-- Melissa believes her team will primarily pull data and may fall into the "analyst" category.
-
-
-Persona Identification
-- Participants were asked to "like" the relevant post-it note if a Persona applied to them.
-- Rocio, Emily, and Jen are admins.
-- Rocio is a team manager.
-- Emily and Jen are product managers.
-- Melissa is an operations manager.
-- Revamp is an analyst.
-- Joanna and Connor are analysts who rotate through the groups.
-
-
-- Team members should have access to view data across different teams (Team's world, Rob's, Michaelihan's).
-  - The goal is to ensure everyone can see the entire balance sheet of deposits and products.
-  - Access should be at least "view only" to promote standardization.
-
-- Read-only vs. read and write access:
-  - There should be options for read-only access or the ability to delineate which areas can be read or written.
-  - "Read meaning you can only view it, right, meaning you can edit it."
-  - Multiple entitlements: The entitlement with the most access will be dominant.
-
-- Concern about being too restrictive:
-  - The aim is to avoid limiting data use and manipulation.
-  - "Today we all manipulate data and the different sources we all filter and you know, I'm thinking of tap for example, we all have access to build our reports the way we want to build it. Or I just want to make sure that it's not very restrictive."
-  - The system should be as open as possible within the confines of the entitlement system.
-
-- User activities and personas:
-  - Personas inform entitlements and the design of the data pipeline.
-  - Different personas inform access patterns, which influence how data is stored for quick retrieval.
-  - Entitlements are flexible and can be as large or small as needed.
-
-- Admin role:
-  - Traditionally has access to everything and can engage in all functionality and access data.
-  - Approving other OIMs is a separate conversation.
-
-- Team manager role (Rosie's input):
-  - Daily review of various reports drives research.
-  - Research involves downloading data from various sources like tap, CDM, Tableau, Salesforce, billing systems, and XNET reports.
-  - Different team members use the same information in different ways.
-
-
-
-Research Examples
-- Rocio looks at the daily balance mover report from finance to spot large jumps or declines.
-  - If the reason isn't obvious, she downloads data from tap or asks Emily or Jennifer to research.
-- For exception rate approvals, Rocio checks client profitability in Salesforce and balance composition in the liquidity sheet.
-  - She may also review downloads to make an informed decision.
-- Rocio uses data for research and decision-making across various liquidity products.
-
-
-Assigning Research
-- Rocio prefers to discuss research needs with Emily and Jennifer rather than using a tool for handing off tasks.
-  - Emily and Jennifer agree that the tool may not be the primary source for identifying research needs.
-
-
-Product Manager and Operations Manager Overlap
-- Emily and Jennifer's research overlaps with Rocio's, but they also have task-based responsibilities.
-  - Rocio's examples of reports used for exception requests or large movers are relevant.
-- Emily focuses on interest-bearing deposit products, while Jennifer focuses on sweeping products.
-  - They may use the same data but manipulate it differently.
-
-
-Task-Based Reports and Automation
-- Emily and Jennifer build Excel reports by downloading and formatting data from tap.
-  - There is potential for automation in these processes.
-- They perform similar initial manipulations, such as filtering for specific lines of business.
-  - They may filter out different train codes or product codes, but use the same source data.
-
-
-
-Pulse Origins and Concerns
-- Pulse started with the goal of automating some of the data used.
-- There's a concern about over-engineering the system, making it difficult to access specific data needed by individuals like Emily.
-
-
-Proposed Solution and Data Accessibility
-- A tool similar to the rate cuts tool on the interest-bearing side is envisioned, allowing users to pull in large data chunks and manually set filters based on products of interest.
-- The goal is to have the bulk of the data available with editable filters, addressing concerns about data accessibility.
-- Question: "How do I get to the source data?"
-  - The current app primarily presents data from Core and Agilytics in different slices.
-  - The ideal scenario involves making source data easily accessible within the app, either directly or through links.
-
-
-Entitlements and Data Views
-- Export features could be used to organize and export data into Excel or CSV files.
-- The team wants to see the same initial data snapshots, similar to current entitlements for products.
-- "We all want to see the same initial data of what are all of these accounts within our products or our liquidity world. How are they doing?"
-- There is a need for one entitlement for liquidity, potentially with separate entitlements for liquidity product and liquidity operations.
-
-
-Dashboard Vision and Automation
-- The vision is for a daily dashboard that aggregates reports and allows for specialized reports.
-- The long-term goal is to automate more day-to-day workflows and recurring reports.
-- "It would be some place place where you could do almost all your day to day activities."
-- Claire is asked to give a quick demo of Cam to give a sense of something else they built.
-
-
-
-Different Conversations
-- The speaker believes there are two different conversations:
-  - High level: source data is the same, viewing similar things.
-  - Day-to-day workflows: an individual conversation with each person to determine priorities for automation, reports used, and how they are manipulated.
-- From a high-level perspective, everyone needs to see the same stuff, but day-to-day tasks can differ depending on how granular you go.
-
-
-CAM Overview
-- CAM was recently built to support different types of incoming data and display it in various formats.
-- It has chart formats, export/import features, and bulk update options.
-- There is both reporting and decisioning capabilities, allowing users to take actions similar to a pricing tool.
-
-
-Envisioned Implementation
-- The speaker envisions a daily snapshot view as a landing page, which could be the first page tackled due to its simplicity.
-- Workflows could be additional pages for high-priority tasks that can be automated or supported with data.
-- There is a lot of flexibility, and things will evolve.
-
-
-Melissa's Tasks
-- Melissa's tasks are more daily, weekly, or monthly, rather than researching individual clients.
-- The team is familiar with task-driven notification systems, which could help with reconciliations.
-- Tasks include reconcilements on sweep accounts and promontory clients daily, quarterly, monthly, and annually.
-- Files are sent to CAA monthly through MC Squared tools, with associated tasks.
-
-
-Reconciliation and External Portals
-- Balances and totals from sweep account reconciliations are entered into an external portal for money market accounts like BlackRock, Federated, and Fidelity.
-- A future state wish is an API to connect the reconciliation process to the external source, eliminating manual entry.
-
-
-Research Functionality
-- Research includes both predefined research from reports and the ability to conduct research on data displayed on the UI.
-- The initial view of data drives further investigation, conversations, or ad hoc analytics.
-- Each team member may use the data differently, requiring an understanding of their specific use cases.
-
-
-
-Rosalie's Role
-- Rosalie is an analyst.
-- She supports ad hoc analytics and research.
-- She works with business requirements from a project perspective and is involved with FDIC 370.
-
-
-Next Steps
-- Follow up more on individual work streams.
-- Rosalie can add a post-it to the whiteboard if anything was missed.
-
-
-Upcoming Meetings
-- Meeting with Cop Teams team next week.
-  - They have slightly different things with DACAs and sub accounting.
-- Meeting with Dan and Bill on Wednesday.
-- Meeting with Rob's team the week after that.
-- Plan to meet with Mike Holyhan's team.
-
-
-Conclusion
-- Digest the information and come back with potentially individual whiteboards or workshops.
+These enhancements collectively represent a significant advancement in the model's capabilities while maintaining full alignment with its established business purpose. The improvements deliver enhanced predictive performance, methodological rigor, and user-centered interpretability without disrupting existing operational integration points.
