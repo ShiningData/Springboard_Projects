@@ -1,102 +1,69 @@
-Approach 1: Using Apache POI with Spark
-
-from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType
 import pandas as pd
-from io import BytesIO
-
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("Excel Reader with POI") \
-    .getOrCreate()
-
-# Define a function to read Excel using Apache POI (via pandas)
-def read_excel_with_poi(file_path):
-    # Read Excel with pandas (which uses POI under the hood)
-    pd_df = pd.read_excel(file_path)
-    
-    # Convert pandas DataFrame to Spark DataFrame
-    spark_df = spark.createDataFrame(pd_df)
-    return spark_df
-
-# For distributed processing, read file from each executor
-def process_excel_partition(iterator):
-    # This runs on each executor
-    import pandas as pd
-    for file_path in iterator:
-        yield pd.read_excel(file_path)
-
-# If you know the schema in advance (recommended for large files)
-schema = StructType([
-    StructField("Column1", StringType(), True),
-    StructField("Column2", IntegerType(), True),
-    StructField("Column3", DoubleType(), True)
-])
-
-# For a single Excel file
-excel_df = read_excel_with_poi("path/to/your/file.xlsx")
-
-# For multiple Excel files (distributed processing)
-file_list = spark.sparkContext.parallelize(["file1.xlsx", "file2.xlsx"])
-excel_dfs = file_list.flatMap(process_excel_partition)
-excel_df = spark.createDataFrame(excel_dfs, schema)
-
-excel_df.show()
-
-
-Approach 2: Converting Excel to CSV first, then reading with Spark
-
-from pyspark.sql import SparkSession
-import pandas as pd
+import glob
 import os
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("Excel to CSV Reader") \
-    .getOrCreate()
-
-# Step 1: Convert Excel to CSV (can be done outside of Spark)
-def convert_excel_to_csv(excel_path, csv_path):
-    # Read Excel file
-    excel_df = pd.read_excel(excel_path)
+# Function to read multiple Excel files and concatenate them
+def read_multiple_excel_files(file_paths):
+    """
+    Read multiple Excel files and concatenate them into a single DataFrame
     
-    # Write to CSV
-    excel_df.to_csv(csv_path, index=False)
+    Parameters:
+    file_paths (list): List of file paths to Excel files
     
-    return csv_path
+    Returns:
+    pandas.DataFrame: Concatenated DataFrame containing data from all files
+    """
+    all_dfs = []
+    
+    for file_path in file_paths:
+        # Print progress
+        print(f"Reading: {os.path.basename(file_path)}")
+        
+        # Read the Excel file
+        df = pd.read_excel(file_path)
+        
+        # Optionally add a column to identify source file
+        df['source_file'] = os.path.basename(file_path)
+        
+        # Add to our list
+        all_dfs.append(df)
+        
+        # Print the number of rows read
+        print(f"  Read {len(df)} rows")
+    
+    # Concatenate all DataFrames
+    if all_dfs:
+        combined_df = pd.concat(all_dfs, ignore_index=True)
+        print(f"\nSuccessfully combined {len(all_dfs)} files into a DataFrame with {len(combined_df)} rows")
+        return combined_df
+    else:
+        print("No data was read")
+        return pd.DataFrame()
 
-# Convert the file
-excel_file = "path/to/your/file.xlsx"
-csv_file = "path/to/temp/converted_file.csv"
-convert_excel_to_csv(excel_file, csv_file)
+# Example 1: Specify file paths explicitly
+file_paths = [
+    "path/to/file1.xlsx",
+    "path/to/file2.xlsx",
+    "path/to/file3.xlsx",
+    "path/to/file4.xlsx",
+    "path/to/file5.xlsx",
+    "path/to/file6.xlsx"
+]
 
-# Step 2: Read the CSV with Spark
-df = spark.read \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .csv(csv_file)
+# Example 2: Use glob to find all Excel files in a directory
+# directory = "path/to/excel_files/"
+# file_paths = glob.glob(directory + "*.xlsx")
 
-# Show the data
-df.show()
+# Read and combine the files
+combined_data = read_multiple_excel_files(file_paths)
 
-# Optional: Clean up the temporary CSV file
-# os.remove(csv_file)
+# Display the first few rows of the combined DataFrame
+combined_data.head()
 
-# For large-scale processing, you could implement this as a Spark job
-def process_excel_files(excel_files):
-    for excel_file in excel_files:
-        csv_file = excel_file.replace(".xlsx", ".csv")
-        convert_excel_to_csv(excel_file, csv_file)
-        yield csv_file
+# Basic information about the DataFrame
+print("\nDataFrame Information:")
+combined_data.info()
 
-# Process multiple files and create a list of CSV files
-excel_files = ["file1.xlsx", "file2.xlsx", "file3.xlsx"]
-csv_files = list(process_excel_files(excel_files))
-
-# Read all CSV files at once
-combined_df = spark.read \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .csv(csv_files)
-
-combined_df.show()
+# Summary statistics
+print("\nSummary Statistics:")
+combined_data.describe()
