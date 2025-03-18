@@ -1,210 +1,102 @@
-Data Workflow Personas
- Notes created on March 17, 2025 at 10:32 AM by Minutes AI
- Workshop Introduction
- • The workshop aims to understand data workflows within Tim's team and related teams.
- • The goal is to build "Personas" or roles that describe data-related activities.
- Background
- • Scott and the DSI team discussed how to ensure Liquidity can manage its data sources 
-(around 100 reports).
- • The aim is to create a pipeline to handle 5x growth robustly.
- • The DSI team (Data Science Innovation team led by Bedell) is exploring ways to create a 
-data pipeline, prioritize data sources, and understand workflows.
- • The end goal is an application data warehouse for data-driven work, automating report 
-creation, and decision support.
- • The focus is on integrating data from various sources into one place to reduce time 
-spent searching for data.
- Whiteboard Instructions
- • Use Pan mode to navigate the whiteboard.
- • Avoid moving elements around.
- • Zoom in/out using mouse scroll or trackpad pinch.
- • Middle-click with the mouse to pan.
- Team Overviews
- • Tim's team is responsible for non-interest-bearing products (DACA, sub-accounting), 
-international products, P times V balances, and rates.
- 
-• Jared's team supports the DACA product, including onboarding, implementation, midlife, 
-and the "death of the product" or deals within the product, focusing on admin and 
-operational aspects.
- Personas
- • Personas are archetypical user roles.
- • Some personas were created during a workshop with Rocio's team for interest-bearing 
-and sweep products.
- • The vision is that the work done now will lead to an application data warehouse.
- Data Access Patterns
- • Data access will likely be very broad to all data in the platform.
- • The goal is to figure out data access patterns to inform warehouse construction, data 
-storage, and front-end interactions.
- • This is an early-stage effort to understand what's right and wrong.
- Personas Overview
- • **Admin Persona:** Has access to everything and can modify app settings without tech 
-team intervention.
- • **Group Product Manager:** Reserved for someone like Scott.
- • **Team Manager, Product Manager, Operations Manager:**
- • Team Manager: Jared
- • Product Managers: Alicia, Dom
- • Product Owner: Jody
- Data Sources
- • Jared answered a question about data sources, directing listeners to a summarized view 
-on the right of the whiteboard and a detailed Excel file.
- 
-• Brandon will forward the Excel file from SharePoint (Current Projects > Liquidity).
- • Data sources cover six broad categories:
- • Market rates and intel (Fed, CME, Bloomberg, internal emails/SharePoint).
- • Internal rates (rate sheets on SharePoints, intranet rate sheet).
- • Ad hoc downloadable reports (TAP, XNET, Systemware, Tableau, Seismic, rate 
-management tool).
- • Tableau dashboards.
- • Email reports (duplicated across sections).
- • Data sources for the monthly liquidity meeting and deck.
- Whiteboard Interaction
- • Participants should hover over a Persona post-it and click the yellow thumbs up if the 
-role applies to them.
- • This will create a list of applicable tags for each person.
- • Participants can add people who are not present today.
- Personas
- • One role was separated for Scott, but the speaker was being sarcastic.
- • The speaker wanted to explain why that role was separated out for the sake of 
-transparency.
- • One person can have multiple Personas.
- Data Management
- • Jared says that team manager, ops manager, and analyst will cover 90% of data 
-management.
- • It is assumed that each manager role has its own team underneath it.
- • The dashboards will go by role, not by individual group.
- Data Access
- 
-• Data access is not going to be hidden.
- • Everyone should have access to the data.
- • If an analyst has access to certain things that a product manager does not, the product 
-manager can stack them on and then they have access to both.
- Drilling into Specific Products
- • The speaker wants the ability to drill in on specific products based on the Personas.
- • The speaker only cares about dacas.
- • The speaker suggests daca-specific variants.
- Operations Specialist
- • Hannah mentioned operations specialist under operations manager.
- • It is unclear if operations specialist is distinct from analyst.
- • The speaker is struggling with differentiating between data analytics and analysis 
-compared to workflow management.
- Data Collection
- • The speaker was thinking of this from a data collection standpoint.
- • The speaker was wondering where they are wanting to pull data and collect data for 
-different roles within an area.
- • The speaker was not sure if they want those kind of team or roles that they would be 
-collecting data from for the ops manager.
- Next Steps
- • The speaker wants to spend time talking through how each of the Personas interface 
-with data from two angles: how they do it now versus how they would like to do it in an 
-ideal world.
- • The speaker gave an example of an analyst perspective: currently, they may have to 
-build some reports by hand by pulling from various data sources, but in an ideal world, it 
-might be something that's augmented via some sort of automatic process.
- 
-• They will start with the team manager role.
- User Activity
- • Tim says that based on the data, they are looking at rate information, specific customer 
-demographics, and overall P times V.
- Tim's Data Needs
- • Wants a dashboard upon arrival providing industry rates, large movers (big balance 
-swings), and financial forecasts (P x V, balances, etc.).
- • A fourth quadrant could be a risk view or project-related view, showing project status 
-(green, yellow, red) impacting products, focusing on on-time and on-budget status.
- Jared's Data Needs
- • Prefers a dashboard to identify and drill down into specific areas.
- • Focuses on activity volumes, KPI measurements, and comparing activity volumes to FTE 
-needs estimates.
- • Needs a warning system for discrepancies between systems (e.g., DACA coding 
-mismatches between Edge Core, System of Record, PME, and Flex Cube).
- Clarification on "Things Not Lining Up"
- • Jared clarifies that his concern is about day-to-day operational mismatches, such as 
-incorrect DACA coding, unlike Tim's focus on budget forecasts.
- Alicia's Data Needs
- • Prefers a dashboard with the ability to click into the data.
- • Wants to see the same high-level data as Tim for her products, with the ability to dive 
-deeper into unexpected variances.
- • Wants a single place to access all data, currently uses disparate sources.
- 
-Unexpected Variance Examples
- • Examples include large balance swings or unexpected P times V figures.
- • Key categories are balances, rates, and fees, with subcategories within each.
- Variance Thresholds
- • A variance of 10% plus or minus could be a good starting point for identifying 
-unexpected changes.
- Dashboard and Data Access
- • Dashboard should have the ability to access source data and view unexpected 
-variances.
- • Add the ability to access data sources from the group's overall data source list 
-(compiled by Emily), possibly via a sidebar with direct links.
- Product Manager Needs (Alicia)
- • Alicia wants to know where a customer is in the onboarding process, especially for 
-bigger customers.
- • Alicia wants the data scientists to determine which data points are important.
- Dominic's Requirements: International (Canada Branch)
- • **Canada Branch:**
- • CED (Capital Equivalent Deposits) monitoring (mandatory reporting).
- • Canada branch deposits, including RBC legacy deposits.
- • Top 5 deposits, withdrawals, and balances.
- • Wishlist: Real-time balances for Canada branch (currently not possible).
- • Links to daily Excel reports.
- • Industry rates: Fed Funds, Bank of Canada, Bank of England, etc.
- 
-• Wishlist: Competitive intel on the "big five" Canadian banks' rates posted online.
- Dominic's Requirements: International (MCA Foreign 
-Currency Caps)
- • MCA Foreign Currency Caps:
- • Top 5 currencies and balances.
- • Central bank rates for the top 5 currencies (Euro, GBP, etc.).
- • Exception rate pricing for Euro, GBP, etc.
- • Consolidated balance amount with links to details on specific currencies.
- • Details should include the accounts with exception rate pricing within each 
-currency.
- • Limited to 5 or 6 currencies with credit interest exceptions.
- MCA
- • Speaker is sure they can take off a few more things but thinks it's good for now.
- Operations Manager
- • Jared and Hannah will handle this.
- • Hannah says a lot of it is the volumes and types of requests that come through.
- • Requests include:
- • DACA opportunity decisioning
- • DACA implementation
- • Midlife stuff
- • End of life (terminations)
- • TO-DOs: dashboarding, stats on account, DDA changes, warning system.
- • Monthly billing is important.
- • Currently, they push it to CAA.
- 
-• They want automation and to easily identify which accounts should be on the list.
- • Identifying characteristics such as what segments.
- • How many DACAs do we get on a month from commercial banking, real estate, 
-etc.
- • Who are the main people submitting these requests?
- • The main team, OSRM's, if there is a pattern.
- Team Manager Side
- • Volumes around what came through and breaking it up by life cycle stages.
- • Automation around billing information to push to CAA and characteristics by segment.
- • Add a post-it note with name or email/chat if there are any issues.
- Connor
- • Majority of the stuff that he pulls is pretty similar to Tim and Alicia.
- • Large deposit notifications.
- • Analysts help with certain tableau reporting that pulls in certain accounts with DACA 
-coding, SD coding.
- • "So there's a field in core that is related to dacas and we pull in all the core 
-accounts that have that specific coding and then we pull also accounts that have 
-that coding and what type of holds long term holds they have."
- • Analysts do the monthly liquidity packet.
- Jody
- • Same as.
- • Product owner wants to know where the projects are.
- • Red, yellow, green on projects.
- • They want to know if there's any severity tickets open deduction issues on their systems.
- Tickets
- 
-• Speaker asks where they are at with tickets.
- • Speaker is sure they can get more granular as they go.
- Conclusion
- • Speaker thinks it is a good place to stop.
- • They will spend time digesting everything and get back with individual workshops or 
-ideas.
- • "We'll spend some time processing all of this. So thank you everyone. If there's anything 
-else that comes up, feel free to."
- 
+Approach 1: Using Apache POI with Spark
+
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType
+import pandas as pd
+from io import BytesIO
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Excel Reader with POI") \
+    .getOrCreate()
+
+# Define a function to read Excel using Apache POI (via pandas)
+def read_excel_with_poi(file_path):
+    # Read Excel with pandas (which uses POI under the hood)
+    pd_df = pd.read_excel(file_path)
+    
+    # Convert pandas DataFrame to Spark DataFrame
+    spark_df = spark.createDataFrame(pd_df)
+    return spark_df
+
+# For distributed processing, read file from each executor
+def process_excel_partition(iterator):
+    # This runs on each executor
+    import pandas as pd
+    for file_path in iterator:
+        yield pd.read_excel(file_path)
+
+# If you know the schema in advance (recommended for large files)
+schema = StructType([
+    StructField("Column1", StringType(), True),
+    StructField("Column2", IntegerType(), True),
+    StructField("Column3", DoubleType(), True)
+])
+
+# For a single Excel file
+excel_df = read_excel_with_poi("path/to/your/file.xlsx")
+
+# For multiple Excel files (distributed processing)
+file_list = spark.sparkContext.parallelize(["file1.xlsx", "file2.xlsx"])
+excel_dfs = file_list.flatMap(process_excel_partition)
+excel_df = spark.createDataFrame(excel_dfs, schema)
+
+excel_df.show()
+
+
+Approach 2: Converting Excel to CSV first, then reading with Spark
+
+from pyspark.sql import SparkSession
+import pandas as pd
+import os
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Excel to CSV Reader") \
+    .getOrCreate()
+
+# Step 1: Convert Excel to CSV (can be done outside of Spark)
+def convert_excel_to_csv(excel_path, csv_path):
+    # Read Excel file
+    excel_df = pd.read_excel(excel_path)
+    
+    # Write to CSV
+    excel_df.to_csv(csv_path, index=False)
+    
+    return csv_path
+
+# Convert the file
+excel_file = "path/to/your/file.xlsx"
+csv_file = "path/to/temp/converted_file.csv"
+convert_excel_to_csv(excel_file, csv_file)
+
+# Step 2: Read the CSV with Spark
+df = spark.read \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .csv(csv_file)
+
+# Show the data
+df.show()
+
+# Optional: Clean up the temporary CSV file
+# os.remove(csv_file)
+
+# For large-scale processing, you could implement this as a Spark job
+def process_excel_files(excel_files):
+    for excel_file in excel_files:
+        csv_file = excel_file.replace(".xlsx", ".csv")
+        convert_excel_to_csv(excel_file, csv_file)
+        yield csv_file
+
+# Process multiple files and create a list of CSV files
+excel_files = ["file1.xlsx", "file2.xlsx", "file3.xlsx"]
+csv_files = list(process_excel_files(excel_files))
+
+# Read all CSV files at once
+combined_df = spark.read \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .csv(csv_files)
+
+combined_df.show()
