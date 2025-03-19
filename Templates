@@ -1,27 +1,195 @@
-Subject: Meeting Request: Feedback on ML/AI Infrastructure Needs
-
-Dear Data Science Team,
-
-I'd like to invite all model developers to a brief meeting to gather feedback on our current ML/AI infrastructure. Our management team is seeking input on the resources and tools we need to build, test, and deploy ML models and AI systems more efficiently.
-
-Meeting Details:
-- Date: [Insert date]
-- Time: [Insert time]
-- Location: [Insert location/virtual meeting link]
-
-Discussion Topics:
-1. Infrastructure requirements (GPUs, computing resources)
-2. Library needs (HuggingFace, NVIDIA NGC containers)
-3. NLP and use-case specific libraries that we're struggling to access
-4. Pain points in our current workflow
-5. Opportunities for improvement ("if we had X, we could do Y")
-
-Please come prepared with specific examples of challenges you've faced when building or deploying models like claim predictors, attrition models, AVS systems, etc. Short anecdotes about how infrastructure limitations have impacted your work would be particularly valuable.
-
-The feedback collected will be presented to management tomorrow to advocate for the resources we need. This is our opportunity to clearly communicate our requirements and make a case for necessary improvements.
-
-Looking forward to your input.
-
-Best regards,
-[Your Name]
-Lead Data Scientist
+Meeting Notes
+ Notes created on March 19, 2025 at 3:01 PM by Minutes AI
+ • The speaker can't record the meeting because they are not the organizer.
+ • To record, the speaker needs to be made an organizer.
+ • Meeting options can be found in the top bar or via Outlook.
+ • Meeting options allow changing roles, which would allow the speaker to record.
+ • Butter will meet with high-level managers to discuss requirements for improving 
+building, testing, and deploying models.
+ • Five topics will be discussed, and a slide deck will be sent to Butter today.
+ • The five topics include instructor requirements and GP computer resources.
+ • The speaker wants input on the topics and will wrap up a slide deck at the end.
+ • Some attendees are having trouble accessing the Lightboard.
+ • Access can be gained via Teams, the Whiteboard app, or the Whiteboard website 
+(whiteboard.office.com).
+ • Lauren can access the Whiteboard but doesn't know if she can share it.
+ • Heechan and Lauren are having issues.
+ GPU Requirements
+ • One GPU is needed in dev, one in Keywright, one in QA, and two in production.
+ • If possible, request H100 GPUs, but they are expensive (around $500,000).
+ • The company purchased four V100 GPUs before, which will be decommissioned in 6 
+months to a year, so an upgrade is needed.
+ CUDA Driver Issues
+ • There are issues installing CUDA drivers for the current GPU in QA.
+ • Surya submitted an incident regarding this.
+ These notes were taken with Minutes AI (https://myminutes.ai)
+• Downloading CUDA drivers from the Nvidia website is flagged during vulnerability tests, 
+so they are eventually removed.
+ • Someone needs to install the CUDA drivers permanently on the GPU.
+ • Speaker asks about memory needed for LLM models.
+ • Speaker asks about GPU needs.
+ Infrastructure
+ • Naren asks about MLFlow or similar frameworks for tracking model runs.
+ • Speaker says MLFlow is useful for tracking models, versions, and performance metrics, 
+but it's not currently being used.
+ • Naren mentions CI/CD pipeline and Jenkins.
+ • Jenkins is available but requires being part of a tracked project.
+ • It's harder to access for ad hoc projects.
+ Library Needs
+ • Speaker highlights Hugging Face and Nvidia NGC containers.
+ • Naren hasn't encountered missing libraries, except for CUDA stuff for the GPU.
+ • Language libraries mentioned: Transformers, Spacy models, NLTK.
+ • Spacy can tie into Transformers on Hugging Face.
+ • GPU libraries: Rapids, cuGraph, PyG, Kubra.
+ • Speaker asks about vector database storage.
+ • Oracle allegedly has a way to do it.
+ • The team that did the tech side of the TM knowledge assistant POC used postgres and 
+the Vector VB extension for Postgres.
+ • MongoDB Atlas has its own vector base which can be used for semantic and lexical 
+search.
+ • Elastic Stack:
+ These notes were taken with Minutes AI (https://myminutes.ai)
+• It is used for JIRA tickets.
+ • It is unknown to what extent all of its services are available.
+ • A search links together ServiceNow and other things, but it is not a Vector database.
+ • Vector databases are needed for NLP and are helpful for graphs.
+ • Use cases for Vector databases might be helpful to note, specifically for NLP projects.
+ • Vector base: Converting values into numerical values and keeping them in databases.
+ • Vector function vs. long arrays of numbers: The conversation is about long arrays of 
+numbers to represent something.
+ • Graph embeddings can be stored in a vector database in an optimized way.
+ • Yi Chan is the only one currently doing NLP.
+ • Transformers and sentence transformers:
+ • They can be technically installed.
+ • Operations will fail because it will try to download models from hugging face.
+ • The packages are accessible, but the functionality is inaccessible.
+ • Each person should write a post-it note highlighting pain points in the current workflow.
+ • A couple of small anecdotes, one paragraph at most for each.
+ • Focus on how hard it was to build, test, and deploy a model.
+ • Hassan currently doesn't have any workflow that requires using GPU or other 
+inaccessible libraries.
+ • OCR problem: They tried to solve it last year, but couldn't because of the OCR packages.
+ • Graph: Hassan doesn't have any problems with graph at this point.
+ • Discussion about note-taking within the group.
+ • Suggestion to create a new note using the yellow post-it icon at the bottom.
+ • The note color can be changed in the node settings.
+ Eachan's Pain Points
+ • Can't access Python packages, transformers, and sentence transformers.
+ These notes were taken with Minutes AI (https://myminutes.ai)
+• Blocked because packages must call Hugging Face for text clustering, embedding, and 
+sentiment models.
+ • Alternatives lead to less accurate topics and are less maintainable.
+ • Without transformers, sentiment analysis will be "pretty bad."
+ Noreen's Pain Points
+ • Bookkeeping issues with tracking model runs and results for the anomaly detection 
+model for Urban sponsorship.
+ • Doing everything by hand, using text files, due to lack of ML Ops.
+ • ML Ops would make the process "way less tedious."
+ Hassan's Pain Points
+ • Difficulty with resource-intensive models, even on PAE.
+ • Limited resources in QA and production.
+ • Forecasting service optimization causes complaints from the platform team due to long 
+run times.
+ • Claim protected autogluon requires lots of resources and memory, exceeding the 
+available 30 gigabytes.
+ • MRNG is "too much bureaucratic" and takes too much time and effort.
+ • Brandon has problems gathering data for attrition because the MDW warehouse is large, 
+so queries take time.
+ • Customer segmentation uses tap revenue tables, which take a long time for replication.
+ MLflow
+ • MLflow is already on DSI for production tracking.
+ • Sandeep says that if you are using DSI servers for deployment, model training, 
+experimentation, or tracking, you should use the available MLflow.
+ • Hassan remembers that when calling the API, everything is automatically tracked on 
+MLflow.
+ These notes were taken with Minutes AI (https://myminutes.ai)
+• If training/running a model on PAE, MLflow is not available, but it is if using DSI's 
+infrastructure.
+ Vector Database
+ • There is no vector database currently.
+ • Sandeep is doing a PoC using MongoDB to store vectors.
+ • MongoDB Atlass has built-in vector DB capability.
+ • DSI's backend is already Mongo, so it's a natural fit.
+ Jupyter environment in DSI
+ • There is a Jupyter environment in DSI.
+ • If using Hadoop data, there is no connection between DSI and Hadoop yet.
+ • If building a use case directly on DSI, everything needed is available.
+ • If the data is coming as a file, like in the claim predictor case, everything can be done on 
+DSI.
+ OpenAI
+ • The only place where OpenAI is used is on the text PM Knowledge Assistant project for 
+summarization.
+ • They cannot directly use OpenAI.
+ Opportunities for improvement
+ • The easiest answer is Amazon AWS cloud.
+ • "If we have it, we can do everything."
+ • Can they use copilot? Probably not unless they do all the training internally.
+ Ichan
+ These notes were taken with Minutes AI (https://myminutes.ai)
+• IT. Merlin is writing Ichan to see if he has anything for these opportunities.
+ • Merlin is curious about using the existing Kibana Elastic Stack tooling for vector 
+database needs.
+ • Merlin found a page for onboarding but doesn't know if it's suitable.
+ • Sandeep says Elastic Stack is in plc and they have a little use of it.
+ • Merlin asks in what context.
+ • Sandeep says the more tools that are brought in, the more management is required.
+ • Sandeep is consolidating and taking out databases that are not needed and using 
+MongoDB.
+ • MongoDB was easy to use.
+ Graph Visualization Tool
+ • Two weeks ago, graph visualization tools were discussed with Padel.
+ • There aren't any Neo4j data science tools, like Tableau, because it's not your GTS.
+ • It doesn't have much table data.
+ • For visualization, PIVs and GraphVs are the main two libraries used.
+ Opportunities for Improvement
+ • Brandon doesn't have anything at the moment.
+ • Hassan wants to get rid of Cloudera.
+ • Cloudera, the whole software application.
+ • Fiserv: Can we get rid of Fiserv as well?
+ • Spark can be managed by other applications.
+ • Sandeep agrees.
+ • Sandeep has to do research to give a recommendation for a replacement.
+ • AWS can replace Cloudera.
+ • Cloudera bought Hot and Walls a couple of years back.
+ • Lauren doesn't have anything for opportunities for improvement.
+ These notes were taken with Minutes AI (https://myminutes.ai)
+Infrastructure/Library
+ • There isn't good tooling integration.
+ • It used to be the case that you could connect PyCharm to the pae.
+ • That access is going away unless SA accounts are used.
+ • PyCharm was the only real tool with intelligent Python support.
+ • VS code has a few auto completions, but not great.
+ • On RAD for writing Python code there, there isn't Python tooling.
+ • There is a request for some sort of tooling, whether it's a language server 
+protocol kind of tooling.
+ • It could be for Python, R, or even SQL.
+ • The only IDE for Python is PyCharm, and it's going to be tricky to connect that to 
+the pae.
+ GPU
+ • If GPU is obtained, it would be good to have an interactive environment on the GPU side 
+like Jupiter Hub or Jupyter notebook so code can be prototyped.
+ • Cloudera Services and DSS services DSI servers or services.
+ • Dedicated OCP cluster for ML optimized for model, not for app because right now PNC's 
+OCP cluster is optimized for app onboarding and app building not for ML model 
+management.
+ • Memory databases like Redis are being installed on DSI.
+ • Object storage like S3 or vector databases.
+ • Non-online LLMs (non-internet facing) on DSI servers for specific use cases.
+ • Reconfiguration of Hadoop and Spark because current setup is for data engineering, not 
+ML.
+ • Model monitoring tools like Arise AI for model management, especially for on-prem and 
+online models.
+ • Need for pre-prod environment for AB testing, currently everything runs in production.
+ These notes were taken with Minutes AI (https://myminutes.ai)
+• Access to cloud for burst ML training.
+ • Feature store can be done with Mongo, but Hopsworks is better.
+ • Model monitoring framework is more important than feature store for CNIB TM business.
+ • Model persistence is needed for saving models and transfer learning.
+ • MLflow is working for model registry.
+ • Model persistence options:
+ • File storage (current method for claim predictor model).
+ • Object storage (like S3).
+ • Object storage is suitable for text, data, voice calls, data plus model objects, and files.
+ • Presentation will segregate points into infrastructure and new processes.
+ • Information will be converted to slides and shared.
+ These notes were taken with Minutes AI (https://myminutes.ai)
