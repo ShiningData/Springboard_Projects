@@ -1,1 +1,27 @@
+Subject: Meeting Request: Feedback on ML/AI Infrastructure Needs
 
+Dear Data Science Team,
+
+I'd like to invite all model developers to a brief meeting to gather feedback on our current ML/AI infrastructure. Our management team is seeking input on the resources and tools we need to build, test, and deploy ML models and AI systems more efficiently.
+
+Meeting Details:
+- Date: [Insert date]
+- Time: [Insert time]
+- Location: [Insert location/virtual meeting link]
+
+Discussion Topics:
+1. Infrastructure requirements (GPUs, computing resources)
+2. Library needs (HuggingFace, NVIDIA NGC containers)
+3. NLP and use-case specific libraries that we're struggling to access
+4. Pain points in our current workflow
+5. Opportunities for improvement ("if we had X, we could do Y")
+
+Please come prepared with specific examples of challenges you've faced when building or deploying models like claim predictors, attrition models, AVS systems, etc. Short anecdotes about how infrastructure limitations have impacted your work would be particularly valuable.
+
+The feedback collected will be presented to management tomorrow to advocate for the resources we need. This is our opportunity to clearly communicate our requirements and make a case for necessary improvements.
+
+Looking forward to your input.
+
+Best regards,
+[Your Name]
+Lead Data Scientist
