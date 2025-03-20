@@ -1,195 +1,91 @@
-Meeting Notes
- Notes created on March 19, 2025 at 3:01 PM by Minutes AI
- • The speaker can't record the meeting because they are not the organizer.
- • To record, the speaker needs to be made an organizer.
- • Meeting options can be found in the top bar or via Outlook.
- • Meeting options allow changing roles, which would allow the speaker to record.
- • Butter will meet with high-level managers to discuss requirements for improving 
-building, testing, and deploying models.
- • Five topics will be discussed, and a slide deck will be sent to Butter today.
- • The five topics include instructor requirements and GP computer resources.
- • The speaker wants input on the topics and will wrap up a slide deck at the end.
- • Some attendees are having trouble accessing the Lightboard.
- • Access can be gained via Teams, the Whiteboard app, or the Whiteboard website 
-(whiteboard.office.com).
- • Lauren can access the Whiteboard but doesn't know if she can share it.
- • Heechan and Lauren are having issues.
- GPU Requirements
- • One GPU is needed in dev, one in Keywright, one in QA, and two in production.
- • If possible, request H100 GPUs, but they are expensive (around $500,000).
- • The company purchased four V100 GPUs before, which will be decommissioned in 6 
-months to a year, so an upgrade is needed.
- CUDA Driver Issues
- • There are issues installing CUDA drivers for the current GPU in QA.
- • Surya submitted an incident regarding this.
- These notes were taken with Minutes AI (https://myminutes.ai)
-• Downloading CUDA drivers from the Nvidia website is flagged during vulnerability tests, 
-so they are eventually removed.
- • Someone needs to install the CUDA drivers permanently on the GPU.
- • Speaker asks about memory needed for LLM models.
- • Speaker asks about GPU needs.
- Infrastructure
- • Naren asks about MLFlow or similar frameworks for tracking model runs.
- • Speaker says MLFlow is useful for tracking models, versions, and performance metrics, 
-but it's not currently being used.
- • Naren mentions CI/CD pipeline and Jenkins.
- • Jenkins is available but requires being part of a tracked project.
- • It's harder to access for ad hoc projects.
- Library Needs
- • Speaker highlights Hugging Face and Nvidia NGC containers.
- • Naren hasn't encountered missing libraries, except for CUDA stuff for the GPU.
- • Language libraries mentioned: Transformers, Spacy models, NLTK.
- • Spacy can tie into Transformers on Hugging Face.
- • GPU libraries: Rapids, cuGraph, PyG, Kubra.
- • Speaker asks about vector database storage.
- • Oracle allegedly has a way to do it.
- • The team that did the tech side of the TM knowledge assistant POC used postgres and 
-the Vector VB extension for Postgres.
- • MongoDB Atlas has its own vector base which can be used for semantic and lexical 
-search.
- • Elastic Stack:
- These notes were taken with Minutes AI (https://myminutes.ai)
-• It is used for JIRA tickets.
- • It is unknown to what extent all of its services are available.
- • A search links together ServiceNow and other things, but it is not a Vector database.
- • Vector databases are needed for NLP and are helpful for graphs.
- • Use cases for Vector databases might be helpful to note, specifically for NLP projects.
- • Vector base: Converting values into numerical values and keeping them in databases.
- • Vector function vs. long arrays of numbers: The conversation is about long arrays of 
-numbers to represent something.
- • Graph embeddings can be stored in a vector database in an optimized way.
- • Yi Chan is the only one currently doing NLP.
- • Transformers and sentence transformers:
- • They can be technically installed.
- • Operations will fail because it will try to download models from hugging face.
- • The packages are accessible, but the functionality is inaccessible.
- • Each person should write a post-it note highlighting pain points in the current workflow.
- • A couple of small anecdotes, one paragraph at most for each.
- • Focus on how hard it was to build, test, and deploy a model.
- • Hassan currently doesn't have any workflow that requires using GPU or other 
-inaccessible libraries.
- • OCR problem: They tried to solve it last year, but couldn't because of the OCR packages.
- • Graph: Hassan doesn't have any problems with graph at this point.
- • Discussion about note-taking within the group.
- • Suggestion to create a new note using the yellow post-it icon at the bottom.
- • The note color can be changed in the node settings.
- Eachan's Pain Points
- • Can't access Python packages, transformers, and sentence transformers.
- These notes were taken with Minutes AI (https://myminutes.ai)
-• Blocked because packages must call Hugging Face for text clustering, embedding, and 
-sentiment models.
- • Alternatives lead to less accurate topics and are less maintainable.
- • Without transformers, sentiment analysis will be "pretty bad."
- Noreen's Pain Points
- • Bookkeeping issues with tracking model runs and results for the anomaly detection 
-model for Urban sponsorship.
- • Doing everything by hand, using text files, due to lack of ML Ops.
- • ML Ops would make the process "way less tedious."
- Hassan's Pain Points
- • Difficulty with resource-intensive models, even on PAE.
- • Limited resources in QA and production.
- • Forecasting service optimization causes complaints from the platform team due to long 
-run times.
- • Claim protected autogluon requires lots of resources and memory, exceeding the 
-available 30 gigabytes.
- • MRNG is "too much bureaucratic" and takes too much time and effort.
- • Brandon has problems gathering data for attrition because the MDW warehouse is large, 
-so queries take time.
- • Customer segmentation uses tap revenue tables, which take a long time for replication.
- MLflow
- • MLflow is already on DSI for production tracking.
- • Sandeep says that if you are using DSI servers for deployment, model training, 
-experimentation, or tracking, you should use the available MLflow.
- • Hassan remembers that when calling the API, everything is automatically tracked on 
-MLflow.
- These notes were taken with Minutes AI (https://myminutes.ai)
-• If training/running a model on PAE, MLflow is not available, but it is if using DSI's 
-infrastructure.
- Vector Database
- • There is no vector database currently.
- • Sandeep is doing a PoC using MongoDB to store vectors.
- • MongoDB Atlass has built-in vector DB capability.
- • DSI's backend is already Mongo, so it's a natural fit.
- Jupyter environment in DSI
- • There is a Jupyter environment in DSI.
- • If using Hadoop data, there is no connection between DSI and Hadoop yet.
- • If building a use case directly on DSI, everything needed is available.
- • If the data is coming as a file, like in the claim predictor case, everything can be done on 
-DSI.
- OpenAI
- • The only place where OpenAI is used is on the text PM Knowledge Assistant project for 
-summarization.
- • They cannot directly use OpenAI.
- Opportunities for improvement
- • The easiest answer is Amazon AWS cloud.
- • "If we have it, we can do everything."
- • Can they use copilot? Probably not unless they do all the training internally.
- Ichan
- These notes were taken with Minutes AI (https://myminutes.ai)
-• IT. Merlin is writing Ichan to see if he has anything for these opportunities.
- • Merlin is curious about using the existing Kibana Elastic Stack tooling for vector 
-database needs.
- • Merlin found a page for onboarding but doesn't know if it's suitable.
- • Sandeep says Elastic Stack is in plc and they have a little use of it.
- • Merlin asks in what context.
- • Sandeep says the more tools that are brought in, the more management is required.
- • Sandeep is consolidating and taking out databases that are not needed and using 
-MongoDB.
- • MongoDB was easy to use.
- Graph Visualization Tool
- • Two weeks ago, graph visualization tools were discussed with Padel.
- • There aren't any Neo4j data science tools, like Tableau, because it's not your GTS.
- • It doesn't have much table data.
- • For visualization, PIVs and GraphVs are the main two libraries used.
- Opportunities for Improvement
- • Brandon doesn't have anything at the moment.
- • Hassan wants to get rid of Cloudera.
- • Cloudera, the whole software application.
- • Fiserv: Can we get rid of Fiserv as well?
- • Spark can be managed by other applications.
- • Sandeep agrees.
- • Sandeep has to do research to give a recommendation for a replacement.
- • AWS can replace Cloudera.
- • Cloudera bought Hot and Walls a couple of years back.
- • Lauren doesn't have anything for opportunities for improvement.
- These notes were taken with Minutes AI (https://myminutes.ai)
-Infrastructure/Library
- • There isn't good tooling integration.
- • It used to be the case that you could connect PyCharm to the pae.
- • That access is going away unless SA accounts are used.
- • PyCharm was the only real tool with intelligent Python support.
- • VS code has a few auto completions, but not great.
- • On RAD for writing Python code there, there isn't Python tooling.
- • There is a request for some sort of tooling, whether it's a language server 
-protocol kind of tooling.
- • It could be for Python, R, or even SQL.
- • The only IDE for Python is PyCharm, and it's going to be tricky to connect that to 
-the pae.
- GPU
- • If GPU is obtained, it would be good to have an interactive environment on the GPU side 
-like Jupiter Hub or Jupyter notebook so code can be prototyped.
- • Cloudera Services and DSS services DSI servers or services.
- • Dedicated OCP cluster for ML optimized for model, not for app because right now PNC's 
-OCP cluster is optimized for app onboarding and app building not for ML model 
-management.
- • Memory databases like Redis are being installed on DSI.
- • Object storage like S3 or vector databases.
- • Non-online LLMs (non-internet facing) on DSI servers for specific use cases.
- • Reconfiguration of Hadoop and Spark because current setup is for data engineering, not 
-ML.
- • Model monitoring tools like Arise AI for model management, especially for on-prem and 
-online models.
- • Need for pre-prod environment for AB testing, currently everything runs in production.
- These notes were taken with Minutes AI (https://myminutes.ai)
-• Access to cloud for burst ML training.
- • Feature store can be done with Mongo, but Hopsworks is better.
- • Model monitoring framework is more important than feature store for CNIB TM business.
- • Model persistence is needed for saving models and transfer learning.
- • MLflow is working for model registry.
- • Model persistence options:
- • File storage (current method for claim predictor model).
- • Object storage (like S3).
- • Object storage is suitable for text, data, voice calls, data plus model objects, and files.
- • Presentation will segregate points into infrastructure and new processes.
- • Information will be converted to slides and shared.
- These notes were taken with Minutes AI (https://myminutes.ai)
+FEATURE IMPORTANCE:
+
+ 4.7 Model Outcome Analysis: Global Feature Importance
+
+ 4.7.1 FMOL Ensemble Model Global Feature Importance
+
+The RulexAI global feature importance analysis for FMOL provides valuable insights into the drivers of claim denial predictions across two temporal windows: 12-month and 18-month datasets. This analysis quantifies the contribution of each feature to model predictions, with positive values indicating factors that increase denial probability and negative values representing factors that decrease denial likelihood.
+
+ 4.7.1.1 12 Months FMOL Data
+
+For the 12-month FMOL dataset, the analysis reveals distinct patterns in feature importance for both claim approval (class 0) and denial (class 1) outcomes:
+
+Class 0 (Claim Approval) Drivers:
+- Provider NPI emerges as the most significant factor (0.0223) influencing claim approval, suggesting that certain providers have established effective claims submission practices.
+- Claim facility code (0.0051) and service line revenue code (-0.0015) also demonstrate notable influence on approval outcomes.
+- The strongest negative predictors for approval include claim frequency code (-0.2651), FE_actual_patientAge (-0.2188), and service line quantity (-0.1349), indicating these factors increase denial likelihood when present in certain configurations.
+
+Class 1 (Claim Denial) Drivers:
+- Service line revenue code shows the highest positive impact (0.0831) on denial predictions, indicating certain revenue codes are strongly associated with denial outcomes.
+- Service line quantity (0.0279) and FE_serviceLinePointedDiagnosisTypeCodes_1 (0.0045) also contribute significantly to denial predictions.
+- Patient demographic factors show minimal impact, with FE_actual_patientGender having very low importance (8.94E-05).
+- Strong negative contributors to denial prediction include FE_actual_patientAge (-0.0897) and provider NPI (-0.0489), suggesting these factors, when present in certain configurations, reduce denial likelihood.
+
+ 4.7.1.2 18 Months FMOL Data
+
+Extending the analysis to the 18-month FMOL dataset reveals both consistency and evolution in feature importance:
+
+Class 0 (Claim Approval) Drivers:
+- Provider NPI maintains significant importance (0.0051), though its relative influence has decreased compared to the 12-month dataset.
+- Service line unit of measure (-0.0052) and service line revenue code (-0.0071) show consistent negative impact on approval probability.
+- Claim frequency code (-0.2716) remains the strongest negative predictor for approval, consistent with the 12-month analysis.
+
+Class 1 (Claim Denial) Drivers:
+- Service line procedure code (-0.0027) and service line revenue code (-0.0029) show modest negative impact on denial prediction.
+- Claim facility code (-0.0050) and provider NPI (-0.0080) emerge as stronger negative contributors to denial in the extended dataset.
+- Service line quantity (-0.1332) shows significant negative association with denials in the 18-month data.
+
+The 18-month analysis demonstrates a shift in feature importance patterns compared to the 12-month window, suggesting temporal evolution in denial patterns. The reduced magnitude of importance values in the 18-month data may indicate more complex interrelationships between features over the extended timeframe.
+
+ 4.7.2 GRADY Ensemble Model Global Feature Importance
+
+The Grady Health System data exhibits distinct feature importance patterns compared to FMOL, highlighting the importance of client-specific model customization in healthcare claim denial prediction.
+
+ 4.7.2.1 12 Months Grady Data
+
+The 12-month Grady dataset shows the following feature importance patterns:
+
+Class 0 (Claim Approval) Drivers:
+- Service line procedure code emerges as the most significant positive factor (0.0017) for claim approval.
+- Service line procedure code qualifier (-0.0038), service line quantity (-0.0096), and service line unit of measure (-0.0163) all show negative association with approval.
+- Patient age (FE_actual_patientAge) shows the strongest negative impact (-0.2902) on approval probability, indicating older patient demographics may face higher denial rates.
+
+Class 1 (Claim Denial) Drivers:
+- Claim facility code shows the strongest positive association (0.0028) with denial outcomes.
+- Patient demographics, including FE_actual_patientGender (-0.0015) and FE_actual_patientAge (-0.0800), show negative influence on denial probability.
+- Service line quantity (-0.1750) demonstrates significant negative association with denials, indicating that higher quantity services may face lower denial rates in the Grady environment.
+
+ 4.7.2.2 18 Months Grady Data
+
+The extended 18-month Grady dataset reveals evolution in feature importance:
+
+Class 0 (Claim Approval) Drivers:
+- Service line procedure code maintains positive importance (0.0016), consistent with the 12-month analysis.
+- Service line quantity (-0.0465) and claim frequency code (-0.1372) show strong negative associations with approval.
+- Patient age (FE_actual_patientAge) remains the most significant negative predictor (-0.2613) for approval.
+
+Class 1 (Claim Denial) Drivers:
+- Claim frequency code emerges as the strongest positive predictor (0.0170) for denials in the extended dataset.
+- Claim facility code (0.0000) shows negligible impact on denial probability, a notable change from the 12-month analysis.
+- Service line quantity (-0.1370) maintains its strong negative association with denial outcomes.
+
+ Cross-Client Comparative Analysis
+
+The comparative analysis between FMOL and Grady feature importance reveals several insights:
+
+1. Client-Specific Patterns: The two healthcare organizations show distinct feature importance patterns, highlighting the value of customized modeling approaches:
+   - FMOL shows stronger influence from provider NPI and revenue codes
+   - Grady exhibits greater sensitivity to procedure codes and patient demographics
+
+2. Temporal Consistency: Both clients show relatively consistent patterns between 12-month and 18-month analyses for class 0 (approval) predictors, suggesting stable patterns in factors that lead to successful claims.
+
+3. Denial Factor Evolution: The class 1 (denial) predictors show more variation between the 12-month and 18-month analyses, indicating that denial patterns may evolve more rapidly and require more frequent model updates.
+
+4. Demographic Factors: Patient age shows significant importance in the Grady dataset but more moderate influence in the FMOL data, suggesting organizational differences in patient population or service mix.
+
+5. Common Drivers: Service line quantity emerges as an important factor across both client environments, consistently showing negative association with approval probability.
+
+These global feature importance patterns inform targeted interventions in the revenue cycle process, enabling each healthcare organization to focus improvement efforts on the most influential factors in their specific environment. The analysis will be updated quarterly to track evolving patterns and ensure the model maintains alignment with changing payer behaviors and coding requirements.
+
+===================================
+
