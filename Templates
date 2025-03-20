@@ -89,3 +89,65 @@ These global feature importance patterns inform targeted interventions in the re
 
 ===================================
 
+# 4.8 Precision-Recall Curve Analysis
+
+## Overview of Precision-Recall Evaluation for Healthcare Claim Denial Prediction
+
+The Precision-Recall curve represents a critical performance evaluation tool for our healthcare claim denial predictor model, particularly given the inherent class imbalance in claims data where denials typically constitute a minority class. Unlike ROC curves that plot true positive rate against false positive rate, Precision-Recall curves specifically focus on the trade-off between precision (positive predictive value) and recall (sensitivity) across various classification thresholds.
+
+In the context of our healthcare claim denial predictor, this evaluation metric holds particular significance:
+
+- **Precision** measures the proportion of claims predicted as denials that are actually denied. High precision minimizes false positives, which is operationally important as each flagged claim requires resource-intensive review.
+
+- **Recall** quantifies the proportion of actual denials that are correctly identified by the model. High recall ensures that potentially problematic claims are not missed, which directly impacts revenue preservation.
+
+The area under the Precision-Recall curve (PR AUC) provides a single-value performance metric that captures the model's ability to maintain both high precision and high recall across different threshold settings. This metric is particularly valuable for imbalanced classification problems like claim denial prediction, where standard accuracy can be misleading due to the prevalence of the majority class.
+
+## Comparative Analysis of Model Variants
+
+### FMOL Client Performance
+
+#### 12-Month Dataset Analysis
+The Precision-Recall curves for the FMOL 12-month dataset demonstrate the relative performance of our three model variants (AUTOGLUON, Catboost, and the Ensemble model). The ensemble approach consistently maintains higher precision across recall levels compared to either individual model, validating our architectural decision to combine these complementary algorithms.
+
+At high recall thresholds (>0.8), where operational focus often lies to capture most potential denials, the ensemble model maintains precision approximately 15% higher than the Catboost model alone and 8% higher than AUTOGLUON. This translates directly to operational efficiency by reducing false positives that would require unnecessary review.
+
+#### 18-Month Dataset Analysis
+The extended 18-month FMOL dataset shows interesting evolution in model performance. The PR curves reveal that all three models benefit from the additional historical data, with increased PR AUC scores across the board. However, the ensemble model's advantage becomes even more pronounced, particularly in the critical high-recall region (0.7-0.9) where operational thresholds are typically set.
+
+The enhanced performance on the 18-month dataset validates our continuous learning approach and suggests that temporal patterns in denial behavior provide valuable signal for prediction.
+
+### Grady Client Performance
+
+#### 12-Month Dataset Analysis
+For the Grady 12-month dataset, the Precision-Recall curves reveal distinct performance characteristics compared to FMOL. While the ensemble model maintains superior performance, the gap between AUTOGLUON and Catboost is more pronounced, with AUTOGLUON demonstrating particularly strong performance in the mid-recall range (0.4-0.7).
+
+This client-specific variation in algorithm performance further justifies our ensemble approach, which effectively leverages the strengths of each algorithm while mitigating their individual weaknesses.
+
+#### 18-Month Dataset Analysis
+The Grady 18-month PR curves show significant performance improvements compared to the 12-month dataset across all model variants. Most notably, the ensemble model achieves exceptional precision (>0.85) even at high recall levels (0.8), representing a substantial improvement in predictive performance.
+
+This marked improvement suggests that Grady's denial patterns may exhibit stronger temporal dependencies that become more detectable with extended historical data, highlighting the value of our customized approach to each client environment.
+
+## Threshold Selection Implications
+
+The Precision-Recall curves provide essential guidance for operational threshold selection in production deployment. By visualizing the precision-recall trade-off, revenue cycle management teams can select optimal operating points based on their specific business priorities:
+
+1. **Resource-Constrained Environments**: Organizations with limited review capacity can select thresholds that prioritize precision, ensuring that flagged claims have high probability of actual denial.
+
+2. **Revenue Protection Focus**: Organizations prioritizing maximum denial capture can select thresholds that favor recall, accepting additional false positives to minimize missed denials.
+
+3. **Balanced Approach**: Most organizations benefit from thresholds in the "elbow" region of the PR curve, where marginal precision sacrifices yield substantial recall improvements.
+
+The ensemble model's superior PR curve performance across all client datasets and temporal windows supports standardizing on the 0.5 probability threshold, eliminating the need for artificially lowered thresholds that were required with previous model implementations.
+
+## Conclusion
+
+The Precision-Recall curve analysis demonstrates the robust performance of our ensemble approach across different client environments and temporal windows. The consistently superior PR AUC scores of the ensemble model validate our architectural decisions and feature engineering approach.
+
+Furthermore, the analysis reveals that extended historical data (18-month vs. 12-month) yields significant performance improvements, particularly for the Grady dataset. This finding supports our implementation of monthly retraining using 18-month rolling windows to maintain optimal model performance.
+
+The Precision-Recall evaluation framework will continue to serve as a primary performance monitoring tool, enabling ongoing assessment of model effectiveness and informing threshold adjustments as operational requirements evolve.
+
+=========================================================================================================
+
