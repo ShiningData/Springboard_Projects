@@ -1,247 +1,1723 @@
-# Build Ensemble Model with Top 3 Performing Models
+DARTS
 
-# This code should be added to your main notebook after evaluating all individual models
-# and before the final model evaluation section
-
-print("\n-------------- Building Ensemble Model from Top 3 Models --------------")
-
-# 1. Identify the top 3 performing models based on validation RMSE
-sorted_models = sorted(results.items(), key=lambda x: x[1]['val_rmse'])
-top_3_models = sorted_models[:3]
-print(f"Top 3 performing models:")
-for i, (model_name, metrics) in enumerate(top_3_models):
-    print(f"{i+1}. {model_name}: Validation RMSE = {metrics['val_rmse']:.2f}, R² = {metrics['val_r2']:.4f}")
-
-# 2. Create pipelines for each top model, preserving their hyperparameters
-top_model_pipelines = []
-
-for model_name, metrics in top_3_models:
-    if model_name == 'Linear Regression':
-        model = LinearRegression()
-    elif model_name == 'Ridge Regression':
-        # Use best parameters if available from grid search
-        if best_model_name == 'Ridge Regression' and hasattr(grid_search, 'best_params_'):
-            alpha = grid_search.best_params_.get('model__alpha', 1.0)
-        else:
-            alpha = 1.0
-        model = Ridge(alpha=alpha)
-    elif model_name == 'Lasso Regression':
-        # Use best parameters if available from grid search
-        if best_model_name == 'Lasso Regression' and hasattr(grid_search, 'best_params_'):
-            alpha = grid_search.best_params_.get('model__alpha', 0.1)
-        else:
-            alpha = 0.1
-        model = Lasso(alpha=alpha)
-    elif model_name == 'ElasticNet':
-        # Use best parameters if available from grid search
-        if best_model_name == 'ElasticNet' and hasattr(grid_search, 'best_params_'):
-            alpha = grid_search.best_params_.get('model__alpha', 0.1)
-            l1_ratio = grid_search.best_params_.get('model__l1_ratio', 0.5)
-        else:
-            alpha = 0.1
-            l1_ratio = 0.5
-        model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio)
-    elif model_name == 'Random Forest':
-        # Use best parameters if available from grid search
-        if best_model_name == 'Random Forest' and hasattr(grid_search, 'best_params_'):
-            n_estimators = grid_search.best_params_.get('model__n_estimators', 100)
-            max_depth = grid_search.best_params_.get('model__max_depth', None)
-            min_samples_split = grid_search.best_params_.get('model__min_samples_split', 2)
-        else:
-            n_estimators = 100
-            max_depth = None
-            min_samples_split = 2
-        model = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, 
-                                     min_samples_split=min_samples_split, random_state=42)
-    elif model_name == 'Gradient Boosting':
-        # Use best parameters if available from grid search
-        if best_model_name == 'Gradient Boosting' and hasattr(grid_search, 'best_params_'):
-            n_estimators = grid_search.best_params_.get('model__n_estimators', 100)
-            learning_rate = grid_search.best_params_.get('model__learning_rate', 0.1)
-            max_depth = grid_search.best_params_.get('model__max_depth', 3)
-        else:
-            n_estimators = 100
-            learning_rate = 0.1
-            max_depth = 3
-        model = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate,
-                                         max_depth=max_depth, random_state=42)
-    
-    # Create a complete pipeline for each model
-    pipeline = Pipeline([
-        ('preprocessor', preprocessor),
-        ('selector', SelectKBest(f_regression, k=15)),
-        ('model', model)
-    ])
-    
-    # Add to our list of top models with name for reference
-    top_model_pipelines.append((model_name, pipeline))
-    
-# 3. Implement a Voting Ensemble (average predictions)
-from sklearn.ensemble import VotingRegressor
-
-# Create the voting regressor from our top models
-voting_ensemble = VotingRegressor(
-    estimators=top_model_pipelines,
-    weights=None  # Equal weights to start
-)
-
-print("\n--- Training Voting Ensemble (Equal Weights) ---")
-# Train the voting ensemble on combined training and validation data
-voting_ensemble.fit(X_train_full, y_train_full)
-
-# Evaluate on the test set
-y_voting_pred = voting_ensemble.predict(X_test)
-voting_rmse = np.sqrt(mean_squared_error(y_test, y_voting_pred))
-voting_r2 = r2_score(y_test, y_voting_pred)
-voting_mae = mean_absolute_error(y_test, y_voting_pred)
-
-print(f"Voting Ensemble Performance:")
-print(f"RMSE: {voting_rmse:.2f}")
-print(f"MAE: {voting_mae:.2f}")
-print(f"R²: {voting_r2:.4f}")
-
-# 4. Implement a Weighted Voting Ensemble based on validation performance
-# Calculate weights inversely proportional to validation RMSE
-val_rmses = [metrics['val_rmse'] for _, metrics in top_3_models]
-weights = [1/(rmse**2) for rmse in val_rmses]  # Square to emphasize differences
-weights = [w/sum(weights) for w in weights]  # Normalize to sum to 1
-
-# Create weighted ensemble
-weighted_ensemble = VotingRegressor(
-    estimators=top_model_pipelines,
-    weights=weights
-)
-
-print("\n--- Training Weighted Voting Ensemble ---")
-print(f"Weights based on validation performance:")
-for (model_name, _), weight in zip([m for m in top_3_models], weights):
-    print(f"{model_name}: {weight:.4f}")
-
-# Train the weighted ensemble
-weighted_ensemble.fit(X_train_full, y_train_full)
-
-# Evaluate on the test set
-y_weighted_pred = weighted_ensemble.predict(X_test)
-weighted_rmse = np.sqrt(mean_squared_error(y_test, y_weighted_pred))
-weighted_r2 = r2_score(y_test, y_weighted_pred)
-weighted_mae = mean_absolute_error(y_test, y_weighted_pred)
-
-print(f"\nWeighted Ensemble Performance:")
-print(f"RMSE: {weighted_rmse:.2f}")
-print(f"MAE: {weighted_mae:.2f}")
-print(f"R²: {weighted_r2:.4f}")
-
-# 5. Stack the models with a meta-learner
-from sklearn.ensemble import StackingRegressor
+import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 
-print("\n--- Training Stacking Ensemble ---")
-
-# Define base models from our top 3
-base_models = top_model_pipelines
-
-# Use Ridge as the meta-learner (final estimator)
-meta_learner = Ridge(alpha=1.0)
-
-# Create the stacking ensemble
-stacking_ensemble = StackingRegressor(
-    estimators=base_models,
-    final_estimator=meta_learner,
-    cv=5  # 5-fold cross-validation for base models
+# Darts imports
+from darts import TimeSeries
+from darts.models import (
+    ExponentialSmoothing,
+    ARIMA,
+    Prophet,
+    RandomForest,
+    NaiveSeasonal,
+    NaiveDrift,
+    TCNModel
 )
+from darts.metrics import mape, smape, mae
+from darts.utils.statistics import check_seasonality, plot_acf
+from darts.dataprocessing.transformers import Scaler
+from darts.utils.timeseries_generation import datetime_attribute_timeseries
+from darts.utils.likelihood_models import GaussianLikelihood
 
-# Train the stacking ensemble
-stacking_ensemble.fit(X_train_full, y_train_full)
+# Set random seed for reproducibility
+np.random.seed(42)
 
-# Evaluate on the test set
-y_stacking_pred = stacking_ensemble.predict(X_test)
-stacking_rmse = np.sqrt(mean_squared_error(y_test, y_stacking_pred))
-stacking_r2 = r2_score(y_test, y_stacking_pred)
-stacking_mae = mean_absolute_error(y_test, y_stacking_pred)
+# 1. Create or load some example time series data 
+# Here we're creating synthetic data, but you would typically load your own data
+def create_example_data(start_date='2020-01-01', periods=3652, freq='D'):
+    """Create a synthetic time series with trend and seasonality"""
+    dates = pd.date_range(start=start_date, periods=periods, freq=freq)
+    
+    # Components
+    trend = np.linspace(0, 20, periods)
+    seasonality_day = 5  np.sin(np.linspace(0, 2periods/365np.pi, periods))
+    seasonality_week = 10  np.sin(np.linspace(0, 2periods/52np.pi, periods))
+    noise = np.random.normal(0, 2, periods)
+    
+    # Combine components
+    values = trend + seasonality_day + seasonality_week + noise
+    
+    # Create DataFrame
+    df = pd.DataFrame({'value': values}, index=dates)
+    
+    return df
 
-print(f"Stacking Ensemble Performance:")
-print(f"RMSE: {stacking_rmse:.2f}")
-print(f"MAE: {stacking_mae:.2f}")
-print(f"R²: {stacking_r2:.4f}")
+# Create example data
+data_df = create_example_data()
 
-# 6. Compare all three ensemble methods
-print("\n--- Ensemble Methods Comparison ---")
-ensemble_models = {
-    'Voting Ensemble (Equal Weights)': {'rmse': voting_rmse, 'mae': voting_mae, 'r2': voting_r2},
-    'Voting Ensemble (Weighted)': {'rmse': weighted_rmse, 'mae': weighted_mae, 'r2': weighted_r2},
-    'Stacking Ensemble': {'rmse': stacking_rmse, 'mae': stacking_mae, 'r2': stacking_r2}
+# 2. Convert to Darts TimeSeries format
+series = TimeSeries.from_dataframe(data_df, 'value')
+
+# 3. Visualize the data
+plt.figure(figsize=(15, 6))
+series.plot()
+plt.title('Example Time Series Data')
+plt.ylabel('Value')
+plt.savefig('time_series_data.png')  # Save the figure
+
+# 4. Check for seasonality
+seasonality_test = check_seasonality(series, m=7)  # Check for weekly seasonality
+print(f"Weekly seasonality detected: {seasonality_test}")
+
+seasonality_test = check_seasonality(series, m=365)  # Check for yearly seasonality
+print(f"Yearly seasonality detected: {seasonality_test}")
+
+# 5. Split the data into training and validation sets
+train_size = int(len(series)  0.8)
+train, val = series[:train_size], series[train_size:]
+
+# 6. Scale the data
+scaler = Scaler()
+train_scaled = scaler.fit_transform(train)
+val_scaled = scaler.transform(val)
+
+# 7. Create a forecasting model
+# Let's compare several models
+models = {
+    "Exponential Smoothing": ExponentialSmoothing(seasonal_periods=7),
+    "ARIMA": ARIMA(p=2, d=1, q=1),
+    "Prophet": Prophet(),
+    "Random Forest": RandomForest(lags=14, n_estimators=100),
+    "Naive Seasonal": NaiveSeasonal(K=7),  # Weekly seasonality
+    "Naive Drift": NaiveDrift()
 }
 
-# Print comparison table
-print(f"{'Model':<30} {'RMSE':>12} {'MAE':>12} {'R²':>10}")
-print("-" * 66)
-for name, metrics in ensemble_models.items():
-    print(f"{name:<30} {metrics['rmse']:>12.2f} {metrics['mae']:>12.2f} {metrics['r2']:>10.4f}")
+# 8. Train models and make forecasts
+horizon = len(val)
+forecasts = {}
+performance_metrics = pd.DataFrame(index=models.keys(), columns=['MAPE', 'SMAPE', 'MAE'])
 
-# Find the best ensemble method
-best_ensemble_name = min(ensemble_models.items(), key=lambda x: x[1]['rmse'])[0]
-best_ensemble_rmse = ensemble_models[best_ensemble_name]['rmse']
-print(f"\nBest ensemble method: {best_ensemble_name} with RMSE: {best_ensemble_rmse:.2f}")
-
-# 7. Compare the best ensemble with the best single model
-print("\n--- Best Single Model vs. Best Ensemble Model ---")
-print(f"{'Model':<30} {'RMSE':>12} {'MAE':>12} {'R²':>10}")
-print("-" * 66)
-print(f"Best Single Model ({best_model_name}){' '*(22-len(best_model_name))} {test_rmse:>12.2f} {test_mae:>12.2f} {test_r2:>10.4f}")
-print(f"{best_ensemble_name}{' '*(30-len(best_ensemble_name))} {ensemble_models[best_ensemble_name]['rmse']:>12.2f} {ensemble_models[best_ensemble_name]['mae']:>12.2f} {ensemble_models[best_ensemble_name]['r2']:>10.4f}")
-
-# Calculate improvement
-improvement = (test_rmse - ensemble_models[best_ensemble_name]['rmse']) / test_rmse * 100
-print(f"\nImprovement from best single model to best ensemble: {improvement:.2f}%")
-
-# 8. Select the best overall model (single or ensemble)
-if ensemble_models[best_ensemble_name]['rmse'] < test_rmse:
-    print("\nThe best ensemble model outperforms the best single model!")
-    if best_ensemble_name == 'Voting Ensemble (Equal Weights)':
-        final_ensemble_model = voting_ensemble
-    elif best_ensemble_name == 'Voting Ensemble (Weighted)':
-        final_ensemble_model = weighted_ensemble
-    else:  # Stacking Ensemble
-        final_ensemble_model = stacking_ensemble
+for name, model in models.items():
+    print(f"Training {name} model...")
+    model.fit(train_scaled)
+    forecast = model.predict(horizon)
+    forecasts[name] = scaler.inverse_transform(forecast)
     
-    # Save the best ensemble model
-    ensemble_filename = 'houston_housing_best_ensemble_model.pkl'
-    with open(ensemble_filename, 'wb') as file:
-        pickle.dump(final_ensemble_model, file)
-    print(f"Best ensemble model saved to {ensemble_filename}")
+    # Calculate performance metrics
+    performance_metrics.loc[name, 'MAPE'] = mape(val, forecasts[name])
+    performance_metrics.loc[name, 'SMAPE'] = smape(val, forecasts[name])
+    performance_metrics.loc[name, 'MAE'] = mae(val, forecasts[name])
+
+# 9. Visualize forecasts
+plt.figure(figsize=(15, 8))
+series.plot(label='Actual')
+for name, forecast in forecasts.items():
+    forecast.plot(label=f"{name} Forecast")
+plt.title('Time Series Forecasts')
+plt.legend()
+plt.savefig('time_series_forecasts.png')  # Save the figure
+
+# 10. Print performance metrics
+print("\nPerformance Metrics:")
+print(performance_metrics)
+
+# 11. Select the best model based on MAE
+best_model_name = performance_metrics['MAE'].idxmin()
+print(f"\nBest model: {best_model_name}")
+
+# 12. Forecast future data with the best model
+best_model = models[best_model_name]
+future_horizon = 30  # Forecast for the next 30 time periods
+future_forecast_scaled = best_model.predict(future_horizon)
+future_forecast = scaler.inverse_transform(future_forecast_scaled)
+
+# 13. Visualize the future forecast
+plt.figure(figsize=(15, 6))
+series.plot(label='Historical Data')
+forecasts[best_model_name].plot(label=f'Validation Forecast ({best_model_name})')
+future_forecast.plot(label=f'Future Forecast ({best_model_name})')
+plt.title('Future Time Series Forecast')
+plt.legend()
+plt.savefig('future_forecast.png')  # Save the figure
+
+# 14. For deeper analysis, let's also add a neural network model (TCN)
+# This requires PyTorch to be installed
+try:
+    # Set random seed for reproducibility
+    torch_seed = 42
+    import torch
+    torch.manual_seed(torch_seed)
     
-    # For future predictions, use this model
-    best_prediction_model = final_ensemble_model
-else:
-    print("\nThe best single model outperforms all ensemble methods!")
-    best_prediction_model = final_model
-    print(f"Continuing with the best single model: {best_model_name}")
+    # Define model
+    likelihood = GaussianLikelihood()
+    tcn_model = TCNModel(
+        input_chunk_length=14,
+        output_chunk_length=horizon,
+        n_epochs=300,
+        dropout=0.1,
+        dilation_base=2,
+        likelihood=likelihood,
+        random_state=torch_seed
+    )
+    
+    # Train model
+    print("Training TCN model...")
+    tcn_model.fit(train_scaled, verbose=True)
+    
+    # Make forecast
+    tcn_forecast = tcn_model.predict(horizon)
+    tcn_forecast = scaler.inverse_transform(tcn_forecast)
+    
+    # Calculate performance metrics
+    tcn_mape = mape(val, tcn_forecast)
+    tcn_smape = smape(val, tcn_forecast)
+    tcn_mae = mae(val, tcn_forecast)
+    
+    print(f"\nTCN Model Performance:")
+    print(f"MAPE: {tcn_mape}")
+    print(f"SMAPE: {tcn_smape}")
+    print(f"MAE: {tcn_mae}")
+    
+    # Visualize TCN forecast
+    plt.figure(figsize=(15, 6))
+    series.plot(label='Historical Data')
+    tcn_forecast.plot(label='TCN Forecast')
+    plt.title('TCN Model Forecast')
+    plt.legend()
+    plt.savefig('tcn_forecast.png')  # Save the figure
+    
+except ImportError:
+    print("PyTorch not installed, skipping TCN model")
 
-# 9. Visualize model comparison
-plt.figure(figsize=(12, 6))
-model_names = list(ensemble_models.keys()) + [f"Best Single Model ({best_model_name})"]
-rmse_values = [metrics['rmse'] for metrics in ensemble_models.values()] + [test_rmse]
-r2_values = [metrics['r2'] for metrics in ensemble_models.values()] + [test_r2]
+# 15. Saving models for future use
+# In a production environment, you would typically save your model
+best_model_file = f"best_model_{best_model_name}.pkl"
+try:
+    models[best_model_name].save(best_model_file)
+    print(f"Model saved to {best_model_file}")
+except:
+    print("Model saving not supported for this model type")
 
-plt.subplot(1, 2, 1)
-bars = plt.bar(model_names, rmse_values, color=['skyblue', 'lightgreen', 'lightcoral', 'gold'])
-plt.xticks(rotation=45, ha='right')
-plt.ylabel('RMSE (lower is better)')
-plt.title('RMSE Comparison')
+# 16. Create a function to make new predictions
+def make_forecast(new_data, model_name=best_model_name, periods=30):
+    """
+    Make a forecast using new data
+    
+    Parameters:
+    -----------
+    new_data : pandas.DataFrame or darts.TimeSeries
+        The new data to use for making the forecast
+    model_name : str
+        The name of the model to use
+    periods : int
+        The number of periods to forecast
+    
+    Returns:
+    --------
+    darts.TimeSeries
+        The forecasted values
+    """
+    # Convert to TimeSeries if DataFrame
+    if isinstance(new_data, pd.DataFrame):
+        new_data = TimeSeries.from_dataframe(new_data)
+    
+    # Scale the data
+    new_data_scaled = scaler.transform(new_data)
+    
+    # Make forecast
+    model = models[model_name]
+    forecast_scaled = model.predict(periods)
+    forecast = scaler.inverse_transform(forecast_scaled)
+    
+    return forecast
 
-# Highlight the best model
-best_idx = np.argmin(rmse_values)
-bars[best_idx].set_color('darkgreen')
+print("Forecasting utility ready for use with new data.")
 
-plt.subplot(1, 2, 2)
-bars = plt.bar(model_names, r2_values, color=['skyblue', 'lightgreen', 'lightcoral', 'gold'])
-plt.xticks(rotation=45, ha='right')
-plt.ylabel('R² (higher is better)')
-plt.title('R² Comparison')
+EXPLANATION:
 
-# Highlight the best model
-best_idx = np.argmax(r2_values)
-bars[best_idx].set_color('darkgreen')
+
+I'll create a Python implementation using Darts for time series forecasting.
+
+This implementation demonstrates a comprehensive time series forecasting pipeline using the Darts library. Here's what the code does:
+
+1. Data Generation: Creates synthetic time series data with trend, seasonality, and noise (you would replace this with your own data)
+
+2. Data Preparation: Converts the data to Darts TimeSeries format and splits it into training and validation sets
+
+3. Model Comparison: Implements and compares multiple forecasting models:
+   - Exponential Smoothing
+   - ARIMA
+   - Prophet
+   - Random Forest
+   - Naive Seasonal
+   - Naive Drift
+
+4. Evaluation: Calculates performance metrics (MAPE, SMAPE, MAE) to identify the best model
+
+5. Future Forecasting: Uses the best model to forecast future values
+
+6. Advanced Modeling: Includes a TCN (Temporal Convolutional Network) implementation with PyTorch for deep learning-based forecasting
+
+7. Model Persistence: Saves the best model for future use
+
+8. Utility Function: Provides a reusable function for making new forecasts with fresh data
+
+The code includes visualizations at each step and provides comprehensive comments to help you understand the process. You can easily adapt this implementation to your specific time series data and requirements.
+
+==================================================================================================
+Time Series Classification with sktime
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+import seaborn as sns
+
+# sktime imports
+from sktime.datasets import load_arrow_head, load_basic_motions
+from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier
+from sktime.classification.interval_based import TimeSeriesForestClassifier
+from sktime.classification.dictionary_based import BOSSEnsemble
+from sktime.classification.feature_based import TSFreshClassifier
+from sktime.classification.deep_learning import CNNClassifier
+from sktime.classification.shapelet_based import ShapeletTransformClassifier
+from sktime.classification.kernel_based import RocketClassifier
+from sktime.transformations.panel.summarize import FittedParamExtractor
+from sktime.utils.data_processing import from_3d_numpy_to_nested
+from sktime.visualization.classification import plot_confusion_matrix
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+# 1. Load a time series classification dataset
+# Option 1: Using a built-in sktime dataset
+def load_dataset(dataset_name="ArrowHead"):
+    """
+    Load a time series classification dataset
+    
+    Parameters:
+    -----------
+    dataset_name : str
+        Name of the dataset to load. Options: "ArrowHead", "BasicMotions"
+    
+    Returns:
+    --------
+    X_train, X_test, y_train, y_test
+    """
+    if dataset_name == "ArrowHead":
+        X_train, y_train = load_arrow_head(split="train", return_X_y=True)
+        X_test, y_test = load_arrow_head(split="test", return_X_y=True)
+        print(f"Dataset: ArrowHead (univariate)")
+    elif dataset_name == "BasicMotions":
+        X_train, y_train = load_basic_motions(split="train", return_X_y=True)
+        X_test, y_test = load_basic_motions(split="test", return_X_y=True)
+        print(f"Dataset: BasicMotions (multivariate)")
+    else:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
+    
+    return X_train, X_test, y_train, y_test
+
+# Option 2: Creating synthetic data
+def create_synthetic_dataset(n_samples=100, length=50, n_classes=3, n_channels=1, test_size=0.3):
+    """
+    Create a synthetic time series dataset for classification
+    
+    Parameters:
+    -----------
+    n_samples : int
+        Number of time series samples
+    length : int
+        Length of each time series
+    n_classes : int
+        Number of classes
+    n_channels : int
+        Number of channels (1 for univariate, >1 for multivariate)
+    test_size : float
+        Proportion of data for testing
+        
+    Returns:
+    --------
+    X_train, X_test, y_train, y_test
+    """
+    # Create patterns for each class
+    patterns = []
+    for i in range(n_classes):
+        # Create a base pattern with some random noise
+        base_pattern = np.sin(np.linspace(0, 2  np.pi  (i+1), length)) + i/2
+        patterns.append(base_pattern)
+    
+    # Create samples for each class
+    X = np.zeros((n_samples, n_channels, length))
+    y = np.zeros(n_samples)
+    
+    samples_per_class = n_samples // n_classes
+    
+    for i in range(n_classes):
+        start_idx = i  samples_per_class
+        end_idx = (i + 1)  samples_per_class if i < n_classes - 1 else n_samples
+        
+        for j in range(start_idx, end_idx):
+            for c in range(n_channels):
+                # Add noise to the base pattern
+                noise = np.random.normal(0, 0.5, length)
+                X[j, c, :] = patterns[i] + noise
+            y[j] = i
+    
+    # Convert to sktime format (3D numpy to nested pandas)
+    X_nested = from_3d_numpy_to_nested(X)
+    
+    # Split into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_nested, y, test_size=test_size, random_state=42, stratify=y
+    )
+    
+    print(f"Created synthetic dataset with {n_samples} samples, {n_classes} classes, {n_channels} channels")
+    return X_train, X_test, y_train, y_test
+
+# Choose which dataset to use (uncomment one of the following)
+X_train, X_test, y_train, y_test = load_dataset("ArrowHead")  # Univariate dataset
+# X_train, X_test, y_train, y_test = load_dataset("BasicMotions")  # Multivariate dataset
+# X_train, X_test, y_train, y_test = create_synthetic_dataset(n_samples=100, n_classes=3, n_channels=1)
+
+# 2. Visualize the dataset
+def plot_time_series_samples(X, y, n_samples=3):
+    """
+    Plot sample time series from each class
+    """
+    # Get unique classes
+    classes = np.unique(y)
+    n_classes = len(classes)
+    
+    # Create figure
+    fig, axes = plt.subplots(n_classes, n_samples, figsize=(15, 3n_classes))
+    if n_classes == 1:
+        axes = axes.reshape(1, -1)
+    
+    # Plot samples
+    for i, cls in enumerate(classes):
+        # Get indices of samples in this class
+        indices = np.where(y == cls)[0]
+        
+        # Select random samples
+        if len(indices) >= n_samples:
+            sample_indices = np.random.choice(indices, n_samples, replace=False)
+        else:
+            sample_indices = indices
+        
+        # Plot each sample
+        for j, idx in enumerate(sample_indices):
+            if j < n_samples:
+                series = X.iloc[idx]
+                
+                # Check if multivariate
+                if isinstance(series.iloc[0], pd.Series):
+                    # Multivariate: plot each dimension
+                    for k, dim in enumerate(series.index):
+                        # Get the values for this dimension
+                        values = series[dim].values
+                        axes[i, j].plot(values, label=f'Dim {k}')
+                    
+                    axes[i, j].legend()
+                else:
+                    # Univariate: plot the single time series
+                    axes[i, j].plot(series.values)
+                
+                axes[i, j].set_title(f'Class {cls}')
+                
+                # Remove x and y ticks for clarity
+                axes[i, j].set_xticks([])
+                if j == 0:
+                    axes[i, j].set_ylabel('Value')
+                else:
+                    axes[i, j].set_yticks([])
+    
+    plt.tight_layout()
+    plt.savefig('time_series_samples.png')
+    plt.close()
+
+# Plot sample time series
+plot_time_series_samples(X_train, y_train)
+
+# 3. Define several time series classification models
+models = {
+    "KNN-DTW": KNeighborsTimeSeriesClassifier(
+        n_neighbors=3,
+        distance="dtw",  # Dynamic Time Warping
+    ),
+    "TSF": TimeSeriesForestClassifier(
+        n_estimators=100,
+        random_state=42
+    ),
+    "BOSS": BOSSEnsemble(
+        random_state=42,
+        max_ensemble_size=5  # Smaller for faster execution
+    ),
+    "ROCKET": RocketClassifier(
+        num_kernels=100,  # Lower for faster execution
+        random_state=42
+    ),
+}
+
+# 4. Evaluate the models
+results = {}
+
+for name, model in models.items():
+    print(f"\nTraining {name}...")
+    
+    # Train the model
+    model.fit(X_train, y_train)
+    
+    # Make predictions
+    y_pred = model.predict(X_test)
+    
+    # Calculate accuracy
+    accuracy = accuracy_score(y_test, y_pred)
+    results[name] = accuracy
+    
+    print(f"{name} Accuracy: {accuracy:.4f}")
+    
+    # Detailed classification report
+    report = classification_report(y_test, y_pred)
+    print(f"Classification Report for {name}:\n{report}")
+    
+    # Create confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    
+    # Plot confusion matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=np.unique(y_test),
+                yticklabels=np.unique(y_test))
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title(f'Confusion Matrix - {name}')
+    plt.tight_layout()
+    plt.savefig(f'confusion_matrix_{name}.png')
+    plt.close()
+
+# 5. Compare model performance
+plt.figure(figsize=(10, 6))
+plt.bar(results.keys(), results.values())
+plt.axhline(y=1.0, color='r', linestyle='-', alpha=0.3)
+plt.ylim(0, 1.1)
+plt.ylabel('Accuracy')
+plt.title('Model Comparison')
+plt.xticks(rotation=45)
+for i, (model, acc) in enumerate(results.items()):
+    plt.text(i, acc + 0.02, f'{acc:.4f}', ha='center')
+plt.tight_layout()
+plt.savefig('model_comparison.png')
+plt.close()
+
+# 6. Advanced: Feature Extraction and Interpretability
+print("\n=== Feature Importance Analysis ===")
+# We'll use the TimeSeriesForestClassifier for feature importance
+tsf_model = models["TSF"]
+
+# Extract fitted parameters from the trained model 
+# Note: This only works for models that support fitted parameter extraction
+try:
+    param_extractor = FittedParamExtractor()
+    params = param_extractor.fit_transform(X_train, model=tsf_model)
+    print("Extracted parameters shape:", params.shape)
+    
+    # If there are interpretable parameters, we can visualize them
+    # This is model-specific, so we'll use a simple visualization
+    plt.figure(figsize=(10, 6))
+    if hasattr(tsf_model, 'feature_importances_'):
+        importances = tsf_model.feature_importances_
+        plt.bar(range(len(importances)), importances)
+        plt.title('Feature Importances (TimeSeriesForest)')
+        plt.xlabel('Feature Index')
+        plt.ylabel('Importance')
+        plt.tight_layout()
+        plt.savefig('feature_importances.png')
+        plt.close()
+        print("Feature importance plot saved.")
+except Exception as e:
+    print(f"Feature extraction not available for this model: {e}")
+
+# 7. Advanced: Time Series Shapelet Transformation
+# Shapelet transformation can help understand discriminative subsequences
+# Note: This can be computationally expensive, so we'll use a small number of shapelets
+print("\n=== Shapelet Transformation ===")
+try:
+    # Create a smaller dataset for demonstration if needed
+    X_small, X_test_small, y_small, y_test_small = train_test_split(
+        X_train, y_train, test_size=0.3, random_state=42, stratify=y_train
+    )
+    
+    # Create and train a Shapelet Transform Classifier
+    st = ShapeletTransformClassifier(
+        n_shapelets=10,  # Small number for demonstration
+        max_shapelet_length=20,
+        random_state=42
+    )
+    
+    print("Training Shapelet Transform Classifier...")
+    st.fit(X_small, y_small)
+    
+    # Make predictions
+    y_pred_st = st.predict(X_test_small)
+    accuracy_st = accuracy_score(y_test_small, y_pred_st)
+    print(f"Shapelet Transform Accuracy: {accuracy_st:.4f}")
+    
+    # Visualize shapelets if possible
+    if hasattr(st, 'shapelet_transform'):
+        # This is a simplification, actual implementation may vary
+        # based on the specific sktime version and model
+        print("Shapelet visualization would be implemented here.")
+except Exception as e:
+    print(f"Shapelet transformation skipped: {e}")
+
+# 8. Cross-validation (optional, can be time-consuming)
+from sklearn.model_selection import cross_val_score
+
+def perform_cross_validation(model, X, y, cv=5):
+    """
+    Perform cross-validation for a model
+    """
+    print(f"\nPerforming {cv}-fold cross-validation...")
+    scores = cross_val_score(model, X, y, cv=cv, scoring='accuracy')
+    print(f"Cross-validation scores: {scores}")
+    print(f"Mean accuracy: {scores.mean():.4f}, Std: {scores.std():.4f}")
+    return scores
+
+# Uncomment to perform cross-validation (may be time-consuming)
+# best_model_name = max(results, key=results.get)
+# print(f"\nPerforming cross-validation for best model: {best_model_name}")
+# cv_scores = perform_cross_validation(models[best_model_name], X_train, y_train, cv=3)
+
+# 9. Create a utility function for classifying new time series
+def classify_new_time_series(new_data, model_name="ROCKET"):
+    """
+    Classify new time series data using the trained model
+    
+    Parameters:
+    -----------
+    new_data : pandas.DataFrame or numpy.ndarray
+        New time series data to classify
+    model_name : str
+        Name of the model to use
+        
+    Returns:
+    --------
+    Predicted class
+    """
+    # Check if data is in the correct format
+    if isinstance(new_data, np.ndarray):
+        # Convert from numpy to nested pandas
+        if new_data.ndim == 2:  # (n_samples, n_timepoints)
+            new_data = new_data.reshape(new_data.shape[0], 1, new_data.shape[1])
+        new_data = from_3d_numpy_to_nested(new_data)
+    
+    # Get the model
+    model = models.get(model_name)
+    if model is None:
+        raise ValueError(f"Model {model_name} not found. Available models: {list(models.keys())}")
+    
+    # Make prediction
+    predictions = model.predict(new_data)
+    probabilities = None
+    
+    # Get probabilities if available
+    if hasattr(model, 'predict_proba'):
+        try:
+            probabilities = model.predict_proba(new_data)
+        except:
+            pass
+    
+    return predictions, probabilities
+
+# Example usage of the classify function (with synthetic data)
+def example_classification():
+    """
+    Example of classifying new time series
+    """
+    # Create a synthetic example (2 samples)
+    if "X_test" in locals():
+        # Use first 2 samples from test set
+        samples = X_test.iloc[:2].copy()
+    else:
+        # Create random data (this format may need to be adjusted)
+        synth_X, _, synth_y, _ = create_synthetic_dataset(n_samples=2, length=50, n_classes=1)
+        samples = synth_X
+    
+    # Classify the samples using the best model
+    best_model_name = max(results, key=results.get)
+    predictions, probabilities = classify_new_time_series(samples, model_name=best_model_name)
+    
+    print(f"\nExample classification using {best_model_name}:")
+    print(f"Predictions: {predictions}")
+    if probabilities is not None:
+        print(f"Probabilities:\n{probabilities}")
+
+# Run example classification
+example_classification()
+
+print("\nTime series classification using sktime complete!")
+
+
+EXPLANATION:
+
+I'll create a Python implementation for time series classification using sktime.
+
+This implementation demonstrates a comprehensive pipeline for time series classification using the sktime library. Here's what the code covers:
+
+### Data Handling
+- Loads built-in sktime datasets (ArrowHead, BasicMotions)
+- Includes a function to create synthetic time series data
+- Visualizes sample time series from each class
+
+### Classification Models
+The implementation includes several powerful time series classification algorithms:
+1. KNN-DTW: K-Nearest Neighbors with Dynamic Time Warping distance
+2. TSF: Time Series Forest (an ensemble of decision trees)
+3. BOSS: Bag of SFA Symbols (a dictionary-based approach)
+4. ROCKET: Random Convolutional Kernels (a fast, accurate method)
+
+### Evaluation & Visualization
+- Trains and evaluates each model
+- Calculates classification accuracy and detailed metrics
+- Creates confusion matrices
+- Generates a comparative bar chart of model performance
+
+### Advanced Techniques
+- Feature importance analysis using TimeSeriesForest
+- Shapelet transformation to identify discriminative subsequences
+- Cross-validation option (commented out to save execution time)
+
+### Practical Usage
+- Includes a utility function for classifying new time series
+- Demonstrates how to use the trained models for prediction
+
+The code is well-documented with comments explaining each step in the process. You can easily adapt it to your specific time series classification task by:
+1. Loading your own data instead of the built-in datasets
+2. Adjusting model parameters for your specific needs
+3. Enabling additional analyses like cross-validation for more robust evaluation
+
+===========================================================================================================================
+
+Time series forecasting with Merlion
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+
+# Merlion imports
+from merlion.models.forecast.arima import Arima
+from merlion.models.forecast.prophet import Prophet
+from merlion.models.forecast.sarima import Sarima
+from merlion.models.forecast.smoother import MovingAverage
+from merlion.models.ensemble.forecast import ForecasterEnsemble, ForecasterEnsembleConfig
+from merlion.models.ensemble.combine import Mean
+from merlion.transform.resample import TemporalResample
+from merlion.transform.normalize import MeanVarNormalize
+from merlion.transform.sequence import TransformSequence
+from merlion.utils import TimeSeries
+from merlion.evaluate.forecast import ForecastMetric
+from merlion.models.automl.autoprophet import AutoProphet
+from merlion.plot import plot_forecast
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+# 1. Create or load some example time series data
+def create_example_data(start_date='2020-01-01', periods=3652, freq='D'):
+    """Create a synthetic time series with trend and seasonality"""
+    dates = pd.date_range(start=start_date, periods=periods, freq=freq)
+    
+    # Components
+    trend = np.linspace(0, 20, periods)
+    seasonality_day = 5  np.sin(np.linspace(0, 2periods/7np.pi, periods))
+    seasonality_year = 10  np.cos(np.linspace(0, 2np.pi, periods))
+    noise = np.random.normal(0, 2, periods)
+    
+    # Combine components
+    values = trend + seasonality_day + seasonality_year + noise
+    
+    # Create DataFrame
+    df = pd.DataFrame({'timestamp': dates, 'value': values})
+    
+    return df
+
+# 2. Load and prepare the time series data
+# Option 1: Create synthetic data
+data_df = create_example_data()
+print(f"Created time series with {len(data_df)} observations")
+
+# Option 2: Load real data (uncomment and modify if you have your own data)
+# data_df = pd.read_csv('your_data.csv')
+# data_df['timestamp'] = pd.to_datetime(data_df['timestamp'])
+
+# 3. Convert to Merlion TimeSeries format
+time_series = TimeSeries.from_pd(data_df.set_index('timestamp'))
+print(f"Time series shape: {time_series.shape}")
+
+# 4. Visualize the data
+fig, ax = plt.subplots(1, 1, figsize=(15, 6))
+time_series.plot(ax=ax)
+ax.set_title('Example Time Series Data')
+ax.set_ylabel('Value')
+plt.tight_layout()
+plt.savefig('time_series_data.png')
+plt.close()
+
+# 5. Split the data into training and test sets
+train_size = int(len(data_df)  0.8)
+train_data = time_series[:train_size]
+test_data = time_series[train_size:]
+print(f"Train size: {len(train_data)}, Test size: {len(test_data)}")
+
+# 6. Define a sequence of transforms for data preprocessing
+transform = TransformSequence([
+    # Resample to hourly if necessary
+    # TemporalResample(granularity="1h"),
+    
+    # Normalize the data
+    MeanVarNormalize()
+])
+
+# 7. Define a collection of forecasting models
+models = {
+    "ARIMA": Arima(
+        order=(2, 1, 2),
+        transform=transform,
+    ),
+    "SARIMA": Sarima(
+        order=(2, 1, 2), 
+        seasonal_order=(1, 1, 1, 7),  # Weekly seasonality
+        transform=transform,
+    ),
+    "Prophet": Prophet(
+        transform=transform,
+        daily_seasonality=True,
+        weekly_seasonality=True,
+        yearly_seasonality=True,
+    ),
+    "MovingAverage": MovingAverage(
+        transform=transform,
+        window_size=7  # 7-day moving average
+    ),
+}
+
+# 8. Train models and evaluate performance
+horizon = len(test_data)  # Forecast horizon equals test data length
+model_forecasts = {}
+model_errors = {}
+
+for name, model in models.items():
+    print(f"\nTraining {name} model...")
+    
+    # Train the model
+    model.train(train_data=train_data)
+    
+    # Make forecast
+    forecast_result = model.forecast(horizon)
+    forecast = forecast_result.forecast
+    
+    # Calculate error metrics
+    mae = ForecastMetric.MAE.value(test_data, forecast)
+    mape = ForecastMetric.MAPE.value(test_data, forecast)
+    smape = ForecastMetric.SMAPE.value(test_data, forecast)
+    rmse = ForecastMetric.RMSE.value(test_data, forecast)
+    
+    # Store results
+    model_forecasts[name] = forecast
+    model_errors[name] = {
+        "MAE": mae,
+        "MAPE": mape,
+        "SMAPE": smape,
+        "RMSE": rmse
+    }
+    
+    print(f"{name} Metrics:")
+    print(f"  MAE: {mae:.4f}")
+    print(f"  MAPE: {mape:.4f}")
+    print(f"  SMAPE: {smape:.4f}")
+    print(f"  RMSE: {rmse:.4f}")
+    
+    # Plot the forecast
+    fig, ax = plt.subplots(1, 1, figsize=(15, 6))
+    plot_forecast(
+        train_data,
+        forecast,
+        test_data,
+        title=f"{name} Forecast",
+        ax=ax
+    )
+    plt.tight_layout()
+    plt.savefig(f'{name}_forecast.png')
+    plt.close()
+
+# 9. Create an ensemble model (average of individual models)
+print("\nTraining Ensemble Model...")
+
+# Define ensemble configuration
+ensemble_config = ForecasterEnsembleConfig(
+    combiner=Mean(),
+    models=[m for m in models.values()]
+)
+
+# Create and train ensemble
+ensemble = ForecasterEnsemble(config=ensemble_config)
+ensemble.train(train_data=train_data)
+
+# Make ensemble forecast
+ensemble_result = ensemble.forecast(horizon)
+ensemble_forecast = ensemble_result.forecast
+
+# Calculate ensemble error metrics
+ensemble_mae = ForecastMetric.MAE.value(test_data, ensemble_forecast)
+ensemble_mape = ForecastMetric.MAPE.value(test_data, ensemble_forecast)
+ensemble_smape = ForecastMetric.SMAPE.value(test_data, ensemble_forecast)
+ensemble_rmse = ForecastMetric.RMSE.value(test_data, ensemble_forecast)
+
+print("Ensemble Model Metrics:")
+print(f"  MAE: {ensemble_mae:.4f}")
+print(f"  MAPE: {ensemble_mape:.4f}")
+print(f"  SMAPE: {ensemble_smape:.4f}")
+print(f"  RMSE: {ensemble_rmse:.4f}")
+
+# Store ensemble results
+model_forecasts["Ensemble"] = ensemble_forecast
+model_errors["Ensemble"] = {
+    "MAE": ensemble_mae,
+    "MAPE": ensemble_mape,
+    "SMAPE": ensemble_smape,
+    "RMSE": ensemble_rmse
+}
+
+# Plot ensemble forecast
+fig, ax = plt.subplots(1, 1, figsize=(15, 6))
+plot_forecast(
+    train_data,
+    ensemble_forecast,
+    test_data,
+    title="Ensemble Forecast",
+    ax=ax
+)
+plt.tight_layout()
+plt.savefig('ensemble_forecast.png')
+plt.close()
+
+# 10. Summarize model performance
+errors_df = pd.DataFrame({
+    model_name: {metric: errors[metric] for metric in ["MAE", "MAPE", "SMAPE", "RMSE"]}
+    for model_name, errors in model_errors.items()
+})
+
+print("\nModel Performance Summary:")
+print(errors_df)
+
+# Plot error comparison
+metrics_to_plot = ["MAE", "RMSE"]  # Select metrics to visualize
+fig, axes = plt.subplots(len(metrics_to_plot), 1, figsize=(12, 5len(metrics_to_plot)))
+
+for i, metric in enumerate(metrics_to_plot):
+    ax = axes[i] if len(metrics_to_plot) > 1 else axes
+    values = [errors[metric] for errors in model_errors.values()]
+    ax.bar(model_errors.keys(), values)
+    ax.set_title(f'{metric} Comparison')
+    ax.set_ylabel(metric)
+    
+    # Add value labels on bars
+    for j, v in enumerate(values):
+        ax.text(j, v + 0.01, f"{v:.4f}", ha='center')
 
 plt.tight_layout()
-plt.show()
+plt.savefig('error_comparison.png')
+plt.close()
+
+# 11. AutoML with AutoProphet (for automated hyperparameter tuning)
+try:
+    print("\nTraining AutoProphet (automated hyperparameter selection)...")
+    
+    autoprophet = AutoProphet()
+    autoprophet.train(train_data=train_data)
+    
+    # Make forecast
+    autoprophet_result = autoprophet.forecast(horizon)
+    autoprophet_forecast = autoprophet_result.forecast
+    
+    # Calculate error metrics
+    autoprophet_mae = ForecastMetric.MAE.value(test_data, autoprophet_forecast)
+    autoprophet_mape = ForecastMetric.MAPE.value(test_data, autoprophet_forecast)
+    autoprophet_rmse = ForecastMetric.RMSE.value(test_data, autoprophet_forecast)
+    
+    print("AutoProphet Metrics:")
+    print(f"  MAE: {autoprophet_mae:.4f}")
+    print(f"  MAPE: {autoprophet_mape:.4f}")
+    print(f"  RMSE: {autoprophet_rmse:.4f}")
+    
+    # Plot AutoProphet forecast
+    fig, ax = plt.subplots(1, 1, figsize=(15, 6))
+    plot_forecast(
+        train_data,
+        autoprophet_forecast,
+        test_data,
+        title="AutoProphet Forecast",
+        ax=ax
+    )
+    plt.tight_layout()
+    plt.savefig('autoprophet_forecast.png')
+    plt.close()
+    
+except Exception as e:
+    print(f"AutoProphet encountered an error: {e}")
+
+# 12. Forecast future periods (beyond the test set)
+# Identify the best model based on MAE
+best_model_name = errors_df.loc["MAE"].idxmin()
+best_model = models.get(best_model_name, ensemble)  # Use ensemble as fallback
+print(f"\nBest model based on MAE: {best_model_name}")
+
+# Re-train on the entire dataset
+full_data = time_series
+best_model.train(train_data=full_data)
+
+# Forecast future periods
+future_horizon = 30  # Next 30 time steps
+future_forecast_result = best_model.forecast(future_horizon)
+future_forecast = future_forecast_result.forecast
+
+# Visualize future forecast
+fig, ax = plt.subplots(1, 1, figsize=(15, 6))
+ax.plot(full_data.time_stamps, full_data.to_pd().values, label='Historical Data')
+
+ax.plot(future_forecast.time_stamps, future_forecast.to_pd().values, 'r--', label='Future Forecast')
+ax.set_title(f'Future Forecast using {best_model_name} Model')
+ax.legend()
+plt.tight_layout()
+plt.savefig('future_forecast.png')
+plt.close()
+
+# 13. Create a function for making new forecasts
+def make_forecast(data_df, horizon=30, model_name=None):
+    """
+    Make a forecast using new data
+    
+    Parameters:
+    -----------
+    data_df : pandas.DataFrame
+        DataFrame with 'timestamp' and 'value' columns
+    horizon : int
+        Number of time steps to forecast
+    model_name : str
+        Name of model to use. If None, uses the best model
+        
+    Returns:
+    --------
+    forecast_df : pandas.DataFrame
+        DataFrame with forecast values
+    """
+    # Convert to Merlion TimeSeries
+    ts = TimeSeries.from_pd(data_df.set_index('timestamp'))
+    
+    # Select model
+    if model_name is None or model_name not in models:
+        model = best_model
+        model_name = best_model_name
+    else:
+        model = models[model_name]
+    
+    # Train model
+    model.train(train_data=ts)
+    
+    # Make forecast
+    forecast_result = model.forecast(horizon)
+    forecast = forecast_result.forecast
+    
+    # Convert to DataFrame
+    forecast_df = forecast.to_pd().reset_index()
+    forecast_df.columns = ['timestamp', 'forecast']
+    
+    print(f"Made {horizon} step forecast using {model_name} model")
+    return forecast_df
+
+# Example usage of the forecast function
+future_df = make_forecast(data_df, horizon=30)
+print("Future forecast head:")
+print(future_df.head())
+
+print("\nMerlion time series forecasting complete!")
+
+EXPLANATION
+
+I'll create a Python implementation using Merlion for time series forecasting.
+
+This implementation demonstrates a comprehensive time series forecasting pipeline using the Merlion library. Here's what the code covers:
+
+### Data Handling
+- Creates synthetic time series data with trend, seasonality, and noise components
+- Converts data to Merlion's TimeSeries format
+- Splits data into training and testing sets
+
+### Data Preprocessing
+- Applies a transformation sequence including normalization
+- Prepares data for model training
+
+### Forecasting Models
+The implementation includes several powerful time series forecasting algorithms:
+1. ARIMA: Autoregressive Integrated Moving Average model
+2. SARIMA: Seasonal ARIMA with weekly seasonality
+3. Prophet: Facebook's Prophet model with daily, weekly, and yearly seasonality
+4. MovingAverage: Simple 7-day moving average model
+
+### Model Ensemble
+- Creates an ensemble that combines predictions from all individual models
+- Uses a simple mean combination strategy
+
+### Performance Evaluation
+- Calculates multiple error metrics (MAE, MAPE, SMAPE, RMSE)
+- Creates visualizations of forecasts against actual test data
+- Compares model performance with bar charts
+- Identifies the best performing model
+
+### AutoML with AutoProphet
+- Demonstrates Merlion's automated model selection and hyperparameter tuning
+- Provides a no-code alternative for optimal forecasting
+
+### Future Forecasting
+- Uses the best model to forecast beyond the available data
+- Creates visualizations of future predictions
+
+### Practical Usage
+- Includes a utility function for making new forecasts with fresh data
+- Demonstrates how to reuse trained models
+
+The code is well-documented with comments explaining each step and includes comprehensive visualizations to help interpret the results. You can easily adapt it to your specific time series forecasting needs by:
+
+1. Loading your own data instead of the synthetic dataset
+2. Adjusting model parameters for your specific time series characteristics
+3. Modifying the transformation pipeline for different preprocessing needs
+
+=====================================================================
+
+Time Series Clustering with TSLEARN
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+from sklearn.model_selection import train_test_split
+import seaborn as sns
+from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore")
+
+# tslearn imports
+from tslearn.clustering import TimeSeriesKMeans, KShape, KernelKMeans
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance
+from tslearn.datasets import UCR_UEA_datasets
+from tslearn.utils import to_time_series_dataset
+from tslearn.metrics import dtw
+from tslearn.barycenters import dtw_barycenter_averaging
+from tslearn.piecewise import PiecewiseAggregateApproximation
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+def create_synthetic_time_series(n_series=100, n_timestamps=50, n_clusters=3):
+    """
+    Create synthetic time series data with distinct patterns for each cluster
+    
+    Parameters:
+    -----------
+    n_series : int
+        Number of time series to generate
+    n_timestamps : int
+        Length of each time series
+    n_clusters : int
+        Number of clusters (distinct patterns)
+        
+    Returns:
+    --------
+    X : numpy.ndarray
+        Generated time series data of shape (n_series, n_timestamps)
+    y : numpy.ndarray
+        Cluster labels of shape (n_series,)
+    """
+    X = np.zeros((n_series, n_timestamps))
+    y = np.zeros(n_series)
+    
+    # Generate base patterns for each cluster
+    patterns = []
+    for i in range(n_clusters):
+        if i == 0:
+            # Sine wave pattern
+            pattern = np.sin(np.linspace(0, 4np.pi, n_timestamps))
+        elif i == 1:
+            # Linear trend with minor oscillation
+            pattern = np.linspace(0, 1, n_timestamps) + 0.2  np.sin(np.linspace(0, 8np.pi, n_timestamps))
+        elif i == 2:
+            # Step function with noise
+            pattern = np.zeros(n_timestamps)
+            pattern[n_timestamps//3:2n_timestamps//3] = 1
+            pattern[2n_timestamps//3:] = 0.5
+        else:
+            # Random additional patterns
+            pattern = np.random.randn(n_timestamps)
+            pattern = np.convolve(pattern, np.ones(5)/5, mode='same')  # Smoothing
+        patterns.append(pattern)
+    
+    # Assign patterns to series with noise
+    series_per_cluster = n_series // n_clusters
+    for i in range(n_clusters):
+        start_idx = i  series_per_cluster
+        end_idx = (i+1)  series_per_cluster if i < n_clusters-1 else n_series
+        
+        for j in range(start_idx, end_idx):
+            noise = 0.2  np.random.randn(n_timestamps)
+            amplitude = 0.8 + 0.4  np.random.rand()  # Random amplitude variation
+            phase_shift = np.random.randint(0, n_timestamps // 10)  # Small random phase shift
+            
+            # Apply amplitude and phase variations
+            pattern_shifted = np.roll(patterns[i], phase_shift)
+            X[j] = amplitude  pattern_shifted + noise
+            y[j] = i
+    
+    return X, y
+
+def load_and_prepare_ucr_dataset(dataset_name="Coffee"):
+    """
+    Load a dataset from the UCR/UEA archive
+    
+    Parameters:
+    -----------
+    dataset_name : str
+        Name of the dataset to load
+        
+    Returns:
+    --------
+    X : numpy.ndarray
+        Time series data
+    y : numpy.ndarray
+        Class labels
+    """
+    X_train, y_train, X_test, y_test = UCR_UEA_datasets().load_dataset(dataset_name)
+    
+    # Combine train and test for clustering
+    X = np.vstack((X_train, X_test))
+    y = np.concatenate((y_train, y_test))
+    
+    # Convert labels to integers if they aren't already
+    if y.dtype != int:
+        unique_labels = np.unique(y)
+        label_map = {label: i for i, label in enumerate(unique_labels)}
+        y = np.array([label_map[label] for label in y])
+    
+    return X, y
+
+# Option 1: Create synthetic data
+X_synth, y_synth = create_synthetic_time_series(n_series=150, n_timestamps=50, n_clusters=3)
+print(f"Created synthetic dataset with {X_synth.shape[0]} series of length {X_synth.shape[1]}")
+
+# Option 2: Load UCR/UEA dataset
+try:
+    # Uncomment to use a real dataset instead of synthetic
+    # X_ucr, y_ucr = load_and_prepare_ucr_dataset("Coffee")
+    # print(f"Loaded UCR dataset with {X_ucr.shape[0]} series of length {X_ucr.shape[1]}")
+    # 
+    # # Use this dataset for clustering
+    # X, y_true = X_ucr, y_ucr
+    
+    # Use synthetic data for this example
+    X, y_true = X_synth, y_synth
+    
+except Exception as e:
+    print(f"Error loading UCR dataset: {e}")
+    print("Using synthetic data instead")
+    X, y_true = X_synth, y_synth
+
+# Preprocess the time series
+# 1. Scale the time series to mean=0, std=1
+scaler = TimeSeriesScalerMeanVariance()
+X_scaled = scaler.fit_transform(X)
+
+# 2. Visualize some example time series from each cluster
+def plot_example_series(X, y, n_examples=3):
+    """
+    Plot example time series from each cluster
+    """
+    # Get unique cluster labels
+    unique_clusters = np.unique(y)
+    n_clusters = len(unique_clusters)
+    
+    # Create subplots
+    fig, axes = plt.subplots(n_clusters, 1, figsize=(10, 3n_clusters))
+    if n_clusters == 1:
+        axes = [axes]
+    
+    # Plot examples from each cluster
+    for i, cluster in enumerate(unique_clusters):
+        cluster_indices = np.where(y == cluster)[0]
+        sample_indices = np.random.choice(cluster_indices, min(n_examples, len(cluster_indices)), replace=False)
+        
+        ax = axes[i]
+        for idx in sample_indices:
+            ax.plot(X[idx], alpha=0.7)
+        
+        ax.set_title(f"Cluster {cluster} Examples")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Value")
+    
+    plt.tight_layout()
+    plt.savefig("example_time_series.png")
+    plt.close()
+
+# Plot example time series
+plot_example_series(X, y_true)
+
+# 3. Implement different clustering algorithms
+# Define the number of clusters
+if len(np.unique(y_true)) > 1:
+    n_clusters = len(np.unique(y_true))
+else:
+    n_clusters = 3  # Default if ground truth not available
+
+print(f"Using {n_clusters} clusters for clustering algorithms")
+
+# Define clustering algorithms
+clustering_algorithms = {
+    "KMeans Euclidean": TimeSeriesKMeans(
+        n_clusters=n_clusters,
+        metric="euclidean",
+        max_iter=50,
+        random_state=42
+    ),
+    "KMeans DTW": TimeSeriesKMeans(
+        n_clusters=n_clusters,
+        metric="dtw",
+        max_iter=50,
+        random_state=42
+    ),
+    "KShape": KShape(
+        n_clusters=n_clusters,
+        max_iter=50,
+        random_state=42
+    ),
+    "Kernel KMeans RBF": KernelKMeans(
+        n_clusters=n_clusters,
+        kernel="gak",  # Global Alignment Kernel
+        max_iter=50,
+        random_state=42
+    )
+}
+
+# Fit the models and collect results
+clustering_results = {}
+silhouette_scores = {}
+
+for name, algorithm in clustering_algorithms.items():
+    print(f"Fitting {name}...")
+    
+    # Fit the model
+    try:
+        algorithm.fit(X_scaled)
+        labels = algorithm.labels_
+        
+        # Store results
+        clustering_results[name] = labels
+        
+        # Calculate silhouette score if more than one cluster
+        if n_clusters > 1:
+            score = silhouette_score(X.reshape(X.shape[0], -1), labels)
+            silhouette_scores[name] = score
+            print(f"  Silhouette Score: {score:.4f}")
+        
+    except Exception as e:
+        print(f"  Error fitting {name}: {e}")
+        continue
+    
+    # Plot cluster centroids
+    try:
+        plt.figure(figsize=(12, 5))
+        
+        # Get cluster centers
+        if hasattr(algorithm, 'cluster_centers_'):
+            centers = algorithm.cluster_centers_
+        elif name == "KShape":
+            # KShape returns shaped centroids
+            centers = algorithm.cluster_centers_
+        else:
+            centers = np.array([X_scaled[labels == i].mean(axis=0) for i in range(n_clusters)])
+        
+        # Plot each centroid
+        for i in range(n_clusters):
+            plt.subplot(1, n_clusters, i+1)
+            plt.plot(centers[i].ravel())
+            plt.title(f'Cluster {i} Center')
+            plt.tight_layout()
+        
+        plt.savefig(f"{name}_centroids.png")
+        plt.close()
+        
+    except Exception as e:
+        print(f"  Error plotting centroids for {name}: {e}")
+
+# 4. Visualize clustering results
+def plot_clustering_results(X, algorithm_results, true_labels=None):
+    """
+    Visualize clustering results using dimensionality reduction
+    """
+    from sklearn.decomposition import PCA
+    
+    # Apply PCA for visualization
+    pca = PCA(n_components=2)
+    X_flat = X.reshape(X.shape[0], -1)  # Flatten time series
+    X_2d = pca.fit_transform(X_flat)
+    
+    # Create figure
+    n_algorithms = len(algorithm_results)
+    if true_labels is not None:
+        n_algorithms += 1
+    
+    fig, axes = plt.subplots(1, n_algorithms, figsize=(5n_algorithms, 5))
+    
+    # If only one subplot, make axes iterable
+    if n_algorithms == 1:
+        axes = [axes]
+    
+    # Plot true labels if available
+    i = 0
+    if true_labels is not None:
+        ax = axes[i]
+        scatter = ax.scatter(X_2d[:, 0], X_2d[:, 1], c=true_labels, cmap='viridis', alpha=0.7)
+        ax.set_title('True Labels')
+        ax.set_xlabel('PCA Component 1')
+        ax.set_ylabel('PCA Component 2')
+        
+        # Add legend
+        handles, labels = scatter.legend_elements()
+        ax.legend(handles, [f'Cluster {i}' for i in range(len(np.unique(true_labels)))])
+        i += 1
+    
+    # Plot clustering results
+    for name, labels in algorithm_results.items():
+        ax = axes[i]
+        scatter = ax.scatter(X_2d[:, 0], X_2d[:, 1], c=labels, cmap='viridis', alpha=0.7)
+        ax.set_title(name)
+        ax.set_xlabel('PCA Component 1')
+        ax.set_ylabel('PCA Component 2')
+        
+        # Add legend
+        handles, labels_legend = scatter.legend_elements()
+        ax.legend(handles, [f'Cluster {i}' for i in range(len(np.unique(labels)))])
+        i += 1
+    
+    plt.tight_layout()
+    plt.savefig("clustering_results_pca.png")
+    plt.close()
+
+# Plot clustering results
+plot_clustering_results(X, clustering_results, true_labels=y_true)
+
+# 5. Compare clustering results with ground truth (if available)
+if y_true is not None:
+    from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+    
+    comparison_metrics = {
+        'Adjusted Rand Index': {},
+        'Normalized Mutual Information': {}
+    }
+    
+    for name, labels in clustering_results.items():
+        # Calculate ARI
+        ari = adjusted_rand_score(y_true, labels)
+        comparison_metrics['Adjusted Rand Index'][name] = ari
+        
+        # Calculate NMI
+        nmi = normalized_mutual_info_score(y_true, labels)
+        comparison_metrics['Normalized Mutual Information'][name] = nmi
+    
+    # Print comparison metrics
+    print("\nClustering Performance Metrics:")
+    for metric_name, scores in comparison_metrics.items():
+        print(f"\n{metric_name}:")
+        for alg_name, score in scores.items():
+            print(f"  {alg_name}: {score:.4f}")
+    
+    # Plot comparison
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    
+    for i, (metric_name, scores) in enumerate(comparison_metrics.items()):
+        axes[i].bar(scores.keys(), scores.values())
+        axes[i].set_title(metric_name)
+        axes[i].set_ylim(0, 1)
+        axes[i].set_xticklabels(scores.keys(), rotation=45, ha='right')
+        
+        # Add value labels
+        for j, v in enumerate(scores.values()):
+            axes[i].text(j, v + 0.02, f"{v:.3f}", ha='center')
+    
+    plt.tight_layout()
+    plt.savefig("clustering_metrics_comparison.png")
+    plt.close()
+
+# 6. Time series dimensionality reduction with PAA
+print("\nPerforming dimensionality reduction with PAA...")
+# Piecewise Aggregate Approximation (PAA) for dimensionality reduction
+paa_segments = 10  # Number of segments to reduce to
+paa = PiecewiseAggregateApproximation(n_segments=paa_segments)
+X_paa = paa.fit_transform(X_scaled)
+
+print(f"Reduced time series from {X.shape[1]} to {X_paa.shape[1]} points")
+
+# Visualize original vs reduced time series
+def plot_paa_comparison(X_original, X_reduced, indices=None):
+    """
+    Compare original and PAA-reduced time series
+    """
+    if indices is None:
+        indices = np.random.choice(X_original.shape[0], 3, replace=False)
+    
+    fig, axes = plt.subplots(len(indices), 1, figsize=(10, 3len(indices)))
+    if len(indices) == 1:
+        axes = [axes]
+    
+    for i, idx in enumerate(indices):
+        ax = axes[i]
+        
+        # Plot original
+        ax.plot(X_original[idx], label='Original', alpha=0.7)
+        
+        # Plot PAA segments
+        paa_expanded = np.repeat(X_reduced[idx], X_original.shape[1] // X_reduced.shape[1])
+        # Pad if necessary
+        if len(paa_expanded) < len(X_original[idx]):
+            paa_expanded = np.pad(paa_expanded, 
+                                  (0, len(X_original[idx]) - len(paa_expanded)),
+                                  'edge')
+        
+        ax.plot(paa_expanded, label='PAA', linewidth=2)
+        
+        ax.set_title(f"Time Series {idx}")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Value")
+        ax.legend()
+    
+    plt.tight_layout()
+    plt.savefig("paa_comparison.png")
+    plt.close()
+
+# Plot PAA comparison
+plot_paa_comparison(X, X_paa)
+
+# 7. Applying clustering to the reduced data
+print("\nApplying clustering to dimensionality-reduced data...")
+best_algorithm_name = max(comparison_metrics['Adjusted Rand Index'], 
+                          key=comparison_metrics['Adjusted Rand Index'].get)
+best_algorithm = clustering_algorithms[best_algorithm_name]
+
+# Fit the best algorithm on PAA-reduced data
+try:
+    best_algorithm.fit(X_paa)
+    paa_labels = best_algorithm.labels_
+    
+    # Compare with original clustering
+    original_labels = clustering_results[best_algorithm_name]
+    paa_ari = adjusted_rand_score(original_labels, paa_labels)
+    paa_nmi = normalized_mutual_info_score(original_labels, paa_labels)
+    
+    print(f"Clustering on PAA-reduced data using {best_algorithm_name}:")
+    print(f"  Agreement with full data clustering (ARI): {paa_ari:.4f}")
+    print(f"  Agreement with full data clustering (NMI): {paa_nmi:.4f}")
+    
+    if y_true is not None:
+        paa_vs_true_ari = adjusted_rand_score(y_true, paa_labels)
+        paa_vs_true_nmi = normalized_mutual_info_score(y_true, paa_labels)
+        print(f"  Agreement with true labels (ARI): {paa_vs_true_ari:.4f}")
+        print(f"  Agreement with true labels (NMI): {paa_vs_true_nmi:.4f}")
+    
+except Exception as e:
+    print(f"Error clustering PAA-reduced data: {e}")
+
+# 8. Calculate DTW distance matrix and visualize
+print("\nCalculating DTW distance matrix...")
+# Select a subset of time series for DTW visualization (DTW can be computationally expensive)
+n_subset = min(50, X.shape[0])
+subset_indices = np.random.choice(X.shape[0], n_subset, replace=False)
+X_subset = X[subset_indices]
+
+# Calculate DTW distances
+dtw_matrix = np.zeros((n_subset, n_subset))
+for i in range(n_subset):
+    for j in range(i, n_subset):
+        distance = dtw(X_subset[i], X_subset[j])
+        dtw_matrix[i, j] = dtw_matrix[j, i] = distance
+
+# Plot distance matrix
+plt.figure(figsize=(10, 8))
+sns.heatmap(dtw_matrix, cmap='viridis')
+plt.title('DTW Distance Matrix')
+plt.savefig("dtw_distance_matrix.png")
+plt.close()
+
+# 9. Hierarchical clustering with DTW
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+
+print("\nPerforming hierarchical clustering with DTW...")
+try:
+    # Convert distance matrix to condensed form
+    from scipy.spatial.distance import squareform
+    dtw_condensed = squareform(dtw_matrix)
+    
+    # Perform hierarchical clustering
+    Z = linkage(dtw_condensed, method='average')
+    
+    # Plot dendrogram
+    plt.figure(figsize=(12, 6))
+    dendrogram(Z, truncate_mode='lastp', p=10, leaf_rotation=90.)
+    plt.title('Hierarchical Clustering Dendrogram')
+    plt.xlabel('Time Series Index')
+    plt.ylabel('Distance')
+    plt.savefig("dtw_hierarchical_clustering.png")
+    plt.close()
+    
+    # Get cluster assignments
+    hier_labels = fcluster(Z, n_clusters, criterion='maxclust')
+    
+    # Calculate agreement with true labels if available
+    if y_true is not None:
+        subset_true = y_true[subset_indices]
+        hier_ari = adjusted_rand_score(subset_true, hier_labels)
+        hier_nmi = normalized_mutual_info_score(subset_true, hier_labels)
+        print(f"  Agreement with true labels (ARI): {hier_ari:.4f}")
+        print(f"  Agreement with true labels (NMI): {hier_nmi:.4f}")
+    
+except Exception as e:
+    print(f"Error in hierarchical clustering: {e}")
+
+# 10. Create utility function to cluster new time series
+def cluster_new_time_series(new_series, algorithm_name="KMeans DTW", preprocess=True):
+    """
+    Cluster new time series using the trained model
+    
+    Parameters:
+    -----------
+    new_series : numpy.ndarray
+        New time series data of shape (n_series, n_timestamps)
+    algorithm_name : str
+        Name of the algorithm to use
+    preprocess : bool
+        Whether to preprocess the data
+        
+    Returns:
+    --------
+    labels : numpy.ndarray
+        Cluster labels for the new series
+    """
+    if algorithm_name not in clustering_algorithms:
+        raise ValueError(f"Algorithm {algorithm_name} not found")
+    
+    algorithm = clustering_algorithms[algorithm_name]
+    
+    # Ensure the new series has the right format
+    new_series = to_time_series_dataset(new_series)
+    
+    # Preprocess if requested
+    if preprocess:
+        new_series = scaler.transform(new_series)
+    
+    # Predict cluster
+    labels = algorithm.predict(new_series)
+    return labels
+
+# Example usage of the clustering function
+def example_clustering():
+    """Example of clustering new time series"""
+    # Create a few new series (similar to cluster 0, 1, and 2)
+    n_new = 3
+    new_series = np.zeros((n_new, X.shape[1]))
+    
+    # Cluster 0-like series
+    new_series[0] = np.sin(np.linspace(0, 4np.pi, X.shape[1])) + 0.2  np.random.randn(X.shape[1])
+    
+    # Cluster 1-like series
+    new_series[1] = np.linspace(0, 1, X.shape[1]) + 0.2  np.sin(np.linspace(0, 8np.pi, X.shape[1])) + 0.2  np.random.randn(X.shape[1])
+    
+    # Cluster 2-like series
+    new_series[2] = np.zeros(X.shape[1])
+    new_series[2][X.shape[1]//3:2X.shape[1]//3] = 1
+    new_series[2][2X.shape[1]//3:] = 0.5
+    new_series[2] += 0.2  np.random.randn(X.shape[1])
+    
+    # Cluster the new series
+    best_algorithm = max(comparison_metrics['Adjusted Rand Index'], 
+                          key=comparison_metrics['Adjusted Rand Index'].get)
+    
+    labels = cluster_new_time_series(new_series, algorithm_name=best_algorithm)
+    
+    print(f"\nExample clustering using {best_algorithm}:")
+    print(f"Predicted clusters: {labels}")
+    
+    # Visualize new series with their predicted clusters
+    plt.figure(figsize=(12, 4))
+    for i in range(n_new):
+        plt.subplot(1, n_new, i+1)
+        plt.plot(new_series[i])
+        plt.title(f"Predicted Cluster: {labels[i]}")
+    plt.tight_layout()
+    plt.savefig("new_series_clustering.png")
+    plt.close()
+
+# Run example clustering
+example_clustering()
+
+print("\nTime series clustering using tslearn complete!")
+
+
+EXPLANATION
+
+I'll create a Python implementation for time series clustering using the tslearn package.
+
+This implementation provides a comprehensive approach to time series clustering using the tslearn library. Here's what the code does:
+
+### Data Generation and Preparation
+- Creates synthetic time series data with distinct patterns for each cluster
+- Supports loading real datasets from the UCR/UEA time series archive
+- Preprocesses time series using scaling to ensure fair comparisons
+
+### Multiple Clustering Algorithms
+The implementation includes several powerful time series clustering techniques:
+1. K-Means with Euclidean Distance: Fast but doesn't account for time shifts
+2. K-Means with Dynamic Time Warping (DTW): Handles time warping and phase shifts
+3. KShape: Shape-based clustering that's invariant to scaling and shifting
+4. Kernel K-Means: Uses a Global Alignment Kernel for complex similarity measures
+5. Hierarchical Clustering with DTW: Creates a hierarchy of clusters based on DTW distances
+
+### Evaluation Methods
+- Calculates silhouette scores to evaluate cluster quality
+- Compares clustering results with ground truth using:
+  - Adjusted Rand Index (ARI)
+  - Normalized Mutual Information (NMI)
+- Visualizes results with PCA for easier interpretation
+
+### Advanced Techniques
+- Applies Piecewise Aggregate Approximation (PAA) for dimensionality reduction
+- Computes DTW distance matrices to understand time series similarities
+- Creates dendrograms from hierarchical clustering
+
+### Visualization
+- Plots example time series from each cluster
+- Shows cluster centroids to understand the "typical" pattern in each cluster
+- Creates comparative visualizations of original vs. dimensionality-reduced data
+- Includes distance matrices and hierarchical clustering dendrograms
+
+### Practical Application
+- Provides a utility function for clustering new time series
+- Demonstrates how to apply trained models to new data
+
+The code is well-documented with extensive comments explaining each step and includes comprehensive visualizations to help interpret the results. You can easily adapt it to your specific time series clustering needs by:
+
+1. Loading your own data instead of using synthetic data
+2. Adjusting the preprocessing steps for your specific time series characteristics
+3. Modifying the clustering parameters based on your domain knowledge
+
+
+
+
+
+
+
+
+
+
+
