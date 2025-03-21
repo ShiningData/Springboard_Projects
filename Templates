@@ -1,3 +1,331 @@
+# Get feature names after one-hot encoding
+def get_feature_names_after_encoding(preprocessor):
+    feature_names = []
+    for name, transformer, cols in preprocessor.transformers_:
+        if name == 'num':
+            # For numerical features, just use the column names
+            feature_names.extend(cols)
+        else:  # For categorical features, get one-hot encoded names
+            # Check if the encoder has get_feature_names_out (newer versions) or get_feature_names (older versions)
+            encoder = transformer.named_steps['onehot']
+            if hasattr(encoder, 'get_feature_names_out'):
+                # Newer scikit-learn versions (1.0+)
+                encoded_names = encoder.get_feature_names_out(cols)
+            else:
+                # Older scikit-learn versions (pre-1.0)
+                encoded_names = encoder.get_feature_names(cols)
+            feature_names.extend(encoded_names)
+    
+    return feature_names
+================================
+# app.py - Flask API for Houston Housing Price Prediction
+
+from flask import Flask, request, jsonify
+import pandas as pd
+import numpy as np
+import pickle
+import shap
+import os
+from datetime import datetime
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Load the models
+try:
+    with open('housing_model.pkl', 'rb') as file:
+        single_model = pickle.load(file)
+    
+    with open('ensemble_model.pkl', 'rb') as file:
+        ensemble_model = pickle.load(file)
+    
+    models_loaded = True
+    print("Models loaded successfully")
+except Exception as e:
+    print(f"Error loading models: {e}")
+    models_loaded = False
+    single_model = None
+    ensemble_model = None
+
+def prepare_features(data):
+    """Prepare input features including engineering new features"""
+    # Convert to DataFrame
+    df = pd.DataFrame([data])
+    
+    # Calculate engineered features
+    df['years_since_built'] = 2023 - df['year_built']
+    df['bath_bed_ratio'] = df['bathrooms'] / df['bedrooms'].replace(0, 1)
+    df['total_rooms'] = df['bedrooms'] + df['bathrooms']
+    df['lot_size_per_sqft'] = df['lot_size'] / df['sqft']
+    df['amenity_score'] = df['has_pool'] + df['has_garage'] + df['has_fireplace']
+    df['school_commute_ratio'] = df['school_rating'] / df['commute_time']
+    
+    # Capture engineered features for response
+    engineered_features = {
+        'years_since_built': int(df['years_since_built'].iloc[0]),
+        'bath_bed_ratio': float(df['bath_bed_ratio'].iloc[0]),
+        'total_rooms': float(df['total_rooms'].iloc[0]),
+        'lot_size_per_sqft': float(df['lot_size_per_sqft'].iloc[0]),
+        'amenity_score': int(df['amenity_score'].iloc[0]),
+        'school_commute_ratio': float(df['school_commute_ratio'].iloc[0])
+    }
+    
+    return df, engineered_features
+
+def get_shap_explanation(model, features_df):
+    """Generate SHAP explanations for a prediction"""
+    try:
+        if not hasattr(model, 'named_steps'):
+            return None
+            
+        # Extract pipeline components
+        preprocessor = model.named_steps.get('preprocessor')
+        model_step = model.named_steps.get('model')
+        
+        if preprocessor is None or model_step is None:
+            return None
+            
+        # Preprocess the features
+        features_processed = preprocessor.transform(features_df)
+        
+        # Get feature names if possible
+        try:
+            # For newer scikit-learn versions
+            if hasattr(preprocessor, 'get_feature_names_out'):
+                feature_names = preprocessor.get_feature_names_out()
+            else:
+                # Manual feature name extraction for older scikit-learn
+                feature_names = []
+                for name, transformer, cols in preprocessor.transformers_:
+                    if name == 'num':
+                        feature_names.extend(cols)
+                    else:
+                        encoder = transformer.named_steps.get('onehot')
+                        if encoder:
+                            if hasattr(encoder, 'get_feature_names_out'):
+                                encoded_names = encoder.get_feature_names_out(cols)
+                            else:
+                                encoded_names = encoder.get_feature_names(cols)
+                            feature_names.extend(encoded_names)
+        except Exception as e:
+            print(f"Error getting feature names: {e}")
+            feature_names = [f"feature_{i}" for i in range(features_processed.shape[1])]
+        
+        # Create appropriate SHAP explainer based on model type
+        if hasattr(model_step, 'feature_importances_'):  # Tree-based model
+            explainer = shap.TreeExplainer(model_step)
+        elif hasattr(model_step, 'coef_'):  # Linear model
+            explainer = shap.LinearExplainer(model_step, features_processed)
+        else:
+            return None
+            
+        # Get SHAP values
+        shap_values = explainer.shap_values(features_processed)
+        
+        # Handle different output formats
+        if isinstance(shap_values, list):
+            shap_values = shap_values[0]  # For regression there's usually just one output
+            
+        # Get expected value
+        expected_value = explainer.expected_value
+        if isinstance(expected_value, list):
+            expected_value = expected_value[0]
+        
+        # Calculate total absolute SHAP value for percentage calculation
+        total_abs_shap = np.sum(np.abs(shap_values[0]))
+            
+        # Create feature contributions
+        feature_contributions = []
+        for i, (name, value) in enumerate(zip(feature_names, shap_values[0])):
+            percentage = (abs(value) / total_abs_shap * 100) if total_abs_shap > 0 else 0
+            
+            feature_contributions.append({
+                "feature": name,
+                "shap_value": float(value),
+                "contribution": "positive" if value > 0 else "negative",
+                "percentage": float(percentage)
+            })
+            
+        # Sort by absolute contribution
+        feature_contributions.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
+        
+        return {
+            "base_value": float(expected_value),
+            "top_contributors": feature_contributions[:5],
+            "all_shap_values": {feature_names[i]: float(shap_values[0][i]) for i in range(len(feature_names))}
+        }
+    except Exception as e:
+        print(f"Error generating SHAP explanation: {str(e)}")
+        return None
+
+@app.route('/')
+def home():
+    """Root endpoint with API information"""
+    return jsonify({
+        "message": "Welcome to the Houston Housing Price Prediction API",
+        "endpoints": {
+            "/predict": "Get a price prediction",
+            "/explain": "Get a prediction with SHAP explanation",
+            "/health": "Check API health status",
+            "/models": "List available models"
+        }
+    })
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    """Predict house price based on features"""
+    if not models_loaded:
+        return jsonify({"error": "Models not loaded. Service unavailable."}), 503
+    
+    # Get the data from the POST request
+    data = request.get_json(force=True)
+    
+    # Get the model type from query parameters or use default
+    model_type = request.args.get('model_type', 'ensemble')
+    
+    if model_type not in ["single", "ensemble"]:
+        return jsonify({"error": "Invalid model type. Use 'single' or 'ensemble'."}), 400
+    
+    try:
+        # Prepare the features
+        features_df, engineered_features = prepare_features(data)
+        
+        # Select the model
+        model = ensemble_model if model_type == "ensemble" else single_model
+        
+        # Make prediction
+        prediction = model.predict(features_df)[0]
+        
+        # Return the prediction
+        return jsonify({
+            "predicted_price": round(float(prediction), 2),
+            "model_type": model_type,
+            "engineered_features": engineered_features
+        })
+    except Exception as e:
+        return jsonify({"error": f"Prediction error: {str(e)}"}), 500
+
+@app.route('/explain', methods=['POST'])
+def explain():
+    """Get prediction with SHAP explanation"""
+    if not models_loaded:
+        return jsonify({"error": "Models not loaded. Service unavailable."}), 503
+    
+    # Get the data from the POST request
+    data = request.get_json(force=True)
+    
+    # Get the model type from query parameters or use default
+    model_type = request.args.get('model_type', 'ensemble')
+    
+    if model_type not in ["single", "ensemble"]:
+        return jsonify({"error": "Invalid model type. Use 'single' or 'ensemble'."}), 400
+    
+    try:
+        # Prepare features
+        features_df, engineered_features = prepare_features(data)
+        
+        # Get model
+        model = ensemble_model if model_type == "ensemble" else single_model
+        
+        # Make prediction
+        prediction = model.predict(features_df)[0]
+        
+        # Get SHAP explanation
+        shap_explanation = get_shap_explanation(model, features_df)
+        
+        if not shap_explanation:
+            return jsonify({
+                "error": "SHAP explanations not available for this model",
+                "predicted_price": round(float(prediction), 2),
+                "model_type": model_type,
+                "engineered_features": engineered_features
+            }), 501
+        
+        # Create response
+        response = {
+            "predicted_price": round(float(prediction), 2),
+            "model_type": model_type,
+            "engineered_features": engineered_features
+        }
+        response.update(shap_explanation)
+        
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({"error": f"Explanation error: {str(e)}"}), 500
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy" if models_loaded else "unhealthy",
+        "timestamp": datetime.now().isoformat(),
+        "models_loaded": models_loaded,
+        "environment": os.getenv("FLASK_ENV", "development")
+    })
+
+@app.route('/models')
+def list_models():
+    """List all available models"""
+    if not models_loaded:
+        return jsonify({"error": "Models not loaded. Service unavailable."}), 503
+        
+    return jsonify([
+        {"name": "single", "description": "Best performing single regression model"},
+        {"name": "ensemble", "description": "Best performing ensemble model"}
+    ])
+
+# Helper function to validate request data
+def validate_house_data(data):
+    """Validate input house data"""
+    required_fields = [
+        'zip_code', 'neighborhood', 'sqft', 'bedrooms', 'bathrooms',
+        'lot_size', 'year_built', 'has_pool', 'has_garage', 'has_fireplace',
+        'school_rating', 'crime_rate', 'commute_time', 'condition'
+    ]
+    
+    # Check if all required fields are present
+    for field in required_fields:
+        if field not in data:
+            return False, f"Missing required field: {field}"
+    
+    # Validate numeric fields
+    if not isinstance(data['sqft'], (int, float)) or data['sqft'] <= 0:
+        return False, "sqft must be a positive number"
+    
+    if not isinstance(data['bedrooms'], (int, float)) or data['bedrooms'] < 1:
+        return False, "bedrooms must be at least 1"
+    
+    if not isinstance(data['bathrooms'], (int, float)) or data['bathrooms'] < 1:
+        return False, "bathrooms must be at least 1"
+    
+    # Validate condition
+    if data['condition'] not in ['Poor', 'Fair', 'Good', 'Excellent']:
+        return False, "condition must be one of: Poor, Fair, Good, Excellent"
+    
+    return True, ""
+
+# Add validation middleware
+@app.before_request
+def validate_json():
+    """Validate JSON input data before processing requests"""
+    if request.method == 'POST' and request.path in ['/predict', '/explain']:
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        data = request.get_json(force=True)
+        valid, error_msg = validate_house_data(data)
+        
+        if not valid:
+            return jsonify({"error": error_msg}), 400
+
+# Main function to run the app
+if __name__ == '__main__':
+    # Get port from environment variable or use default 5000
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Run the app
+    app.run(host='0.0.0.0', port=port, debug=False)
+==================
 def generate_housing_data(n_samples=1000):
     """
     Generate synthetic Houston housing data.
