@@ -1,375 +1,799 @@
- Healthcare Claim Denial Predictor: Implementation Overview
-
-The healthcare claim denial predictor system has been strategically designed for integration within providers' electronic claims submission workflows, offering proactive identification of claims with elevated denial risk. This sophisticated solution analyzes each claim at the service line level prior to clearinghouse or payer submission, enabling targeted intervention before claims enter the adjudication process.
-
- Operational Framework
-
-The system implements a non-disruptive bifurcated workflow:
-
-1. Standard Processing Path: Service lines with favorable payment probability assessments proceed through the standard claims submission channel without interruption, maintaining operational efficiency for low-risk claims.
-
-2. Enhanced Review Path: Service lines identified as having significant denial probability are automatically flagged and redirected to specialized denial management teams. These flagged claims are accompanied by quantitative risk assessments and specific denial reason indicators, enabling focused remediation efforts.
-
- Technical Architecture
-
-The prediction engine leverages an advanced ensemble machine learning approach, combining two complementary algorithms:
-
-- AUTOGLUON: Provides sophisticated multi-layer model stacking with automated feature optimization
-- Catboost: Delivers exceptional categorical feature handling with gradient boosting capabilities
-
-This dual-algorithm ensemble methodology has been implemented in Python, utilizing state-of-the-art machine learning libraries and custom integration components. The architecture delivers superior predictive performance by leveraging the complementary strengths of both algorithms while mitigating their individual limitations.
-
- Output Framework
-
-The system generates a comprehensive prediction package for each service line:
-
-1. Binary Classification: Definitive denied/accepted classification based on optimized probability thresholds
-2. Confidence Quantification: Precise probability scores indicating prediction reliability and denial risk magnitude
-3. Interpretability Layer: Transparent explanation of prediction drivers using the RulexAI algorithm, providing specific factors contributing to each denial prediction
-
-This multidimensional output enables revenue cycle teams to prioritize intervention efforts based on both risk level and contributing factors, focusing resources on claims with the highest remediation potential.
-
-The implementation delivers measurable improvements in revenue cycle efficiency through proactive denial management, reducing administrative rework, accelerating cash flow, and optimizing claims processing resources through data-driven intervention prioritization.
-
-
-
-==========================
-FEATURE IMPORTANCE:
-
- 4.7 Model Outcome Analysis: Global Feature Importance
-
- 4.7.1 FMOL Ensemble Model Global Feature Importance
-
-The RulexAI global feature importance analysis for FMOL provides valuable insights into the drivers of claim denial predictions across two temporal windows: 12-month and 18-month datasets. This analysis quantifies the contribution of each feature to model predictions, with positive values indicating factors that increase denial probability and negative values representing factors that decrease denial likelihood.
-
- 4.7.1.1 12 Months FMOL Data
-
-For the 12-month FMOL dataset, the analysis reveals distinct patterns in feature importance for both claim approval (class 0) and denial (class 1) outcomes:
-
-Class 0 (Claim Approval) Drivers:
-- Provider NPI emerges as the most significant factor (0.0223) influencing claim approval, suggesting that certain providers have established effective claims submission practices.
-- Claim facility code (0.0051) and service line revenue code (-0.0015) also demonstrate notable influence on approval outcomes.
-- The strongest negative predictors for approval include claim frequency code (-0.2651), FE_actual_patientAge (-0.2188), and service line quantity (-0.1349), indicating these factors increase denial likelihood when present in certain configurations.
-
-Class 1 (Claim Denial) Drivers:
-- Service line revenue code shows the highest positive impact (0.0831) on denial predictions, indicating certain revenue codes are strongly associated with denial outcomes.
-- Service line quantity (0.0279) and FE_serviceLinePointedDiagnosisTypeCodes_1 (0.0045) also contribute significantly to denial predictions.
-- Patient demographic factors show minimal impact, with FE_actual_patientGender having very low importance (8.94E-05).
-- Strong negative contributors to denial prediction include FE_actual_patientAge (-0.0897) and provider NPI (-0.0489), suggesting these factors, when present in certain configurations, reduce denial likelihood.
-
- 4.7.1.2 18 Months FMOL Data
-
-Extending the analysis to the 18-month FMOL dataset reveals both consistency and evolution in feature importance:
-
-Class 0 (Claim Approval) Drivers:
-- Provider NPI maintains significant importance (0.0051), though its relative influence has decreased compared to the 12-month dataset.
-- Service line unit of measure (-0.0052) and service line revenue code (-0.0071) show consistent negative impact on approval probability.
-- Claim frequency code (-0.2716) remains the strongest negative predictor for approval, consistent with the 12-month analysis.
-
-Class 1 (Claim Denial) Drivers:
-- Service line procedure code (-0.0027) and service line revenue code (-0.0029) show modest negative impact on denial prediction.
-- Claim facility code (-0.0050) and provider NPI (-0.0080) emerge as stronger negative contributors to denial in the extended dataset.
-- Service line quantity (-0.1332) shows significant negative association with denials in the 18-month data.
-
-The 18-month analysis demonstrates a shift in feature importance patterns compared to the 12-month window, suggesting temporal evolution in denial patterns. The reduced magnitude of importance values in the 18-month data may indicate more complex interrelationships between features over the extended timeframe.
-
- 4.7.2 GRADY Ensemble Model Global Feature Importance
-
-The Grady Health System data exhibits distinct feature importance patterns compared to FMOL, highlighting the importance of client-specific model customization in healthcare claim denial prediction.
-
- 4.7.2.1 12 Months Grady Data
-
-The 12-month Grady dataset shows the following feature importance patterns:
-
-Class 0 (Claim Approval) Drivers:
-- Service line procedure code emerges as the most significant positive factor (0.0017) for claim approval.
-- Service line procedure code qualifier (-0.0038), service line quantity (-0.0096), and service line unit of measure (-0.0163) all show negative association with approval.
-- Patient age (FE_actual_patientAge) shows the strongest negative impact (-0.2902) on approval probability, indicating older patient demographics may face higher denial rates.
-
-Class 1 (Claim Denial) Drivers:
-- Claim facility code shows the strongest positive association (0.0028) with denial outcomes.
-- Patient demographics, including FE_actual_patientGender (-0.0015) and FE_actual_patientAge (-0.0800), show negative influence on denial probability.
-- Service line quantity (-0.1750) demonstrates significant negative association with denials, indicating that higher quantity services may face lower denial rates in the Grady environment.
-
- 4.7.2.2 18 Months Grady Data
-
-The extended 18-month Grady dataset reveals evolution in feature importance:
-
-Class 0 (Claim Approval) Drivers:
-- Service line procedure code maintains positive importance (0.0016), consistent with the 12-month analysis.
-- Service line quantity (-0.0465) and claim frequency code (-0.1372) show strong negative associations with approval.
-- Patient age (FE_actual_patientAge) remains the most significant negative predictor (-0.2613) for approval.
-
-Class 1 (Claim Denial) Drivers:
-- Claim frequency code emerges as the strongest positive predictor (0.0170) for denials in the extended dataset.
-- Claim facility code (0.0000) shows negligible impact on denial probability, a notable change from the 12-month analysis.
-- Service line quantity (-0.1370) maintains its strong negative association with denial outcomes.
-
- Cross-Client Comparative Analysis
-
-The comparative analysis between FMOL and Grady feature importance reveals several insights:
-
-1. Client-Specific Patterns: The two healthcare organizations show distinct feature importance patterns, highlighting the value of customized modeling approaches:
-   - FMOL shows stronger influence from provider NPI and revenue codes
-   - Grady exhibits greater sensitivity to procedure codes and patient demographics
-
-2. Temporal Consistency: Both clients show relatively consistent patterns between 12-month and 18-month analyses for class 0 (approval) predictors, suggesting stable patterns in factors that lead to successful claims.
-
-3. Denial Factor Evolution: The class 1 (denial) predictors show more variation between the 12-month and 18-month analyses, indicating that denial patterns may evolve more rapidly and require more frequent model updates.
-
-4. Demographic Factors: Patient age shows significant importance in the Grady dataset but more moderate influence in the FMOL data, suggesting organizational differences in patient population or service mix.
-
-5. Common Drivers: Service line quantity emerges as an important factor across both client environments, consistently showing negative association with approval probability.
-
-These global feature importance patterns inform targeted interventions in the revenue cycle process, enabling each healthcare organization to focus improvement efforts on the most influential factors in their specific environment. The analysis will be updated quarterly to track evolving patterns and ensure the model maintains alignment with changing payer behaviors and coding requirements.
-
-===================================
-
- 4.8 Precision-Recall Curve Analysis
-
- Overview of Precision-Recall Evaluation for Healthcare Claim Denial Prediction
-
-The Precision-Recall curve represents a critical performance evaluation tool for our healthcare claim denial predictor model, particularly given the inherent class imbalance in claims data where denials typically constitute a minority class. Unlike ROC curves that plot true positive rate against false positive rate, Precision-Recall curves specifically focus on the trade-off between precision (positive predictive value) and recall (sensitivity) across various classification thresholds.
-
-In the context of our healthcare claim denial predictor, this evaluation metric holds particular significance:
-
-- Precision measures the proportion of claims predicted as denials that are actually denied. High precision minimizes false positives, which is operationally important as each flagged claim requires resource-intensive review.
-
-- Recall quantifies the proportion of actual denials that are correctly identified by the model. High recall ensures that potentially problematic claims are not missed, which directly impacts revenue preservation.
-
-The area under the Precision-Recall curve (PR AUC) provides a single-value performance metric that captures the model's ability to maintain both high precision and high recall across different threshold settings. This metric is particularly valuable for imbalanced classification problems like claim denial prediction, where standard accuracy can be misleading due to the prevalence of the majority class.
-
- Comparative Analysis of Model Variants
-
- FMOL Client Performance
-
- 12-Month Dataset Analysis
-The Precision-Recall curves for the FMOL 12-month dataset demonstrate the relative performance of our three model variants (AUTOGLUON, Catboost, and the Ensemble model). The ensemble approach consistently maintains higher precision across recall levels compared to either individual model, validating our architectural decision to combine these complementary algorithms.
-
-At high recall thresholds (>0.8), where operational focus often lies to capture most potential denials, the ensemble model maintains precision approximately 15% higher than the Catboost model alone and 8% higher than AUTOGLUON. This translates directly to operational efficiency by reducing false positives that would require unnecessary review.
-
- 18-Month Dataset Analysis
-The extended 18-month FMOL dataset shows interesting evolution in model performance. The PR curves reveal that all three models benefit from the additional historical data, with increased PR AUC scores across the board. However, the ensemble model's advantage becomes even more pronounced, particularly in the critical high-recall region (0.7-0.9) where operational thresholds are typically set.
-
-The enhanced performance on the 18-month dataset validates our continuous learning approach and suggests that temporal patterns in denial behavior provide valuable signal for prediction.
-
- Grady Client Performance
-
- 12-Month Dataset Analysis
-For the Grady 12-month dataset, the Precision-Recall curves reveal distinct performance characteristics compared to FMOL. While the ensemble model maintains superior performance, the gap between AUTOGLUON and Catboost is more pronounced, with AUTOGLUON demonstrating particularly strong performance in the mid-recall range (0.4-0.7).
-
-This client-specific variation in algorithm performance further justifies our ensemble approach, which effectively leverages the strengths of each algorithm while mitigating their individual weaknesses.
-
- 18-Month Dataset Analysis
-The Grady 18-month PR curves show significant performance improvements compared to the 12-month dataset across all model variants. Most notably, the ensemble model achieves exceptional precision (>0.85) even at high recall levels (0.8), representing a substantial improvement in predictive performance.
-
-This marked improvement suggests that Grady's denial patterns may exhibit stronger temporal dependencies that become more detectable with extended historical data, highlighting the value of our customized approach to each client environment.
-
- Threshold Selection Implications
-
-The Precision-Recall curves provide essential guidance for operational threshold selection in production deployment. By visualizing the precision-recall trade-off, revenue cycle management teams can select optimal operating points based on their specific business priorities:
-
-1. Resource-Constrained Environments: Organizations with limited review capacity can select thresholds that prioritize precision, ensuring that flagged claims have high probability of actual denial.
-
-2. Revenue Protection Focus: Organizations prioritizing maximum denial capture can select thresholds that favor recall, accepting additional false positives to minimize missed denials.
-
-3. Balanced Approach: Most organizations benefit from thresholds in the "elbow" region of the PR curve, where marginal precision sacrifices yield substantial recall improvements.
-
-The ensemble model's superior PR curve performance across all client datasets and temporal windows supports standardizing on the 0.5 probability threshold, eliminating the need for artificially lowered thresholds that were required with previous model implementations.
-
- Conclusion
-
-The Precision-Recall curve analysis demonstrates the robust performance of our ensemble approach across different client environments and temporal windows. The consistently superior PR AUC scores of the ensemble model validate our architectural decisions and feature engineering approach.
-
-Furthermore, the analysis reveals that extended historical data (18-month vs. 12-month) yields significant performance improvements, particularly for the Grady dataset. This finding supports our implementation of monthly retraining using 18-month rolling windows to maintain optimal model performance.
-
-The Precision-Recall evaluation framework will continue to serve as a primary performance monitoring tool, enabling ongoing assessment of model effectiveness and informing threshold adjustments as operational requirements evolve.
-
-=========================================================================================================
-
-ROC AUC 
-
- 4.9 ROC AUC Curve Analysis
-
- Overview of ROC Curve Evaluation for Healthcare Claim Denial Prediction
-
-The Receiver Operating Characteristic (ROC) curve represents a fundamental evaluation metric for our healthcare claim denial predictor model, complementing the Precision-Recall analysis by assessing discrimination performance across all possible classification thresholds. The ROC curve plots the True Positive Rate (sensitivity) against the False Positive Rate (1-specificity), providing a comprehensive view of the model's ability to distinguish between denied and paid claims regardless of class imbalance.
-
-In the context of our healthcare claim denial predictor, the ROC curve and its associated Area Under the Curve (AUC) metric provide several key insights:
-
-- Discriminative Power: The ROC AUC quantifies the model's ability to assign higher probabilities to actual denials compared to paid claims, with values ranging from 0.5 (random guessing) to 1.0 (perfect discrimination).
-
-- Threshold Independence: Unlike point metrics such as accuracy or F1 score, the ROC AUC evaluates performance across all possible threshold settings, providing a comprehensive assessment of model quality independent of any specific operational cutoff point.
-
-- Comparative Baseline: The ROC curve enables direct comparison against the diagonal line representing random performance (AUC = 0.5), visually demonstrating the model's superiority over non-predictive approaches.
-
- Comparative Analysis of Model Variants
-
- FMOL Client Performance
-
- 12-Month Dataset Analysis
-The ROC curves for the FMOL 12-month dataset illustrate the comparative performance of our three model variants (AUTOGLUON, Catboost, and the Ensemble model). The ensemble approach demonstrates superior discrimination ability with an ROC AUC exceeding 0.90, significantly outperforming random classification (0.50) and establishing strong predictive capability.
-
-At critical operating points where high sensitivity is required, the ensemble model maintains substantially lower false positive rates compared to either individual model. Notably, at the 0.90 sensitivity threshold (capturing 90% of actual denials), the ensemble model achieves a false positive rate approximately 20% lower than Catboost alone and 12% lower than AUTOGLUON.
-
- 18-Month Dataset Analysis
-The extended 18-month FMOL dataset ROC curves reveal consistent improvement across all model variants, with the ensemble model achieving an impressive ROC AUC of 0.93. This improvement indicates that the additional historical data enhances the model's ability to distinguish between denied and paid claims.
-
-The enhanced separation between the ROC curves of the ensemble model and its constituent algorithms in the 18-month analysis further validates our architectural decision to combine these complementary approaches. Particularly in the high-sensitivity region (0.85-0.95), the ensemble model maintains a substantial advantage in discrimination performance.
-
- Grady Client Performance
-
- 12-Month Dataset Analysis
-For the Grady 12-month dataset, the ROC curves exhibit distinct characteristics compared to FMOL. While all models demonstrate strong performance with AUC values above 0.85, the performance gap between AUTOGLUON and Catboost is more pronounced, with AUTOGLUON showing particular strength in the mid-sensitivity range.
-
-The ensemble model successfully leverages this algorithmic diversity, achieving an ROC AUC of 0.89 that represents a meaningful improvement over either individual model. This client-specific variation in algorithm performance reinforces the value of our ensemble approach in adapting to different healthcare environments.
-
- 18-Month Dataset Analysis
-The Grady 18-month ROC curves demonstrate remarkable improvement across all model variants, with the ensemble model achieving an exceptional ROC AUC of 0.94. This substantial performance gain compared to the 12-month dataset suggests that Grady's denial patterns exhibit strong temporal dependencies that become increasingly detectable with expanded historical data.
-
-The near-perfect ROC curve shape in the upper-left quadrant indicates outstanding discrimination capability, with the ensemble model maintaining very low false positive rates even at high sensitivity thresholds. This exceptional performance enables operational flexibility in threshold selection without significant performance compromises.
-
- Performance Stability Analysis
-
-A key strength revealed by the ROC curve analysis is the consistent superiority of the ensemble model across different client environments and temporal windows. This stability is particularly evident in the following observations:
-
-1. Cross-Client Consistency: Despite the distinct denial patterns between FMOL and Grady, the ensemble model maintains excellent discrimination performance (AUC > 0.89) across both environments.
-
-2. Temporal Stability: The performance improvement from 12-month to 18-month datasets follows consistent patterns across both clients, with the ensemble model showing the most substantial gains.
-
-3. Algorithm Synergy: The ensemble model consistently outperforms both constituent algorithms across all evaluation scenarios, demonstrating effective synergy between AUTOGLUON and Catboost approaches.
-
- Operational Implications
-
-The ROC curve analysis provides several important operational insights:
-
-1. Model Superiority Validation: The consistently high ROC AUC values (0.89-0.94) across all scenarios definitively establish the model's superior performance compared to random classification or simple rule-based approaches.
-
-2. Threshold Selection Flexibility: The smooth ROC curves with gradual slopes in the high-sensitivity region provide flexibility in operational threshold selection, allowing customization to specific business priorities without dramatic performance penalties.
-
-3. Performance Monitoring Framework: The ROC AUC serves as an excellent summary metric for ongoing performance monitoring, with established baselines (>0.89 for 12-month data, >0.93 for 18-month data) supporting automated alerting if performance degradation occurs.
-
-4. Resource Allocation Guidance: The false positive rates at various sensitivity thresholds inform resource allocation for claim review, enabling data-driven staffing decisions based on expected workload at different operating points.
-
- Conclusion
-
-The ROC curve analysis provides compelling evidence for the effectiveness of our ensemble-based healthcare claim denial predictor. The consistently high AUC values across different client environments and temporal windows confirm the model's robust ability to distinguish between denied and paid claims, significantly outperforming random classification.
-
-The superior performance of the ensemble model compared to either individual algorithm validates our architectural approach, while the consistent improvement with extended historical data supports our implementation of rolling 18-month training windows. These insights, combined with the Precision-Recall analysis, provide a comprehensive performance assessment framework that will guide ongoing model refinement and operational implementation.
-
-The ROC AUC will continue to serve as a key performance indicator in our monitoring framework, providing an established baseline against which to measure future model iterations and detect potential performance degradation requiring intervention.
-
-===============================================
-
- 4.10 Confusion Matrix Analysis
-
- Overview of Confusion Matrix Evaluation for Healthcare Claim Denial Prediction
-
-The confusion matrix represents a fundamental evaluation tool for our healthcare claim denial predictor model, providing a detailed breakdown of prediction outcomes across all four possible classification scenarios: True Positives (TP), False Positives (FP), True Negatives (TN), and False Negatives (FN). This comprehensive view of model performance translates directly to operational impact in the healthcare revenue cycle context.
-
-In our healthcare claim denial prediction framework, each element of the confusion matrix carries specific operational significance:
-
-- True Positives (TP): Claims correctly identified as denials. These represent successful predictions that enable proactive intervention before submission, potentially preventing revenue loss and administrative rework.
-
-- False Positives (FP): Claims incorrectly flagged as potential denials. These predictions consume valuable review resources without yielding revenue benefit, representing operational inefficiency.
-
-- True Negatives (TN): Claims correctly identified as likely to be paid. These predictions enable streamlined processing for clean claims, optimizing workflow efficiency.
-
-- False Negatives (FN): Denials the model failed to predict. These missed opportunities result in unexpected revenue disruption and reactive rework, typically at higher cost than proactive intervention.
-
-The confusion matrix provides concrete counts in each category, enabling quantitative assessment of operational impact beyond abstract performance metrics.
-
- Comparative Analysis of Model Variants
-
- FMOL Client Performance
-
- 12-Month Dataset Analysis
-The confusion matrices for the FMOL 12-month dataset reveal the detailed classification performance of our three model variants (AUTOGLUON, Catboost, and the Ensemble model) at the standard 0.5 probability threshold.
-
-The ensemble model demonstrates superior balance across all four quadrants compared to individual models:
-- Higher TP count than either individual model, identifying approximately 8% more actual denials than Catboost alone
-- Lower FP count than AUTOGLUON, reducing unnecessary reviews by approximately 12%
-- Comparable TN performance to Catboost, maintaining streamlined processing for clean claims
-- Significantly reduced FN count compared to both individual models, minimizing unexpected denials by approximately 15%
-
-This balanced performance directly translates to operational efficiency, with the ensemble model providing more accurate denial predictions while simultaneously reducing review workload.
-
- 18-Month Dataset Analysis
-The extended 18-month FMOL dataset confusion matrices show material improvement across all model variants, with the ensemble model exhibiting particularly notable enhancements:
-- TP count increases by approximately 11% compared to the 12-month model
-- FP count decreases by approximately 18%, substantially reducing unnecessary reviews
-- FN cases decrease by approximately 22%, significantly reducing unexpected denials
-
-These improvements demonstrate that the extended historical window enables the model to recognize more subtle denial patterns, particularly benefiting the ensemble approach which effectively leverages complementary algorithmic strengths.
-
- Grady Client Performance
-
- 12-Month Dataset Analysis
-The Grady 12-month dataset confusion matrices exhibit distinct characteristics compared to FMOL:
-- Higher proportion of FP cases across all models, reflecting the more complex denial patterns in the Grady environment
-- More pronounced performance differences between individual models, with AUTOGLUON showing stronger performance in TN cases but weaker performance in TP identification
-
-The ensemble model successfully balances these trade-offs, achieving:
-- 14% higher TP count than Catboost alone
-- 9% lower FP count than AUTOGLUON
-- Modest improvements in both TN and FN categories compared to either individual model
-
-These results highlight the value of the ensemble approach in adapting to client-specific denial patterns and balancing competing operational priorities.
-
- 18-Month Dataset Analysis
-The Grady 18-month confusion matrices reveal dramatic improvement compared to the 12-month dataset:
-- TP count increases by approximately 25% compared to the 12-month model
-- FP count decreases by approximately 31%, representing substantial operational efficiency gains
-- FN cases decrease by approximately 35%, significantly reducing unexpected denials
-
-This exceptional improvement suggests that Grady's denial patterns exhibit strong temporal dependencies that become increasingly detectable with expanded historical data. The ensemble model most effectively capitalizes on these patterns, achieving balanced performance across all confusion matrix quadrants.
-
- Clinical and Operational Context
-
-Translating the confusion matrix results into healthcare revenue cycle context provides meaningful business insights:
-
-1. Financial Impact Assessment:
-   - Each TP represents a potential denial prevention opportunity, with average claim values of $X for FMOL and $Y for Grady
-   - The ensemble model's superior TP identification translates to approximately $Z million in annual denial prevention opportunity
-
-2. Resource Utilization Analysis:
-   - Each FP represents unnecessary review resource allocation, estimated at X minutes per claim
-   - The ensemble model's reduced FP count compared to individual models translates to approximately Y FTE resource savings annually
-
-3. Denial Prevention Effectiveness:
-   - The ensemble model's lower FN count represents reduced unexpected denials, eliminating approximately X% of denial-related revenue disruption
-   - This improvement enables more predictable revenue cycle performance and reduces reactionary workload
-
-4. Client-Specific Performance Analysis:
-   - FMOL benefits most from the ensemble model's enhanced precision (reduced FP)
-   - Grady benefits predominantly from improved recall (increased TP, reduced FN)
-   - These differences inform client-specific operational implementation strategies
-
- Threshold Optimization Implications
-
-The confusion matrix analysis at the standard 0.5 threshold provides strong validation for our threshold normalization approach:
-
-1. Eliminating Artificially Lowered Thresholds:
-   - Previous model implementations required significantly lowered thresholds (FMOL: 0.207; Grady: 0.1479)
-   - The enhanced ensemble model achieves superior performance at the standard 0.5 threshold
-   - This normalization simplifies operational implementation and improves interpretability
-
-2. Operating Point Stability:
-   - The balanced performance across all four confusion matrix quadrants indicates robust classification at the 0.5 threshold
-   - This stability eliminates the need for frequent threshold recalibration, enhancing operational consistency
-
-3. Client-Specific Fine-Tuning Potential:
-   - While 0.5 serves as an effective standard threshold, the confusion matrices reveal potential for modest client-specific optimization
-   - FMOL may benefit from slight threshold elevation (to 0.55) to further reduce FP
-   - Grady shows optimal balance at the standard 0.5 threshold
-
- Conclusion
-
-The confusion matrix analysis provides granular insight into the healthcare claim denial predictor's operational performance beyond abstract metrics like AUC or F1 score. The results consistently demonstrate the ensemble model's superior and balanced performance across all prediction categories, validating our architectural approach.
-
-The dramatic improvement observed in the 18-month datasets compared to 12-month windows—particularly for Grady—provides compelling evidence for our implementation of rolling 18-month training periods. This temporal extension enables the model to capture subtle denial patterns that significantly reduce both false positives (unnecessary reviews) and false negatives (unexpected denials).
-
-The confusion matrix will continue to serve as a primary operational performance indicator in our monitoring framework, providing concrete counts that translate directly to revenue impact and resource utilization. This operational focus ensures that model refinements are guided by actual business value rather than abstract statistical improvements.
-
-====================================================
-
+# Houston Housing Price Prediction
+# End-to-End Regression Modeling Tutorial
+
+# Table of Contents
+# 1. Introduction
+# 2. Data Loading and Exploration
+# 3. Data Preprocessing
+# 4. Feature Engineering
+# 5. Feature Selection
+# 6. Model Building and Evaluation
+# 7. Hyperparameter Tuning
+# 8. Final Model Evaluation
+# 9. Model Persistence
+# 10. Conclusion
+
+# 1. Introduction
+# This notebook demonstrates a complete regression modeling workflow for predicting housing prices in Houston.
+# We'll cover every step from loading the data to saving the final model.
+
+# Import necessary libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_regression, RFE
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.inspection import permutation_importance
+import pickle
+import warnings
+warnings.filterwarnings('ignore')
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+# 2. Data Loading and Exploration
+# For this tutorial, we'll simulate a Houston housing dataset.
+# In a real-world scenario, you would load your actual data from a file or database.
+
+# Simulate Houston housing data
+def generate_housing_data(n_samples=1000):
+    # Create a dictionary to hold our features
+    data = {}
+    
+    # Location features
+    data['zip_code'] = np.random.choice(['77002', '77004', '77005', '77006', '77007', '77008', '77019', '77027', '77030', '77401'], n_samples)
+    data['neighborhood'] = np.random.choice(['Downtown', 'Midtown', 'River Oaks', 'Montrose', 'Heights', 'Medical Center', 
+                                             'West University', 'Memorial', 'Uptown', 'Bellaire'], n_samples)
+    
+    # Property characteristics
+    data['sqft'] = np.random.normal(2000, 500, n_samples).astype(int)
+    data['bedrooms'] = np.random.choice([2, 3, 4, 5], n_samples, p=[0.2, 0.5, 0.2, 0.1])
+    data['bathrooms'] = np.random.choice([1, 2, 2.5, 3, 3.5, 4], n_samples)
+    data['lot_size'] = np.random.normal(7000, 2000, n_samples).astype(int)
+    data['year_built'] = np.random.randint(1950, 2023, n_samples)
+    data['has_pool'] = np.random.choice([0, 1], n_samples, p=[0.8, 0.2])
+    data['has_garage'] = np.random.choice([0, 1], n_samples, p=[0.3, 0.7])
+    data['has_fireplace'] = np.random.choice([0, 1], n_samples, p=[0.6, 0.4])
+    
+    # External factors
+    data['school_rating'] = np.random.choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], n_samples)
+    data['crime_rate'] = np.random.normal(5, 2, n_samples).clip(0, 10)
+    data['commute_time'] = np.random.normal(25, 10, n_samples).clip(5, 60).astype(int)
+    
+    # Condition
+    data['condition'] = np.random.choice(['Poor', 'Fair', 'Good', 'Excellent'], n_samples, p=[0.1, 0.3, 0.4, 0.2])
+    
+    # Price (target variable)
+    # Base price
+    price = 150000 + data['sqft'] * 100
+    
+    # Adjust based on bedrooms and bathrooms
+    price += data['bedrooms'] * 15000
+    price += (data['bathrooms'] * 10000).astype(int)
+    
+    # Adjust based on neighborhood (using a dictionary for neighborhood premiums)
+    neighborhood_premium = {
+        'Downtown': 50000, 'Midtown': 20000, 'River Oaks': 200000, 
+        'Montrose': 100000, 'Heights': 80000, 'Medical Center': 70000,
+        'West University': 150000, 'Memorial': 120000, 'Uptown': 90000, 'Bellaire': 130000
+    }
+    for i in range(n_samples):
+        price[i] += neighborhood_premium[data['neighborhood'][i]]
+    
+    # Adjust for other factors
+    price += (2023 - data['year_built']) * -500  # Older houses are cheaper
+    price += data['has_pool'] * 25000
+    price += data['has_garage'] * 15000
+    price += data['has_fireplace'] * 5000
+    price += data['school_rating'] * 8000
+    price -= data['crime_rate'] * 5000
+    price -= data['commute_time'] * 500
+    
+    # Condition factor
+    condition_factor = {'Poor': 0.8, 'Fair': 0.9, 'Good': 1.0, 'Excellent': 1.1}
+    for i in range(n_samples):
+        price[i] *= condition_factor[data['condition'][i]]
+    
+    # Add some random noise
+    price += np.random.normal(0, 25000, n_samples)
+    
+    # Ensure no negative prices
+    price = np.maximum(price, 50000)
+    
+    # Add price to our data dictionary
+    data['price'] = price.astype(int)
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(data)
+    
+    # Add some missing values to make it more realistic
+    for col in ['bedrooms', 'bathrooms', 'year_built', 'school_rating']:
+        mask = np.random.choice([True, False], size=n_samples, p=[0.05, 0.95])
+        df.loc[mask, col] = np.nan
+    
+    return df
+
+# Generate our dataset
+housing_df = generate_housing_data(1500)
+
+# Display basic info about the dataset
+print("Dataset Information:")
+housing_df.info()
+
+# Display the first few rows
+print("\nFirst 5 rows of the dataset:")
+print(housing_df.head())
+
+# Summary statistics
+print("\nSummary statistics:")
+print(housing_df.describe())
+
+# Check for missing values
+print("\nMissing values per column:")
+print(housing_df.isnull().sum())
+
+# 3. Exploratory Data Analysis (EDA)
+
+# Distribution of the target variable (price)
+plt.figure(figsize=(10, 6))
+sns.histplot(housing_df['price'], kde=True)
+plt.title('Distribution of House Prices')
+plt.xlabel('Price ($)')
+plt.ylabel('Frequency')
+plt.show()
+
+# Let's check if price distribution is skewed and if we need to transform it
+skewness = housing_df['price'].skew()
+print(f"Skewness of price distribution: {skewness:.2f}")
+
+if abs(skewness) > 1:
+    plt.figure(figsize=(10, 6))
+    sns.histplot(np.log1p(housing_df['price']), kde=True)
+    plt.title('Distribution of Log-Transformed House Prices')
+    plt.xlabel('Log(Price + 1)')
+    plt.ylabel('Frequency')
+    plt.show()
+    print("Price distribution is skewed. Log transformation might be beneficial.")
+else:
+    print("Price distribution is not heavily skewed.")
+
+# Relationship between square footage and price
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='sqft', y='price', data=housing_df)
+plt.title('House Price vs. Square Footage')
+plt.xlabel('Square Footage')
+plt.ylabel('Price ($)')
+plt.show()
+
+# Relationship between bedrooms and price
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='bedrooms', y='price', data=housing_df)
+plt.title('House Price by Number of Bedrooms')
+plt.xlabel('Number of Bedrooms')
+plt.ylabel('Price ($)')
+plt.show()
+
+# Average price by neighborhood
+plt.figure(figsize=(12, 6))
+neighborhood_price = housing_df.groupby('neighborhood')['price'].mean().sort_values(ascending=False)
+sns.barplot(x=neighborhood_price.index, y=neighborhood_price.values)
+plt.title('Average House Price by Neighborhood')
+plt.xlabel('Neighborhood')
+plt.ylabel('Average Price ($)')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# Price by condition
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='condition', y='price', data=housing_df, order=['Poor', 'Fair', 'Good', 'Excellent'])
+plt.title('House Price by Condition')
+plt.xlabel('Condition')
+plt.ylabel('Price ($)')
+plt.show()
+
+# Correlation matrix
+plt.figure(figsize=(12, 10))
+# Select only numeric columns for correlation
+numeric_cols = housing_df.select_dtypes(include=['int64', 'float64']).columns
+correlation = housing_df[numeric_cols].corr()
+mask = np.triu(correlation)
+sns.heatmap(correlation, annot=True, cmap='coolwarm', linewidths=0.5, mask=mask)
+plt.title('Correlation Matrix of Numeric Features')
+plt.tight_layout()
+plt.show()
+
+# Years since built vs. price
+housing_df['years_since_built'] = 2023 - housing_df['year_built']
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='years_since_built', y='price', data=housing_df)
+plt.title('House Price vs. Age of House')
+plt.xlabel('Years Since Built')
+plt.ylabel('Price ($)')
+plt.show()
+
+# 4. Data Preprocessing
+
+# First, let's split the data into features and target
+X = housing_df.drop('price', axis=1)
+y = housing_df['price']
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Further split training data to create a validation set
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42)  # 0.25 x 0.8 = 0.2
+
+print(f"Training set size: {X_train.shape[0]}")
+print(f"Validation set size: {X_val.shape[0]}")
+print(f"Test set size: {X_test.shape[0]}")
+
+# Identify categorical and numerical columns
+categorical_cols = X_train.select_dtypes(include=['object']).columns.tolist()
+numerical_cols = X_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
+
+print(f"\nCategorical columns: {categorical_cols}")
+print(f"Numerical columns: {numerical_cols}")
+
+# Create preprocessor for the pipeline
+numerical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())
+])
+
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+
+# 5. Feature Engineering
+
+# Let's create some new features that might improve our model
+# We already created the 'years_since_built' feature during EDA
+
+# Price per square foot (only for training data analysis, not for the model)
+train_analysis = X_train.copy()
+train_analysis['price'] = y_train
+train_analysis['price_per_sqft'] = train_analysis['price'] / train_analysis['sqft']
+
+# Display the average price per square foot by neighborhood
+plt.figure(figsize=(12, 6))
+price_per_sqft_by_neighborhood = train_analysis.groupby('neighborhood')['price_per_sqft'].mean().sort_values(ascending=False)
+sns.barplot(x=price_per_sqft_by_neighborhood.index, y=price_per_sqft_by_neighborhood.values)
+plt.title('Average Price per Square Foot by Neighborhood')
+plt.xlabel('Neighborhood')
+plt.ylabel('Price per Square Foot ($)')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# Create bathroom to bedroom ratio
+X_train['bath_bed_ratio'] = X_train['bathrooms'] / X_train['bedrooms'].replace(0, 1)
+X_val['bath_bed_ratio'] = X_val['bathrooms'] / X_val['bedrooms'].replace(0, 1)
+X_test['bath_bed_ratio'] = X_test['bathrooms'] / X_test['bedrooms'].replace(0, 1)
+
+# Total rooms
+X_train['total_rooms'] = X_train['bedrooms'] + X_train['bathrooms']
+X_val['total_rooms'] = X_val['bedrooms'] + X_val['bathrooms']
+X_test['total_rooms'] = X_test['bedrooms'] + X_test['bathrooms']
+
+# Lot size per square foot (indicating how much yard space)
+X_train['lot_size_per_sqft'] = X_train['lot_size'] / X_train['sqft']
+X_val['lot_size_per_sqft'] = X_val['lot_size'] / X_val['sqft']
+X_test['lot_size_per_sqft'] = X_test['lot_size'] / X_test['sqft']
+
+# Combine amenities into a single score
+X_train['amenity_score'] = X_train['has_pool'] + X_train['has_garage'] + X_train['has_fireplace']
+X_val['amenity_score'] = X_val['has_pool'] + X_val['has_garage'] + X_val['has_fireplace']
+X_test['amenity_score'] = X_test['has_pool'] + X_test['has_garage'] + X_test['has_fireplace']
+
+# School rating to commute time ratio (a measure of the trade-off)
+X_train['school_commute_ratio'] = X_train['school_rating'] / X_train['commute_time']
+X_val['school_commute_ratio'] = X_val['school_rating'] / X_val['commute_time']
+X_test['school_commute_ratio'] = X_test['school_rating'] / X_test['commute_time']
+
+# Update our lists of column types
+categorical_cols = X_train.select_dtypes(include=['object']).columns.tolist()
+numerical_cols = X_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
+
+print(f"\nUpdated categorical columns: {categorical_cols}")
+print(f"Updated numerical columns: {numerical_cols}")
+
+# Update the preprocessor to include new columns
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+
+# 6. Feature Selection
+
+# We'll use the SelectKBest method to pick the most important features for a linear model
+X_train_processed = preprocessor.fit_transform(X_train)
+
+# Create a selector based on f_regression
+selector = SelectKBest(f_regression, k=15)  # Select top 15 features
+X_train_selected = selector.fit_transform(X_train_processed, y_train)
+
+# Get feature importances and their indices
+feature_scores = selector.scores_
+feature_indices = selector.get_support(indices=True)
+
+# Get feature names after one-hot encoding
+feature_names = []
+for name, transformer, cols in preprocessor.transformers_:
+    if name == 'num':
+        feature_names.extend(cols)
+    else:  # For categorical features, get one-hot encoded names
+        encoder = transformer.named_steps['onehot']
+        feature_names.extend([f"{col}_{val}" for col in cols 
+                              for val in encoder.get_feature_names_out([col])])
+
+# Get the names of the selected features
+selected_feature_names = [feature_names[i] for i in feature_indices]
+
+# Print feature importances
+print("\nTop features by F-score:")
+for name, score in sorted(zip(selected_feature_names, feature_scores[feature_indices]), key=lambda x: x[1], reverse=True):
+    print(f"{name}: {score:.2f}")
+
+# Alternative feature selection using Recursive Feature Elimination
+linear_model = LinearRegression()
+rfe = RFE(estimator=linear_model, n_features_to_select=15)
+X_train_rfe = rfe.fit_transform(X_train_processed, y_train)
+
+# Print RFE selected features
+rfe_indices = np.where(rfe.support_)[0]
+rfe_feature_names = [feature_names[i] for i in rfe_indices]
+
+print("\nFeatures selected by RFE:")
+for name in rfe_feature_names:
+    print(name)
+
+# We'll proceed with the SelectKBest features, but in practice you might 
+# want to compare which method works better for your specific problem
+
+# 7. Model Building and Evaluation
+
+# We'll test multiple regression models
+models = {
+    'Linear Regression': LinearRegression(),
+    'Ridge Regression': Ridge(),
+    'Lasso Regression': Lasso(),
+    'ElasticNet': ElasticNet(),
+    'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
+    'Gradient Boosting': GradientBoostingRegressor(random_state=42)
+}
+
+# Function to evaluate models
+def evaluate_model(model, X_train, y_train, X_val, y_val):
+    # Fit the model
+    pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('selector', SelectKBest(f_regression, k=15)),
+        ('model', model)
+    ])
+    
+    pipeline.fit(X_train, y_train)
+    
+    # Predict on train and validation sets
+    y_train_pred = pipeline.predict(X_train)
+    y_val_pred = pipeline.predict(X_val)
+    
+    # Calculate metrics
+    train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+    val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
+    
+    train_mae = mean_absolute_error(y_train, y_train_pred)
+    val_mae = mean_absolute_error(y_val, y_val_pred)
+    
+    train_r2 = r2_score(y_train, y_train_pred)
+    val_r2 = r2_score(y_val, y_val_pred)
+    
+    return {
+        'train_rmse': train_rmse,
+        'val_rmse': val_rmse,
+        'train_mae': train_mae,
+        'val_mae': val_mae,
+        'train_r2': train_r2,
+        'val_r2': val_r2,
+        'pipeline': pipeline
+    }
+
+# Evaluate all models
+results = {}
+for name, model in models.items():
+    print(f"Evaluating {name}...")
+    results[name] = evaluate_model(model, X_train, y_train, X_val, y_val)
+
+# Print results table
+print("\nModel Evaluation Results:")
+print(f"{'Model':<20} {'Train RMSE':>12} {'Val RMSE':>12} {'Train MAE':>12} {'Val MAE':>12} {'Train R²':>10} {'Val R²':>10}")
+print("-" * 90)
+
+for name, metrics in results.items():
+    print(f"{name:<20} {metrics['train_rmse']:>12.2f} {metrics['val_rmse']:>12.2f} {metrics['train_mae']:>12.2f} {metrics['val_mae']:>12.2f} {metrics['train_r2']:>10.4f} {metrics['val_r2']:>10.4f}")
+
+# Find the best model based on validation RMSE
+best_model_name = min(results, key=lambda x: results[x]['val_rmse'])
+best_pipeline = results[best_model_name]['pipeline']
+
+print(f"\nBest performing model: {best_model_name} with validation RMSE: {results[best_model_name]['val_rmse']:.2f}")
+
+# 8. Hyperparameter Tuning
+
+# Define hyperparameter grids for each model
+param_grids = {
+    'Linear Regression': {},  # Linear regression doesn't have hyperparameters to tune
+    
+    'Ridge Regression': {
+        'model__alpha': [0.01, 0.1, 1.0, 10.0, 100.0]
+    },
+    
+    'Lasso Regression': {
+        'model__alpha': [0.001, 0.01, 0.1, 1.0, 10.0]
+    },
+    
+    'ElasticNet': {
+        'model__alpha': [0.01, 0.1, 1.0, 10.0],
+        'model__l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9]
+    },
+    
+    'Random Forest': {
+        'model__n_estimators': [50, 100, 200],
+        'model__max_depth': [None, 10, 20, 30],
+        'model__min_samples_split': [2, 5, 10]
+    },
+    
+    'Gradient Boosting': {
+        'model__n_estimators': [50, 100, 200],
+        'model__learning_rate': [0.01, 0.05, 0.1, 0.2],
+        'model__max_depth': [3, 5, 7]
+    }
+}
+
+# Let's tune the best model
+print(f"\nTuning hyperparameters for {best_model_name}...")
+grid_search = GridSearchCV(
+    estimator=best_pipeline,
+    param_grid=param_grids[best_model_name],
+    cv=5,
+    scoring='neg_root_mean_squared_error',
+    n_jobs=-1
+)
+
+grid_search.fit(X_train, y_train)
+
+# Print best parameters
+print(f"Best parameters: {grid_search.best_params_}")
+print(f"Best CV score: {-grid_search.best_score_:.2f} RMSE")
+
+# Evaluate the tuned model on validation set
+tuned_model = grid_search.best_estimator_
+y_val_pred = tuned_model.predict(X_val)
+
+tuned_val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
+tuned_val_mae = mean_absolute_error(y_val, y_val_pred)
+tuned_val_r2 = r2_score(y_val, y_val_pred)
+
+print(f"\nTuned model performance on validation set:")
+print(f"RMSE: {tuned_val_rmse:.2f}")
+print(f"MAE: {tuned_val_mae:.2f}")
+print(f"R²: {tuned_val_r2:.4f}")
+
+# Compare with the untuned model
+untuned_rmse = results[best_model_name]['val_rmse']
+improvement = (untuned_rmse - tuned_val_rmse) / untuned_rmse * 100
+print(f"RMSE improvement after tuning: {improvement:.2f}%")
+
+# 9. Final Model Evaluation
+
+# Combine training and validation sets for final training
+X_train_full = pd.concat([X_train, X_val])
+y_train_full = pd.concat([y_train, y_val])
+
+# Retrain the tuned model on the full training data
+final_model = tuned_model
+final_model.fit(X_train_full, y_train_full)
+
+# Evaluate on the test set
+y_test_pred = final_model.predict(X_test)
+
+test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+test_mae = mean_absolute_error(y_test, y_test_pred)
+test_r2 = r2_score(y_test, y_test_pred)
+
+print("\nFinal Model Performance on Test Set:")
+print(f"RMSE: {test_rmse:.2f}")
+print(f"MAE: {test_mae:.2f}")
+print(f"R²: {test_r2:.4f}")
+
+# Visualize predictions vs. actual values
+plt.figure(figsize=(10, 6))
+plt.scatter(y_test, y_test_pred, alpha=0.5)
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+plt.xlabel('Actual Prices')
+plt.ylabel('Predicted Prices')
+plt.title('Actual vs. Predicted Housing Prices')
+plt.tight_layout()
+plt.show()
+
+# Look at the residuals
+residuals = y_test - y_test_pred
+plt.figure(figsize=(10, 6))
+sns.histplot(residuals, kde=True)
+plt.xlabel('Residuals')
+plt.ylabel('Frequency')
+plt.title('Residual Distribution')
+plt.axvline(x=0, color='r', linestyle='--')
+plt.tight_layout()
+plt.show()
+
+# Plot residuals vs. predicted values to check for patterns
+plt.figure(figsize=(10, 6))
+plt.scatter(y_test_pred, residuals, alpha=0.5)
+plt.axhline(y=0, color='r', linestyle='--')
+plt.xlabel('Predicted Prices')
+plt.ylabel('Residuals')
+plt.title('Residuals vs. Predicted Values')
+plt.tight_layout()
+plt.show()
+
+# Feature Importance (if the model supports it)
+if best_model_name in ['Random Forest', 'Gradient Boosting']:
+    # For tree-based models
+    model = final_model.named_steps['model']
+    feature_importances = model.feature_importances_
+    
+    # Get feature names after preprocessing and selection
+    preprocessor = final_model.named_steps['preprocessor']
+    selector = final_model.named_steps['selector']
+    
+    # Get all feature names after preprocessing
+    all_features = []
+    for name, transformer, cols in preprocessor.transformers_:
+        if name == 'num':
+            all_features.extend(cols)
+        else:  # For categorical features, get one-hot encoded names
+            encoder = transformer.named_steps['onehot']
+            all_features.extend([f"{col}_{val}" for col in cols 
+                                for val in encoder.get_feature_names_out([col])])
+    
+    # Get indices of selected features
+    X_processed = preprocessor.transform(X_train_full)
+    feature_mask = selector.get_support()
+    
+    # Get names of selected features
+    selected_features = [all_features[i] for i, selected in enumerate(feature_mask) if selected]
+    
+    # Create feature importance DataFrame
+    feature_importance_df = pd.DataFrame({
+        'Feature': selected_features,
+        'Importance': feature_importances
+    }).sort_values('Importance', ascending=False)
+    
+    # Plot feature importances
+    plt.figure(figsize=(12, 8))
+    sns.barplot(x='Importance', y='Feature', data=feature_importance_df)
+    plt.title(f'Feature Importances for {best_model_name}')
+    plt.tight_layout()
+    plt.show()
+    
+    print("\nTop 10 most important features:")
+    print(feature_importance_df.head(10))
+else:
+    # For linear models, use permutation importance
+    perm_importance = permutation_importance(final_model, X_test, y_test, n_repeats=10, random_state=42)
+    
+    # Convert to DataFrame for easier viewing
+    importance_df = pd.DataFrame({
+        'Feature': X_test.columns,
+        'Importance': perm_importance.importances_mean
+    }).sort_values('Importance', ascending=False)
+    
+    # Plot importance
+    plt.figure(figsize=(12, 8))
+    sns.barplot(x='Importance', y='Feature', data=importance_df.head(15))
+    plt.title('Permutation Feature Importance')
+    plt.tight_layout()
+    plt.show()
+    
+    print("\nTop 10 most important features (permutation importance):")
+    print(importance_df.head(10))
+
+# 10. Model Persistence
+# Save the model to a file
+model_filename = 'houston_housing_price_model.pkl'
+with open(model_filename, 'wb') as file:
+    pickle.dump(final_model, file)
+
+print(f"\nFinal model saved to {model_filename}")
+
+# Demonstrate how to load the model and make predictions
+with open(model_filename, 'rb') as file:
+    loaded_model = pickle.load(file)
+
+# Create a sample house to predict its price
+sample_house = pd.DataFrame({
+    'zip_code': ['77005'],
+    'neighborhood': ['West University'],
+    'sqft': [2500],
+    'bedrooms': [4],
+    'bathrooms': [3],
+    'lot_size': [8000],
+    'year_built': [2010],
+    'has_pool': [1],
+    'has_garage': [1],
+    'has_fireplace': [0],
+    'school_rating': [9],
+    'crime_rate': [3.5],
+    'commute_time': [20],
+    'condition': ['Excellent'],
+    'years_since_built': [13]
+})
+
+# Add engineered features to match the model
+sample_house['bath_bed_ratio'] = sample_house['bathrooms'] / sample_house['bedrooms']
+sample_house['total_rooms'] = sample_house['bedrooms'] + sample_house['bathrooms']
+sample_house['lot_size_per_sqft'] = sample_house['lot_size'] / sample_house['sqft']
+sample_house['amenity_score'] = sample_house['has_pool'] + sample_house['has_garage'] + sample_house['has_fireplace']
+sample_house['school_commute_ratio'] = sample_house['school_rating'] / sample_house['commute_time']
+
+# Predict the price
+predicted_price = loaded_model.predict(sample_house)[0]
+print(f"\nPredicted price for the sample house: ${predicted_price:,.2f}")
+
+# Example of a prediction function for deployment
+def predict_houston_house_price(features_dict):
+    """
+    Predict the price of a house in Houston based on its features.
+    
+    Parameters:
+    -----------
+    features_dict : dict
+        Dictionary containing house features:
+        - zip_code: string (e.g., '77005')
+        - neighborhood: string (e.g., 'West University')
+        - sqft: int (e.g., 2500)
+        - bedrooms: int (e.g., 4)
+        - bathrooms: float (e.g., 3.0)
+        - lot_size: int (e.g., 8000)
+        - year_built: int (e.g., 2010)
+        - has_pool: int (0 or 1)
+        - has_garage: int (0 or 1)
+        - has_fireplace: int (0 or 1)
+        - school_rating: int (1-10)
+        - crime_rate: float (0-10)
+        - commute_time: int (minutes)
+        - condition: string ('Poor', 'Fair', 'Good', 'Excellent')
+        
+    Returns:
+    --------
+    float: Predicted house price
+    """
+    # Convert dictionary to DataFrame
+    df = pd.DataFrame([features_dict])
+    
+    # Calculate years since built
+    df['years_since_built'] = 2023 - df['year_built']
+    
+    # Add engineered features
+    df['bath_bed_ratio'] = df['bathrooms'] / df['bedrooms'].replace(0, 1)
+    df['total_rooms'] = df['bedrooms'] + df['bathrooms']
+    df['lot_size_per_sqft'] = df['lot_size'] / df['sqft']
+    df['amenity_score'] = df['has_pool'] + df['has_garage'] + df['has_fireplace']
+    df['school_commute_ratio'] = df['school_rating'] / df['commute_time']
+    
+    # Load the model if not already loaded
+    try:
+        model = loaded_model
+    except NameError:
+        with open('houston_housing_price_model.pkl', 'rb') as file:
+            model = pickle.load(file)
+    
+    # Make prediction
+    return model.predict(df)[0]
+
+# Test the function
+test_house = {
+    'zip_code': '77027',
+    'neighborhood': 'River Oaks',
+    'sqft': 3200,
+    'bedrooms': 5,
+    'bathrooms': 4.5,
+    'lot_size': 10000,
+    'year_built': 2005,
+    'has_pool': 1,
+    'has_garage': 1,
+    'has_fireplace': 1,
+    'school_rating': 10,
+    'crime_rate': 2.0,
+    'commute_time': 15,
+    'condition': 'Excellent'
+}
+
+test_price = predict_houston_house_price(test_house)
+print(f"Predicted price for the test house: ${test_price:,.2f}")
+
+# 11. Conclusion & Next Steps
+
+print("\n-------------- Conclusion --------------")
+print("In this notebook, we've built a comprehensive regression model for predicting Houston housing prices.")
+print(f"Our final {best_model_name} model achieved:")
+print(f"- RMSE of ${test_rmse:.2f} on the test set")
+print(f"- R² score of {test_r2:.4f}")
+print(f"- MAE of ${test_mae:.2f}")
+
+print("\nKey insights:")
+if best_model_name in ['Random Forest', 'Gradient Boosting']:
+    for i, row in feature_importance_df.head(5).iterrows():
+        print(f"- {row['Feature']} is a critical factor in house pricing (importance: {row['Importance']:.4f})")
+else:
+    for i, row in importance_df.head(5).iterrows():
+        print(f"- {row['Feature']} is a critical factor in house pricing (importance: {row['Importance']:.4f})")
+
+print("\nPotential improvements:")
+print("1. Collect more data, especially for underrepresented neighborhoods")
+print("2. Add more external data sources (e.g., economic indicators, nearby amenities)")
+print("3. Try more advanced models like XGBoost or LightGBM")
+print("4. Implement time-series analysis to account for market trends")
+print("5. Deploy model as a web service for real-time predictions")
+
+print("\nThank you for following this end-to-end regression modeling tutorial!")
+
+# -----------------------------------------------------------------------------
+# Bonus: Simple deployment example using Flask API (code only, not executed)
+# -----------------------------------------------------------------------------
+
+"""
+from flask import Flask, request, jsonify
+import pandas as pd
+import pickle
+
+app = Flask(__name__)
+
+# Load the model
+with open('houston_housing_price_model.pkl', 'rb') as file:
+    model = pickle.load(file)
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get the data from the POST request
+    data = request.get_json(force=True)
+    
+    # Prepare the features
+    features = pd.DataFrame([data])
+    
+    # Calculate engineered features
+    features['years_since_built'] = 2023 - features['year_built']
+    features['bath_bed_ratio'] = features['bathrooms'] / features['bedrooms'].replace(0, 1)
+    features['total_rooms'] = features['bedrooms'] + features['bathrooms']
+    features['lot_size_per_sqft'] = features['lot_size'] / features['sqft']
+    features['amenity_score'] = features['has_pool'] + features['has_garage'] + features['has_fireplace']
+    features['school_commute_ratio'] = features['school_rating'] / features['commute_time']
+    
+    # Make prediction
+    prediction = model.predict(features)[0]
+    
+    # Return the prediction
+    return jsonify({'predicted_price': round(float(prediction), 2)})
+
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
+"""
+
+# End of Notebook
