@@ -1,3 +1,94 @@
+def generate_housing_data(n_samples=1000):
+    """
+    Generate synthetic Houston housing data.
+    
+    Parameters:
+    -----------
+    n_samples : int
+        Number of house samples to generate
+        
+    Returns:
+    --------
+    pandas.DataFrame: DataFrame containing synthetic housing data
+    """
+    # Create a dictionary to hold our features
+    data = {}
+    
+    # Location features
+    data['zip_code'] = np.random.choice(['77002', '77004', '77005', '77006', '77007', '77008', '77019', '77027', '77030', '77401'], n_samples)
+    data['neighborhood'] = np.random.choice(['Downtown', 'Midtown', 'River Oaks', 'Montrose', 'Heights', 'Medical Center', 
+                                         'West University', 'Memorial', 'Uptown', 'Bellaire'], n_samples)
+    
+    # Property characteristics
+    data['sqft'] = np.random.normal(2000, 500, n_samples).astype(int)
+    data['bedrooms'] = np.random.choice([2, 3, 4, 5], n_samples, p=[0.2, 0.5, 0.2, 0.1])
+    data['bathrooms'] = np.random.choice([1, 2, 2.5, 3, 3.5, 4], n_samples)
+    data['lot_size'] = np.random.normal(7000, 2000, n_samples).astype(int)
+    data['year_built'] = np.random.randint(1950, 2023, n_samples)
+    data['has_pool'] = np.random.choice([0, 1], n_samples, p=[0.8, 0.2])
+    data['has_garage'] = np.random.choice([0, 1], n_samples, p=[0.3, 0.7])
+    data['has_fireplace'] = np.random.choice([0, 1], n_samples, p=[0.6, 0.4])
+    
+    # External factors
+    data['school_rating'] = np.random.choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], n_samples)
+    data['crime_rate'] = np.random.normal(5, 2, n_samples).clip(0, 10)
+    data['commute_time'] = np.random.normal(25, 10, n_samples).clip(5, 60).astype(int)
+    
+    # Condition
+    data['condition'] = np.random.choice(['Poor', 'Fair', 'Good', 'Excellent'], n_samples, p=[0.1, 0.3, 0.4, 0.2])
+    
+    # Price (target variable) - start with float for calculations
+    # Base price
+    price = 150000.0 + data['sqft'] * 100.0
+    
+    # Adjust based on bedrooms and bathrooms - convert to float first to avoid type issues
+    price += data['bedrooms'].astype(float) * 15000.0
+    price += data['bathrooms'] * 10000.0  # bathrooms is already float
+    
+    # Adjust based on neighborhood (using a dictionary for neighborhood premiums)
+    neighborhood_premium = {
+        'Downtown': 50000, 'Midtown': 20000, 'River Oaks': 200000, 
+        'Montrose': 100000, 'Heights': 80000, 'Medical Center': 70000,
+        'West University': 150000, 'Memorial': 120000, 'Uptown': 90000, 'Bellaire': 130000
+    }
+    
+    for i in range(n_samples):
+        price[i] += neighborhood_premium[data['neighborhood'][i]]
+    
+    # Adjust for other factors - ensure all operations are float
+    price += (2023 - data['year_built']).astype(float) * -500.0  # Older houses are cheaper
+    price += data['has_pool'].astype(float) * 25000.0
+    price += data['has_garage'].astype(float) * 15000.0
+    price += data['has_fireplace'].astype(float) * 5000.0
+    price += data['school_rating'].astype(float) * 8000.0
+    price -= data['crime_rate'] * 5000.0  # crime_rate is already float
+    price -= data['commute_time'].astype(float) * 500.0
+    
+    # Condition factor
+    condition_factor = {'Poor': 0.8, 'Fair': 0.9, 'Good': 1.0, 'Excellent': 1.1}
+    for i in range(n_samples):
+        price[i] *= condition_factor[data['condition'][i]]
+    
+    # Add some random noise (float)
+    price += np.random.normal(0, 25000, n_samples)
+    
+    # Ensure no negative prices
+    price = np.maximum(price, 50000.0)
+    
+    # Add price to our data dictionary (convert to int at the end)
+    data['price'] = price.astype(int)
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(data)
+    
+    # Add some missing values to make it more realistic
+    for col in ['bedrooms', 'bathrooms', 'year_built', 'school_rating']:
+        mask = np.random.choice([True, False], size=n_samples, p=[0.05, 0.95])
+        df.loc[mask, col] = np.nan
+    
+    return df
+===========================================================
+
 # Houston Housing Price Prediction
 # End-to-End Regression Modeling Tutorial
 
