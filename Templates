@@ -1,1218 +1,247 @@
-# Get feature names after one-hot encoding
-def get_feature_names_after_encoding(preprocessor):
-    feature_names = []
-    for name, transformer, cols in preprocessor.transformers_:
-        if name == 'num':
-            # For numerical features, just use the column names
-            feature_names.extend(cols)
-        else:  # For categorical features, get one-hot encoded names
-            # Check if the encoder has get_feature_names_out (newer versions) or get_feature_names (older versions)
-            encoder = transformer.named_steps['onehot']
-            if hasattr(encoder, 'get_feature_names_out'):
-                # Newer scikit-learn versions (1.0+)
-                encoded_names = encoder.get_feature_names_out(cols)
-            else:
-                # Older scikit-learn versions (pre-1.0)
-                encoded_names = encoder.get_feature_names(cols)
-            feature_names.extend(encoded_names)
-    
-    return feature_names
-================================
-# app.py - Flask API for Houston Housing Price Prediction
+# Build Ensemble Model with Top 3 Performing Models
 
-from flask import Flask, request, jsonify
-import pandas as pd
-import numpy as np
-import pickle
-import shap
-import os
-from datetime import datetime
+# This code should be added to your main notebook after evaluating all individual models
+# and before the final model evaluation section
 
-# Initialize Flask app
-app = Flask(__name__)
+print("\n-------------- Building Ensemble Model from Top 3 Models --------------")
 
-# Load the models
-try:
-    with open('housing_model.pkl', 'rb') as file:
-        single_model = pickle.load(file)
-    
-    with open('ensemble_model.pkl', 'rb') as file:
-        ensemble_model = pickle.load(file)
-    
-    models_loaded = True
-    print("Models loaded successfully")
-except Exception as e:
-    print(f"Error loading models: {e}")
-    models_loaded = False
-    single_model = None
-    ensemble_model = None
+# 1. Identify the top 3 performing models based on validation RMSE
+sorted_models = sorted(results.items(), key=lambda x: x[1]['val_rmse'])
+top_3_models = sorted_models[:3]
+print(f"Top 3 performing models:")
+for i, (model_name, metrics) in enumerate(top_3_models):
+    print(f"{i+1}. {model_name}: Validation RMSE = {metrics['val_rmse']:.2f}, R² = {metrics['val_r2']:.4f}")
 
-def prepare_features(data):
-    """Prepare input features including engineering new features"""
-    # Convert to DataFrame
-    df = pd.DataFrame([data])
-    
-    # Calculate engineered features
-    df['years_since_built'] = 2023 - df['year_built']
-    df['bath_bed_ratio'] = df['bathrooms'] / df['bedrooms'].replace(0, 1)
-    df['total_rooms'] = df['bedrooms'] + df['bathrooms']
-    df['lot_size_per_sqft'] = df['lot_size'] / df['sqft']
-    df['amenity_score'] = df['has_pool'] + df['has_garage'] + df['has_fireplace']
-    df['school_commute_ratio'] = df['school_rating'] / df['commute_time']
-    
-    # Capture engineered features for response
-    engineered_features = {
-        'years_since_built': int(df['years_since_built'].iloc[0]),
-        'bath_bed_ratio': float(df['bath_bed_ratio'].iloc[0]),
-        'total_rooms': float(df['total_rooms'].iloc[0]),
-        'lot_size_per_sqft': float(df['lot_size_per_sqft'].iloc[0]),
-        'amenity_score': int(df['amenity_score'].iloc[0]),
-        'school_commute_ratio': float(df['school_commute_ratio'].iloc[0])
-    }
-    
-    return df, engineered_features
+# 2. Create pipelines for each top model, preserving their hyperparameters
+top_model_pipelines = []
 
-def get_shap_explanation(model, features_df):
-    """Generate SHAP explanations for a prediction"""
-    try:
-        if not hasattr(model, 'named_steps'):
-            return None
-            
-        # Extract pipeline components
-        preprocessor = model.named_steps.get('preprocessor')
-        model_step = model.named_steps.get('model')
-        
-        if preprocessor is None or model_step is None:
-            return None
-            
-        # Preprocess the features
-        features_processed = preprocessor.transform(features_df)
-        
-        # Get feature names if possible
-        try:
-            # For newer scikit-learn versions
-            if hasattr(preprocessor, 'get_feature_names_out'):
-                feature_names = preprocessor.get_feature_names_out()
-            else:
-                # Manual feature name extraction for older scikit-learn
-                feature_names = []
-                for name, transformer, cols in preprocessor.transformers_:
-                    if name == 'num':
-                        feature_names.extend(cols)
-                    else:
-                        encoder = transformer.named_steps.get('onehot')
-                        if encoder:
-                            if hasattr(encoder, 'get_feature_names_out'):
-                                encoded_names = encoder.get_feature_names_out(cols)
-                            else:
-                                encoded_names = encoder.get_feature_names(cols)
-                            feature_names.extend(encoded_names)
-        except Exception as e:
-            print(f"Error getting feature names: {e}")
-            feature_names = [f"feature_{i}" for i in range(features_processed.shape[1])]
-        
-        # Create appropriate SHAP explainer based on model type
-        if hasattr(model_step, 'feature_importances_'):  # Tree-based model
-            explainer = shap.TreeExplainer(model_step)
-        elif hasattr(model_step, 'coef_'):  # Linear model
-            explainer = shap.LinearExplainer(model_step, features_processed)
+for model_name, metrics in top_3_models:
+    if model_name == 'Linear Regression':
+        model = LinearRegression()
+    elif model_name == 'Ridge Regression':
+        # Use best parameters if available from grid search
+        if best_model_name == 'Ridge Regression' and hasattr(grid_search, 'best_params_'):
+            alpha = grid_search.best_params_.get('model__alpha', 1.0)
         else:
-            return None
-            
-        # Get SHAP values
-        shap_values = explainer.shap_values(features_processed)
-        
-        # Handle different output formats
-        if isinstance(shap_values, list):
-            shap_values = shap_values[0]  # For regression there's usually just one output
-            
-        # Get expected value
-        expected_value = explainer.expected_value
-        if isinstance(expected_value, list):
-            expected_value = expected_value[0]
-        
-        # Calculate total absolute SHAP value for percentage calculation
-        total_abs_shap = np.sum(np.abs(shap_values[0]))
-            
-        # Create feature contributions
-        feature_contributions = []
-        for i, (name, value) in enumerate(zip(feature_names, shap_values[0])):
-            percentage = (abs(value) / total_abs_shap * 100) if total_abs_shap > 0 else 0
-            
-            feature_contributions.append({
-                "feature": name,
-                "shap_value": float(value),
-                "contribution": "positive" if value > 0 else "negative",
-                "percentage": float(percentage)
-            })
-            
-        # Sort by absolute contribution
-        feature_contributions.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
-        
-        return {
-            "base_value": float(expected_value),
-            "top_contributors": feature_contributions[:5],
-            "all_shap_values": {feature_names[i]: float(shap_values[0][i]) for i in range(len(feature_names))}
-        }
-    except Exception as e:
-        print(f"Error generating SHAP explanation: {str(e)}")
-        return None
-
-@app.route('/')
-def home():
-    """Root endpoint with API information"""
-    return jsonify({
-        "message": "Welcome to the Houston Housing Price Prediction API",
-        "endpoints": {
-            "/predict": "Get a price prediction",
-            "/explain": "Get a prediction with SHAP explanation",
-            "/health": "Check API health status",
-            "/models": "List available models"
-        }
-    })
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    """Predict house price based on features"""
-    if not models_loaded:
-        return jsonify({"error": "Models not loaded. Service unavailable."}), 503
+            alpha = 1.0
+        model = Ridge(alpha=alpha)
+    elif model_name == 'Lasso Regression':
+        # Use best parameters if available from grid search
+        if best_model_name == 'Lasso Regression' and hasattr(grid_search, 'best_params_'):
+            alpha = grid_search.best_params_.get('model__alpha', 0.1)
+        else:
+            alpha = 0.1
+        model = Lasso(alpha=alpha)
+    elif model_name == 'ElasticNet':
+        # Use best parameters if available from grid search
+        if best_model_name == 'ElasticNet' and hasattr(grid_search, 'best_params_'):
+            alpha = grid_search.best_params_.get('model__alpha', 0.1)
+            l1_ratio = grid_search.best_params_.get('model__l1_ratio', 0.5)
+        else:
+            alpha = 0.1
+            l1_ratio = 0.5
+        model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio)
+    elif model_name == 'Random Forest':
+        # Use best parameters if available from grid search
+        if best_model_name == 'Random Forest' and hasattr(grid_search, 'best_params_'):
+            n_estimators = grid_search.best_params_.get('model__n_estimators', 100)
+            max_depth = grid_search.best_params_.get('model__max_depth', None)
+            min_samples_split = grid_search.best_params_.get('model__min_samples_split', 2)
+        else:
+            n_estimators = 100
+            max_depth = None
+            min_samples_split = 2
+        model = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, 
+                                     min_samples_split=min_samples_split, random_state=42)
+    elif model_name == 'Gradient Boosting':
+        # Use best parameters if available from grid search
+        if best_model_name == 'Gradient Boosting' and hasattr(grid_search, 'best_params_'):
+            n_estimators = grid_search.best_params_.get('model__n_estimators', 100)
+            learning_rate = grid_search.best_params_.get('model__learning_rate', 0.1)
+            max_depth = grid_search.best_params_.get('model__max_depth', 3)
+        else:
+            n_estimators = 100
+            learning_rate = 0.1
+            max_depth = 3
+        model = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate,
+                                         max_depth=max_depth, random_state=42)
     
-    # Get the data from the POST request
-    data = request.get_json(force=True)
-    
-    # Get the model type from query parameters or use default
-    model_type = request.args.get('model_type', 'ensemble')
-    
-    if model_type not in ["single", "ensemble"]:
-        return jsonify({"error": "Invalid model type. Use 'single' or 'ensemble'."}), 400
-    
-    try:
-        # Prepare the features
-        features_df, engineered_features = prepare_features(data)
-        
-        # Select the model
-        model = ensemble_model if model_type == "ensemble" else single_model
-        
-        # Make prediction
-        prediction = model.predict(features_df)[0]
-        
-        # Return the prediction
-        return jsonify({
-            "predicted_price": round(float(prediction), 2),
-            "model_type": model_type,
-            "engineered_features": engineered_features
-        })
-    except Exception as e:
-        return jsonify({"error": f"Prediction error: {str(e)}"}), 500
-
-@app.route('/explain', methods=['POST'])
-def explain():
-    """Get prediction with SHAP explanation"""
-    if not models_loaded:
-        return jsonify({"error": "Models not loaded. Service unavailable."}), 503
-    
-    # Get the data from the POST request
-    data = request.get_json(force=True)
-    
-    # Get the model type from query parameters or use default
-    model_type = request.args.get('model_type', 'ensemble')
-    
-    if model_type not in ["single", "ensemble"]:
-        return jsonify({"error": "Invalid model type. Use 'single' or 'ensemble'."}), 400
-    
-    try:
-        # Prepare features
-        features_df, engineered_features = prepare_features(data)
-        
-        # Get model
-        model = ensemble_model if model_type == "ensemble" else single_model
-        
-        # Make prediction
-        prediction = model.predict(features_df)[0]
-        
-        # Get SHAP explanation
-        shap_explanation = get_shap_explanation(model, features_df)
-        
-        if not shap_explanation:
-            return jsonify({
-                "error": "SHAP explanations not available for this model",
-                "predicted_price": round(float(prediction), 2),
-                "model_type": model_type,
-                "engineered_features": engineered_features
-            }), 501
-        
-        # Create response
-        response = {
-            "predicted_price": round(float(prediction), 2),
-            "model_type": model_type,
-            "engineered_features": engineered_features
-        }
-        response.update(shap_explanation)
-        
-        return jsonify(response)
-    except Exception as e:
-        return jsonify({"error": f"Explanation error: {str(e)}"}), 500
-
-@app.route('/health')
-def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy" if models_loaded else "unhealthy",
-        "timestamp": datetime.now().isoformat(),
-        "models_loaded": models_loaded,
-        "environment": os.getenv("FLASK_ENV", "development")
-    })
-
-@app.route('/models')
-def list_models():
-    """List all available models"""
-    if not models_loaded:
-        return jsonify({"error": "Models not loaded. Service unavailable."}), 503
-        
-    return jsonify([
-        {"name": "single", "description": "Best performing single regression model"},
-        {"name": "ensemble", "description": "Best performing ensemble model"}
-    ])
-
-# Helper function to validate request data
-def validate_house_data(data):
-    """Validate input house data"""
-    required_fields = [
-        'zip_code', 'neighborhood', 'sqft', 'bedrooms', 'bathrooms',
-        'lot_size', 'year_built', 'has_pool', 'has_garage', 'has_fireplace',
-        'school_rating', 'crime_rate', 'commute_time', 'condition'
-    ]
-    
-    # Check if all required fields are present
-    for field in required_fields:
-        if field not in data:
-            return False, f"Missing required field: {field}"
-    
-    # Validate numeric fields
-    if not isinstance(data['sqft'], (int, float)) or data['sqft'] <= 0:
-        return False, "sqft must be a positive number"
-    
-    if not isinstance(data['bedrooms'], (int, float)) or data['bedrooms'] < 1:
-        return False, "bedrooms must be at least 1"
-    
-    if not isinstance(data['bathrooms'], (int, float)) or data['bathrooms'] < 1:
-        return False, "bathrooms must be at least 1"
-    
-    # Validate condition
-    if data['condition'] not in ['Poor', 'Fair', 'Good', 'Excellent']:
-        return False, "condition must be one of: Poor, Fair, Good, Excellent"
-    
-    return True, ""
-
-# Add validation middleware
-@app.before_request
-def validate_json():
-    """Validate JSON input data before processing requests"""
-    if request.method == 'POST' and request.path in ['/predict', '/explain']:
-        if not request.is_json:
-            return jsonify({"error": "Request must be JSON"}), 400
-        
-        data = request.get_json(force=True)
-        valid, error_msg = validate_house_data(data)
-        
-        if not valid:
-            return jsonify({"error": error_msg}), 400
-
-# Main function to run the app
-if __name__ == '__main__':
-    # Get port from environment variable or use default 5000
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Run the app
-    app.run(host='0.0.0.0', port=port, debug=False)
-==================
-def generate_housing_data(n_samples=1000):
-    """
-    Generate synthetic Houston housing data.
-    
-    Parameters:
-    -----------
-    n_samples : int
-        Number of house samples to generate
-        
-    Returns:
-    --------
-    pandas.DataFrame: DataFrame containing synthetic housing data
-    """
-    # Create a dictionary to hold our features
-    data = {}
-    
-    # Location features
-    data['zip_code'] = np.random.choice(['77002', '77004', '77005', '77006', '77007', '77008', '77019', '77027', '77030', '77401'], n_samples)
-    data['neighborhood'] = np.random.choice(['Downtown', 'Midtown', 'River Oaks', 'Montrose', 'Heights', 'Medical Center', 
-                                         'West University', 'Memorial', 'Uptown', 'Bellaire'], n_samples)
-    
-    # Property characteristics
-    data['sqft'] = np.random.normal(2000, 500, n_samples).astype(int)
-    data['bedrooms'] = np.random.choice([2, 3, 4, 5], n_samples, p=[0.2, 0.5, 0.2, 0.1])
-    data['bathrooms'] = np.random.choice([1, 2, 2.5, 3, 3.5, 4], n_samples)
-    data['lot_size'] = np.random.normal(7000, 2000, n_samples).astype(int)
-    data['year_built'] = np.random.randint(1950, 2023, n_samples)
-    data['has_pool'] = np.random.choice([0, 1], n_samples, p=[0.8, 0.2])
-    data['has_garage'] = np.random.choice([0, 1], n_samples, p=[0.3, 0.7])
-    data['has_fireplace'] = np.random.choice([0, 1], n_samples, p=[0.6, 0.4])
-    
-    # External factors
-    data['school_rating'] = np.random.choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], n_samples)
-    data['crime_rate'] = np.random.normal(5, 2, n_samples).clip(0, 10)
-    data['commute_time'] = np.random.normal(25, 10, n_samples).clip(5, 60).astype(int)
-    
-    # Condition
-    data['condition'] = np.random.choice(['Poor', 'Fair', 'Good', 'Excellent'], n_samples, p=[0.1, 0.3, 0.4, 0.2])
-    
-    # Price (target variable) - start with float for calculations
-    # Base price
-    price = 150000.0 + data['sqft'] * 100.0
-    
-    # Adjust based on bedrooms and bathrooms - convert to float first to avoid type issues
-    price += data['bedrooms'].astype(float) * 15000.0
-    price += data['bathrooms'] * 10000.0  # bathrooms is already float
-    
-    # Adjust based on neighborhood (using a dictionary for neighborhood premiums)
-    neighborhood_premium = {
-        'Downtown': 50000, 'Midtown': 20000, 'River Oaks': 200000, 
-        'Montrose': 100000, 'Heights': 80000, 'Medical Center': 70000,
-        'West University': 150000, 'Memorial': 120000, 'Uptown': 90000, 'Bellaire': 130000
-    }
-    
-    for i in range(n_samples):
-        price[i] += neighborhood_premium[data['neighborhood'][i]]
-    
-    # Adjust for other factors - ensure all operations are float
-    price += (2023 - data['year_built']).astype(float) * -500.0  # Older houses are cheaper
-    price += data['has_pool'].astype(float) * 25000.0
-    price += data['has_garage'].astype(float) * 15000.0
-    price += data['has_fireplace'].astype(float) * 5000.0
-    price += data['school_rating'].astype(float) * 8000.0
-    price -= data['crime_rate'] * 5000.0  # crime_rate is already float
-    price -= data['commute_time'].astype(float) * 500.0
-    
-    # Condition factor
-    condition_factor = {'Poor': 0.8, 'Fair': 0.9, 'Good': 1.0, 'Excellent': 1.1}
-    for i in range(n_samples):
-        price[i] *= condition_factor[data['condition'][i]]
-    
-    # Add some random noise (float)
-    price += np.random.normal(0, 25000, n_samples)
-    
-    # Ensure no negative prices
-    price = np.maximum(price, 50000.0)
-    
-    # Add price to our data dictionary (convert to int at the end)
-    data['price'] = price.astype(int)
-    
-    # Convert to DataFrame
-    df = pd.DataFrame(data)
-    
-    # Add some missing values to make it more realistic
-    for col in ['bedrooms', 'bathrooms', 'year_built', 'school_rating']:
-        mask = np.random.choice([True, False], size=n_samples, p=[0.05, 0.95])
-        df.loc[mask, col] = np.nan
-    
-    return df
-===========================================================
-
-# Houston Housing Price Prediction
-# End-to-End Regression Modeling Tutorial
-
-# Table of Contents
-# 1. Introduction
-# 2. Data Loading and Exploration
-# 3. Data Preprocessing
-# 4. Feature Engineering
-# 5. Feature Selection
-# 6. Model Building and Evaluation
-# 7. Hyperparameter Tuning
-# 8. Final Model Evaluation
-# 9. Model Persistence
-# 10. Conclusion
-
-# 1. Introduction
-# This notebook demonstrates a complete regression modeling workflow for predicting housing prices in Houston.
-# We'll cover every step from loading the data to saving the final model.
-
-# Import necessary libraries
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.feature_selection import SelectKBest, f_regression, RFE
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.inspection import permutation_importance
-import pickle
-import warnings
-warnings.filterwarnings('ignore')
-
-# Set random seed for reproducibility
-np.random.seed(42)
-
-# 2. Data Loading and Exploration
-# For this tutorial, we'll simulate a Houston housing dataset.
-# In a real-world scenario, you would load your actual data from a file or database.
-
-# Simulate Houston housing data
-def generate_housing_data(n_samples=1000):
-    # Create a dictionary to hold our features
-    data = {}
-    
-    # Location features
-    data['zip_code'] = np.random.choice(['77002', '77004', '77005', '77006', '77007', '77008', '77019', '77027', '77030', '77401'], n_samples)
-    data['neighborhood'] = np.random.choice(['Downtown', 'Midtown', 'River Oaks', 'Montrose', 'Heights', 'Medical Center', 
-                                             'West University', 'Memorial', 'Uptown', 'Bellaire'], n_samples)
-    
-    # Property characteristics
-    data['sqft'] = np.random.normal(2000, 500, n_samples).astype(int)
-    data['bedrooms'] = np.random.choice([2, 3, 4, 5], n_samples, p=[0.2, 0.5, 0.2, 0.1])
-    data['bathrooms'] = np.random.choice([1, 2, 2.5, 3, 3.5, 4], n_samples)
-    data['lot_size'] = np.random.normal(7000, 2000, n_samples).astype(int)
-    data['year_built'] = np.random.randint(1950, 2023, n_samples)
-    data['has_pool'] = np.random.choice([0, 1], n_samples, p=[0.8, 0.2])
-    data['has_garage'] = np.random.choice([0, 1], n_samples, p=[0.3, 0.7])
-    data['has_fireplace'] = np.random.choice([0, 1], n_samples, p=[0.6, 0.4])
-    
-    # External factors
-    data['school_rating'] = np.random.choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], n_samples)
-    data['crime_rate'] = np.random.normal(5, 2, n_samples).clip(0, 10)
-    data['commute_time'] = np.random.normal(25, 10, n_samples).clip(5, 60).astype(int)
-    
-    # Condition
-    data['condition'] = np.random.choice(['Poor', 'Fair', 'Good', 'Excellent'], n_samples, p=[0.1, 0.3, 0.4, 0.2])
-    
-    # Price (target variable)
-    # Base price
-    price = 150000 + data['sqft'] * 100
-    
-    # Adjust based on bedrooms and bathrooms
-    price += data['bedrooms'] * 15000
-    price += (data['bathrooms'] * 10000).astype(int)
-    
-    # Adjust based on neighborhood (using a dictionary for neighborhood premiums)
-    neighborhood_premium = {
-        'Downtown': 50000, 'Midtown': 20000, 'River Oaks': 200000, 
-        'Montrose': 100000, 'Heights': 80000, 'Medical Center': 70000,
-        'West University': 150000, 'Memorial': 120000, 'Uptown': 90000, 'Bellaire': 130000
-    }
-    for i in range(n_samples):
-        price[i] += neighborhood_premium[data['neighborhood'][i]]
-    
-    # Adjust for other factors
-    price += (2023 - data['year_built']) * -500  # Older houses are cheaper
-    price += data['has_pool'] * 25000
-    price += data['has_garage'] * 15000
-    price += data['has_fireplace'] * 5000
-    price += data['school_rating'] * 8000
-    price -= data['crime_rate'] * 5000
-    price -= data['commute_time'] * 500
-    
-    # Condition factor
-    condition_factor = {'Poor': 0.8, 'Fair': 0.9, 'Good': 1.0, 'Excellent': 1.1}
-    for i in range(n_samples):
-        price[i] *= condition_factor[data['condition'][i]]
-    
-    # Add some random noise
-    price += np.random.normal(0, 25000, n_samples)
-    
-    # Ensure no negative prices
-    price = np.maximum(price, 50000)
-    
-    # Add price to our data dictionary
-    data['price'] = price.astype(int)
-    
-    # Convert to DataFrame
-    df = pd.DataFrame(data)
-    
-    # Add some missing values to make it more realistic
-    for col in ['bedrooms', 'bathrooms', 'year_built', 'school_rating']:
-        mask = np.random.choice([True, False], size=n_samples, p=[0.05, 0.95])
-        df.loc[mask, col] = np.nan
-    
-    return df
-
-# Generate our dataset
-housing_df = generate_housing_data(1500)
-
-# Display basic info about the dataset
-print("Dataset Information:")
-housing_df.info()
-
-# Display the first few rows
-print("\nFirst 5 rows of the dataset:")
-print(housing_df.head())
-
-# Summary statistics
-print("\nSummary statistics:")
-print(housing_df.describe())
-
-# Check for missing values
-print("\nMissing values per column:")
-print(housing_df.isnull().sum())
-
-# 3. Exploratory Data Analysis (EDA)
-
-# Distribution of the target variable (price)
-plt.figure(figsize=(10, 6))
-sns.histplot(housing_df['price'], kde=True)
-plt.title('Distribution of House Prices')
-plt.xlabel('Price ($)')
-plt.ylabel('Frequency')
-plt.show()
-
-# Let's check if price distribution is skewed and if we need to transform it
-skewness = housing_df['price'].skew()
-print(f"Skewness of price distribution: {skewness:.2f}")
-
-if abs(skewness) > 1:
-    plt.figure(figsize=(10, 6))
-    sns.histplot(np.log1p(housing_df['price']), kde=True)
-    plt.title('Distribution of Log-Transformed House Prices')
-    plt.xlabel('Log(Price + 1)')
-    plt.ylabel('Frequency')
-    plt.show()
-    print("Price distribution is skewed. Log transformation might be beneficial.")
-else:
-    print("Price distribution is not heavily skewed.")
-
-# Relationship between square footage and price
-plt.figure(figsize=(10, 6))
-sns.scatterplot(x='sqft', y='price', data=housing_df)
-plt.title('House Price vs. Square Footage')
-plt.xlabel('Square Footage')
-plt.ylabel('Price ($)')
-plt.show()
-
-# Relationship between bedrooms and price
-plt.figure(figsize=(10, 6))
-sns.boxplot(x='bedrooms', y='price', data=housing_df)
-plt.title('House Price by Number of Bedrooms')
-plt.xlabel('Number of Bedrooms')
-plt.ylabel('Price ($)')
-plt.show()
-
-# Average price by neighborhood
-plt.figure(figsize=(12, 6))
-neighborhood_price = housing_df.groupby('neighborhood')['price'].mean().sort_values(ascending=False)
-sns.barplot(x=neighborhood_price.index, y=neighborhood_price.values)
-plt.title('Average House Price by Neighborhood')
-plt.xlabel('Neighborhood')
-plt.ylabel('Average Price ($)')
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
-plt.show()
-
-# Price by condition
-plt.figure(figsize=(10, 6))
-sns.boxplot(x='condition', y='price', data=housing_df, order=['Poor', 'Fair', 'Good', 'Excellent'])
-plt.title('House Price by Condition')
-plt.xlabel('Condition')
-plt.ylabel('Price ($)')
-plt.show()
-
-# Correlation matrix
-plt.figure(figsize=(12, 10))
-# Select only numeric columns for correlation
-numeric_cols = housing_df.select_dtypes(include=['int64', 'float64']).columns
-correlation = housing_df[numeric_cols].corr()
-mask = np.triu(correlation)
-sns.heatmap(correlation, annot=True, cmap='coolwarm', linewidths=0.5, mask=mask)
-plt.title('Correlation Matrix of Numeric Features')
-plt.tight_layout()
-plt.show()
-
-# Years since built vs. price
-housing_df['years_since_built'] = 2023 - housing_df['year_built']
-plt.figure(figsize=(10, 6))
-sns.scatterplot(x='years_since_built', y='price', data=housing_df)
-plt.title('House Price vs. Age of House')
-plt.xlabel('Years Since Built')
-plt.ylabel('Price ($)')
-plt.show()
-
-# 4. Data Preprocessing
-
-# First, let's split the data into features and target
-X = housing_df.drop('price', axis=1)
-y = housing_df['price']
-
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Further split training data to create a validation set
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42)  # 0.25 x 0.8 = 0.2
-
-print(f"Training set size: {X_train.shape[0]}")
-print(f"Validation set size: {X_val.shape[0]}")
-print(f"Test set size: {X_test.shape[0]}")
-
-# Identify categorical and numerical columns
-categorical_cols = X_train.select_dtypes(include=['object']).columns.tolist()
-numerical_cols = X_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
-
-print(f"\nCategorical columns: {categorical_cols}")
-print(f"Numerical columns: {numerical_cols}")
-
-# Create preprocessor for the pipeline
-numerical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler())
-])
-
-categorical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))
-])
-
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', numerical_transformer, numerical_cols),
-        ('cat', categorical_transformer, categorical_cols)
-    ])
-
-# 5. Feature Engineering
-
-# Let's create some new features that might improve our model
-# We already created the 'years_since_built' feature during EDA
-
-# Price per square foot (only for training data analysis, not for the model)
-train_analysis = X_train.copy()
-train_analysis['price'] = y_train
-train_analysis['price_per_sqft'] = train_analysis['price'] / train_analysis['sqft']
-
-# Display the average price per square foot by neighborhood
-plt.figure(figsize=(12, 6))
-price_per_sqft_by_neighborhood = train_analysis.groupby('neighborhood')['price_per_sqft'].mean().sort_values(ascending=False)
-sns.barplot(x=price_per_sqft_by_neighborhood.index, y=price_per_sqft_by_neighborhood.values)
-plt.title('Average Price per Square Foot by Neighborhood')
-plt.xlabel('Neighborhood')
-plt.ylabel('Price per Square Foot ($)')
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
-plt.show()
-
-# Create bathroom to bedroom ratio
-X_train['bath_bed_ratio'] = X_train['bathrooms'] / X_train['bedrooms'].replace(0, 1)
-X_val['bath_bed_ratio'] = X_val['bathrooms'] / X_val['bedrooms'].replace(0, 1)
-X_test['bath_bed_ratio'] = X_test['bathrooms'] / X_test['bedrooms'].replace(0, 1)
-
-# Total rooms
-X_train['total_rooms'] = X_train['bedrooms'] + X_train['bathrooms']
-X_val['total_rooms'] = X_val['bedrooms'] + X_val['bathrooms']
-X_test['total_rooms'] = X_test['bedrooms'] + X_test['bathrooms']
-
-# Lot size per square foot (indicating how much yard space)
-X_train['lot_size_per_sqft'] = X_train['lot_size'] / X_train['sqft']
-X_val['lot_size_per_sqft'] = X_val['lot_size'] / X_val['sqft']
-X_test['lot_size_per_sqft'] = X_test['lot_size'] / X_test['sqft']
-
-# Combine amenities into a single score
-X_train['amenity_score'] = X_train['has_pool'] + X_train['has_garage'] + X_train['has_fireplace']
-X_val['amenity_score'] = X_val['has_pool'] + X_val['has_garage'] + X_val['has_fireplace']
-X_test['amenity_score'] = X_test['has_pool'] + X_test['has_garage'] + X_test['has_fireplace']
-
-# School rating to commute time ratio (a measure of the trade-off)
-X_train['school_commute_ratio'] = X_train['school_rating'] / X_train['commute_time']
-X_val['school_commute_ratio'] = X_val['school_rating'] / X_val['commute_time']
-X_test['school_commute_ratio'] = X_test['school_rating'] / X_test['commute_time']
-
-# Update our lists of column types
-categorical_cols = X_train.select_dtypes(include=['object']).columns.tolist()
-numerical_cols = X_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
-
-print(f"\nUpdated categorical columns: {categorical_cols}")
-print(f"Updated numerical columns: {numerical_cols}")
-
-# Update the preprocessor to include new columns
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', numerical_transformer, numerical_cols),
-        ('cat', categorical_transformer, categorical_cols)
-    ])
-
-# 6. Feature Selection
-
-# We'll use the SelectKBest method to pick the most important features for a linear model
-X_train_processed = preprocessor.fit_transform(X_train)
-
-# Create a selector based on f_regression
-selector = SelectKBest(f_regression, k=15)  # Select top 15 features
-X_train_selected = selector.fit_transform(X_train_processed, y_train)
-
-# Get feature importances and their indices
-feature_scores = selector.scores_
-feature_indices = selector.get_support(indices=True)
-
-# Get feature names after one-hot encoding
-feature_names = []
-for name, transformer, cols in preprocessor.transformers_:
-    if name == 'num':
-        feature_names.extend(cols)
-    else:  # For categorical features, get one-hot encoded names
-        encoder = transformer.named_steps['onehot']
-        feature_names.extend([f"{col}_{val}" for col in cols 
-                              for val in encoder.get_feature_names_out([col])])
-
-# Get the names of the selected features
-selected_feature_names = [feature_names[i] for i in feature_indices]
-
-# Print feature importances
-print("\nTop features by F-score:")
-for name, score in sorted(zip(selected_feature_names, feature_scores[feature_indices]), key=lambda x: x[1], reverse=True):
-    print(f"{name}: {score:.2f}")
-
-# Alternative feature selection using Recursive Feature Elimination
-linear_model = LinearRegression()
-rfe = RFE(estimator=linear_model, n_features_to_select=15)
-X_train_rfe = rfe.fit_transform(X_train_processed, y_train)
-
-# Print RFE selected features
-rfe_indices = np.where(rfe.support_)[0]
-rfe_feature_names = [feature_names[i] for i in rfe_indices]
-
-print("\nFeatures selected by RFE:")
-for name in rfe_feature_names:
-    print(name)
-
-# We'll proceed with the SelectKBest features, but in practice you might 
-# want to compare which method works better for your specific problem
-
-# 7. Model Building and Evaluation
-
-# We'll test multiple regression models
-models = {
-    'Linear Regression': LinearRegression(),
-    'Ridge Regression': Ridge(),
-    'Lasso Regression': Lasso(),
-    'ElasticNet': ElasticNet(),
-    'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
-    'Gradient Boosting': GradientBoostingRegressor(random_state=42)
-}
-
-# Function to evaluate models
-def evaluate_model(model, X_train, y_train, X_val, y_val):
-    # Fit the model
-    pipeline = Pipeline(steps=[
+    # Create a complete pipeline for each model
+    pipeline = Pipeline([
         ('preprocessor', preprocessor),
         ('selector', SelectKBest(f_regression, k=15)),
         ('model', model)
     ])
     
-    pipeline.fit(X_train, y_train)
+    # Add to our list of top models with name for reference
+    top_model_pipelines.append((model_name, pipeline))
     
-    # Predict on train and validation sets
-    y_train_pred = pipeline.predict(X_train)
-    y_val_pred = pipeline.predict(X_val)
-    
-    # Calculate metrics
-    train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
-    val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
-    
-    train_mae = mean_absolute_error(y_train, y_train_pred)
-    val_mae = mean_absolute_error(y_val, y_val_pred)
-    
-    train_r2 = r2_score(y_train, y_train_pred)
-    val_r2 = r2_score(y_val, y_val_pred)
-    
-    return {
-        'train_rmse': train_rmse,
-        'val_rmse': val_rmse,
-        'train_mae': train_mae,
-        'val_mae': val_mae,
-        'train_r2': train_r2,
-        'val_r2': val_r2,
-        'pipeline': pipeline
-    }
+# 3. Implement a Voting Ensemble (average predictions)
+from sklearn.ensemble import VotingRegressor
 
-# Evaluate all models
-results = {}
-for name, model in models.items():
-    print(f"Evaluating {name}...")
-    results[name] = evaluate_model(model, X_train, y_train, X_val, y_val)
-
-# Print results table
-print("\nModel Evaluation Results:")
-print(f"{'Model':<20} {'Train RMSE':>12} {'Val RMSE':>12} {'Train MAE':>12} {'Val MAE':>12} {'Train R²':>10} {'Val R²':>10}")
-print("-" * 90)
-
-for name, metrics in results.items():
-    print(f"{name:<20} {metrics['train_rmse']:>12.2f} {metrics['val_rmse']:>12.2f} {metrics['train_mae']:>12.2f} {metrics['val_mae']:>12.2f} {metrics['train_r2']:>10.4f} {metrics['val_r2']:>10.4f}")
-
-# Find the best model based on validation RMSE
-best_model_name = min(results, key=lambda x: results[x]['val_rmse'])
-best_pipeline = results[best_model_name]['pipeline']
-
-print(f"\nBest performing model: {best_model_name} with validation RMSE: {results[best_model_name]['val_rmse']:.2f}")
-
-# 8. Hyperparameter Tuning
-
-# Define hyperparameter grids for each model
-param_grids = {
-    'Linear Regression': {},  # Linear regression doesn't have hyperparameters to tune
-    
-    'Ridge Regression': {
-        'model__alpha': [0.01, 0.1, 1.0, 10.0, 100.0]
-    },
-    
-    'Lasso Regression': {
-        'model__alpha': [0.001, 0.01, 0.1, 1.0, 10.0]
-    },
-    
-    'ElasticNet': {
-        'model__alpha': [0.01, 0.1, 1.0, 10.0],
-        'model__l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9]
-    },
-    
-    'Random Forest': {
-        'model__n_estimators': [50, 100, 200],
-        'model__max_depth': [None, 10, 20, 30],
-        'model__min_samples_split': [2, 5, 10]
-    },
-    
-    'Gradient Boosting': {
-        'model__n_estimators': [50, 100, 200],
-        'model__learning_rate': [0.01, 0.05, 0.1, 0.2],
-        'model__max_depth': [3, 5, 7]
-    }
-}
-
-# Let's tune the best model
-print(f"\nTuning hyperparameters for {best_model_name}...")
-grid_search = GridSearchCV(
-    estimator=best_pipeline,
-    param_grid=param_grids[best_model_name],
-    cv=5,
-    scoring='neg_root_mean_squared_error',
-    n_jobs=-1
+# Create the voting regressor from our top models
+voting_ensemble = VotingRegressor(
+    estimators=top_model_pipelines,
+    weights=None  # Equal weights to start
 )
 
-grid_search.fit(X_train, y_train)
-
-# Print best parameters
-print(f"Best parameters: {grid_search.best_params_}")
-print(f"Best CV score: {-grid_search.best_score_:.2f} RMSE")
-
-# Evaluate the tuned model on validation set
-tuned_model = grid_search.best_estimator_
-y_val_pred = tuned_model.predict(X_val)
-
-tuned_val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
-tuned_val_mae = mean_absolute_error(y_val, y_val_pred)
-tuned_val_r2 = r2_score(y_val, y_val_pred)
-
-print(f"\nTuned model performance on validation set:")
-print(f"RMSE: {tuned_val_rmse:.2f}")
-print(f"MAE: {tuned_val_mae:.2f}")
-print(f"R²: {tuned_val_r2:.4f}")
-
-# Compare with the untuned model
-untuned_rmse = results[best_model_name]['val_rmse']
-improvement = (untuned_rmse - tuned_val_rmse) / untuned_rmse * 100
-print(f"RMSE improvement after tuning: {improvement:.2f}%")
-
-# 9. Final Model Evaluation
-
-# Combine training and validation sets for final training
-X_train_full = pd.concat([X_train, X_val])
-y_train_full = pd.concat([y_train, y_val])
-
-# Retrain the tuned model on the full training data
-final_model = tuned_model
-final_model.fit(X_train_full, y_train_full)
+print("\n--- Training Voting Ensemble (Equal Weights) ---")
+# Train the voting ensemble on combined training and validation data
+voting_ensemble.fit(X_train_full, y_train_full)
 
 # Evaluate on the test set
-y_test_pred = final_model.predict(X_test)
+y_voting_pred = voting_ensemble.predict(X_test)
+voting_rmse = np.sqrt(mean_squared_error(y_test, y_voting_pred))
+voting_r2 = r2_score(y_test, y_voting_pred)
+voting_mae = mean_absolute_error(y_test, y_voting_pred)
 
-test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
-test_mae = mean_absolute_error(y_test, y_test_pred)
-test_r2 = r2_score(y_test, y_test_pred)
+print(f"Voting Ensemble Performance:")
+print(f"RMSE: {voting_rmse:.2f}")
+print(f"MAE: {voting_mae:.2f}")
+print(f"R²: {voting_r2:.4f}")
 
-print("\nFinal Model Performance on Test Set:")
-print(f"RMSE: {test_rmse:.2f}")
-print(f"MAE: {test_mae:.2f}")
-print(f"R²: {test_r2:.4f}")
+# 4. Implement a Weighted Voting Ensemble based on validation performance
+# Calculate weights inversely proportional to validation RMSE
+val_rmses = [metrics['val_rmse'] for _, metrics in top_3_models]
+weights = [1/(rmse**2) for rmse in val_rmses]  # Square to emphasize differences
+weights = [w/sum(weights) for w in weights]  # Normalize to sum to 1
 
-# Visualize predictions vs. actual values
-plt.figure(figsize=(10, 6))
-plt.scatter(y_test, y_test_pred, alpha=0.5)
-plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
-plt.xlabel('Actual Prices')
-plt.ylabel('Predicted Prices')
-plt.title('Actual vs. Predicted Housing Prices')
-plt.tight_layout()
-plt.show()
+# Create weighted ensemble
+weighted_ensemble = VotingRegressor(
+    estimators=top_model_pipelines,
+    weights=weights
+)
 
-# Look at the residuals
-residuals = y_test - y_test_pred
-plt.figure(figsize=(10, 6))
-sns.histplot(residuals, kde=True)
-plt.xlabel('Residuals')
-plt.ylabel('Frequency')
-plt.title('Residual Distribution')
-plt.axvline(x=0, color='r', linestyle='--')
-plt.tight_layout()
-plt.show()
+print("\n--- Training Weighted Voting Ensemble ---")
+print(f"Weights based on validation performance:")
+for (model_name, _), weight in zip([m for m in top_3_models], weights):
+    print(f"{model_name}: {weight:.4f}")
 
-# Plot residuals vs. predicted values to check for patterns
-plt.figure(figsize=(10, 6))
-plt.scatter(y_test_pred, residuals, alpha=0.5)
-plt.axhline(y=0, color='r', linestyle='--')
-plt.xlabel('Predicted Prices')
-plt.ylabel('Residuals')
-plt.title('Residuals vs. Predicted Values')
-plt.tight_layout()
-plt.show()
+# Train the weighted ensemble
+weighted_ensemble.fit(X_train_full, y_train_full)
 
-# Feature Importance (if the model supports it)
-if best_model_name in ['Random Forest', 'Gradient Boosting']:
-    # For tree-based models
-    model = final_model.named_steps['model']
-    feature_importances = model.feature_importances_
-    
-    # Get feature names after preprocessing and selection
-    preprocessor = final_model.named_steps['preprocessor']
-    selector = final_model.named_steps['selector']
-    
-    # Get all feature names after preprocessing
-    all_features = []
-    for name, transformer, cols in preprocessor.transformers_:
-        if name == 'num':
-            all_features.extend(cols)
-        else:  # For categorical features, get one-hot encoded names
-            encoder = transformer.named_steps['onehot']
-            all_features.extend([f"{col}_{val}" for col in cols 
-                                for val in encoder.get_feature_names_out([col])])
-    
-    # Get indices of selected features
-    X_processed = preprocessor.transform(X_train_full)
-    feature_mask = selector.get_support()
-    
-    # Get names of selected features
-    selected_features = [all_features[i] for i, selected in enumerate(feature_mask) if selected]
-    
-    # Create feature importance DataFrame
-    feature_importance_df = pd.DataFrame({
-        'Feature': selected_features,
-        'Importance': feature_importances
-    }).sort_values('Importance', ascending=False)
-    
-    # Plot feature importances
-    plt.figure(figsize=(12, 8))
-    sns.barplot(x='Importance', y='Feature', data=feature_importance_df)
-    plt.title(f'Feature Importances for {best_model_name}')
-    plt.tight_layout()
-    plt.show()
-    
-    print("\nTop 10 most important features:")
-    print(feature_importance_df.head(10))
-else:
-    # For linear models, use permutation importance
-    perm_importance = permutation_importance(final_model, X_test, y_test, n_repeats=10, random_state=42)
-    
-    # Convert to DataFrame for easier viewing
-    importance_df = pd.DataFrame({
-        'Feature': X_test.columns,
-        'Importance': perm_importance.importances_mean
-    }).sort_values('Importance', ascending=False)
-    
-    # Plot importance
-    plt.figure(figsize=(12, 8))
-    sns.barplot(x='Importance', y='Feature', data=importance_df.head(15))
-    plt.title('Permutation Feature Importance')
-    plt.tight_layout()
-    plt.show()
-    
-    print("\nTop 10 most important features (permutation importance):")
-    print(importance_df.head(10))
+# Evaluate on the test set
+y_weighted_pred = weighted_ensemble.predict(X_test)
+weighted_rmse = np.sqrt(mean_squared_error(y_test, y_weighted_pred))
+weighted_r2 = r2_score(y_test, y_weighted_pred)
+weighted_mae = mean_absolute_error(y_test, y_weighted_pred)
 
-# 10. Model Persistence
-# Save the model to a file
-model_filename = 'houston_housing_price_model.pkl'
-with open(model_filename, 'wb') as file:
-    pickle.dump(final_model, file)
+print(f"\nWeighted Ensemble Performance:")
+print(f"RMSE: {weighted_rmse:.2f}")
+print(f"MAE: {weighted_mae:.2f}")
+print(f"R²: {weighted_r2:.4f}")
 
-print(f"\nFinal model saved to {model_filename}")
+# 5. Stack the models with a meta-learner
+from sklearn.ensemble import StackingRegressor
+import numpy as np
 
-# Demonstrate how to load the model and make predictions
-with open(model_filename, 'rb') as file:
-    loaded_model = pickle.load(file)
+print("\n--- Training Stacking Ensemble ---")
 
-# Create a sample house to predict its price
-sample_house = pd.DataFrame({
-    'zip_code': ['77005'],
-    'neighborhood': ['West University'],
-    'sqft': [2500],
-    'bedrooms': [4],
-    'bathrooms': [3],
-    'lot_size': [8000],
-    'year_built': [2010],
-    'has_pool': [1],
-    'has_garage': [1],
-    'has_fireplace': [0],
-    'school_rating': [9],
-    'crime_rate': [3.5],
-    'commute_time': [20],
-    'condition': ['Excellent'],
-    'years_since_built': [13]
-})
+# Define base models from our top 3
+base_models = top_model_pipelines
 
-# Add engineered features to match the model
-sample_house['bath_bed_ratio'] = sample_house['bathrooms'] / sample_house['bedrooms']
-sample_house['total_rooms'] = sample_house['bedrooms'] + sample_house['bathrooms']
-sample_house['lot_size_per_sqft'] = sample_house['lot_size'] / sample_house['sqft']
-sample_house['amenity_score'] = sample_house['has_pool'] + sample_house['has_garage'] + sample_house['has_fireplace']
-sample_house['school_commute_ratio'] = sample_house['school_rating'] / sample_house['commute_time']
+# Use Ridge as the meta-learner (final estimator)
+meta_learner = Ridge(alpha=1.0)
 
-# Predict the price
-predicted_price = loaded_model.predict(sample_house)[0]
-print(f"\nPredicted price for the sample house: ${predicted_price:,.2f}")
+# Create the stacking ensemble
+stacking_ensemble = StackingRegressor(
+    estimators=base_models,
+    final_estimator=meta_learner,
+    cv=5  # 5-fold cross-validation for base models
+)
 
-# Example of a prediction function for deployment
-def predict_houston_house_price(features_dict):
-    """
-    Predict the price of a house in Houston based on its features.
-    
-    Parameters:
-    -----------
-    features_dict : dict
-        Dictionary containing house features:
-        - zip_code: string (e.g., '77005')
-        - neighborhood: string (e.g., 'West University')
-        - sqft: int (e.g., 2500)
-        - bedrooms: int (e.g., 4)
-        - bathrooms: float (e.g., 3.0)
-        - lot_size: int (e.g., 8000)
-        - year_built: int (e.g., 2010)
-        - has_pool: int (0 or 1)
-        - has_garage: int (0 or 1)
-        - has_fireplace: int (0 or 1)
-        - school_rating: int (1-10)
-        - crime_rate: float (0-10)
-        - commute_time: int (minutes)
-        - condition: string ('Poor', 'Fair', 'Good', 'Excellent')
-        
-    Returns:
-    --------
-    float: Predicted house price
-    """
-    # Convert dictionary to DataFrame
-    df = pd.DataFrame([features_dict])
-    
-    # Calculate years since built
-    df['years_since_built'] = 2023 - df['year_built']
-    
-    # Add engineered features
-    df['bath_bed_ratio'] = df['bathrooms'] / df['bedrooms'].replace(0, 1)
-    df['total_rooms'] = df['bedrooms'] + df['bathrooms']
-    df['lot_size_per_sqft'] = df['lot_size'] / df['sqft']
-    df['amenity_score'] = df['has_pool'] + df['has_garage'] + df['has_fireplace']
-    df['school_commute_ratio'] = df['school_rating'] / df['commute_time']
-    
-    # Load the model if not already loaded
-    try:
-        model = loaded_model
-    except NameError:
-        with open('houston_housing_price_model.pkl', 'rb') as file:
-            model = pickle.load(file)
-    
-    # Make prediction
-    return model.predict(df)[0]
+# Train the stacking ensemble
+stacking_ensemble.fit(X_train_full, y_train_full)
 
-# Test the function
-test_house = {
-    'zip_code': '77027',
-    'neighborhood': 'River Oaks',
-    'sqft': 3200,
-    'bedrooms': 5,
-    'bathrooms': 4.5,
-    'lot_size': 10000,
-    'year_built': 2005,
-    'has_pool': 1,
-    'has_garage': 1,
-    'has_fireplace': 1,
-    'school_rating': 10,
-    'crime_rate': 2.0,
-    'commute_time': 15,
-    'condition': 'Excellent'
+# Evaluate on the test set
+y_stacking_pred = stacking_ensemble.predict(X_test)
+stacking_rmse = np.sqrt(mean_squared_error(y_test, y_stacking_pred))
+stacking_r2 = r2_score(y_test, y_stacking_pred)
+stacking_mae = mean_absolute_error(y_test, y_stacking_pred)
+
+print(f"Stacking Ensemble Performance:")
+print(f"RMSE: {stacking_rmse:.2f}")
+print(f"MAE: {stacking_mae:.2f}")
+print(f"R²: {stacking_r2:.4f}")
+
+# 6. Compare all three ensemble methods
+print("\n--- Ensemble Methods Comparison ---")
+ensemble_models = {
+    'Voting Ensemble (Equal Weights)': {'rmse': voting_rmse, 'mae': voting_mae, 'r2': voting_r2},
+    'Voting Ensemble (Weighted)': {'rmse': weighted_rmse, 'mae': weighted_mae, 'r2': weighted_r2},
+    'Stacking Ensemble': {'rmse': stacking_rmse, 'mae': stacking_mae, 'r2': stacking_r2}
 }
 
-test_price = predict_houston_house_price(test_house)
-print(f"Predicted price for the test house: ${test_price:,.2f}")
+# Print comparison table
+print(f"{'Model':<30} {'RMSE':>12} {'MAE':>12} {'R²':>10}")
+print("-" * 66)
+for name, metrics in ensemble_models.items():
+    print(f"{name:<30} {metrics['rmse']:>12.2f} {metrics['mae']:>12.2f} {metrics['r2']:>10.4f}")
 
-# 11. Conclusion & Next Steps
+# Find the best ensemble method
+best_ensemble_name = min(ensemble_models.items(), key=lambda x: x[1]['rmse'])[0]
+best_ensemble_rmse = ensemble_models[best_ensemble_name]['rmse']
+print(f"\nBest ensemble method: {best_ensemble_name} with RMSE: {best_ensemble_rmse:.2f}")
 
-print("\n-------------- Conclusion --------------")
-print("In this notebook, we've built a comprehensive regression model for predicting Houston housing prices.")
-print(f"Our final {best_model_name} model achieved:")
-print(f"- RMSE of ${test_rmse:.2f} on the test set")
-print(f"- R² score of {test_r2:.4f}")
-print(f"- MAE of ${test_mae:.2f}")
+# 7. Compare the best ensemble with the best single model
+print("\n--- Best Single Model vs. Best Ensemble Model ---")
+print(f"{'Model':<30} {'RMSE':>12} {'MAE':>12} {'R²':>10}")
+print("-" * 66)
+print(f"Best Single Model ({best_model_name}){' '*(22-len(best_model_name))} {test_rmse:>12.2f} {test_mae:>12.2f} {test_r2:>10.4f}")
+print(f"{best_ensemble_name}{' '*(30-len(best_ensemble_name))} {ensemble_models[best_ensemble_name]['rmse']:>12.2f} {ensemble_models[best_ensemble_name]['mae']:>12.2f} {ensemble_models[best_ensemble_name]['r2']:>10.4f}")
 
-print("\nKey insights:")
-if best_model_name in ['Random Forest', 'Gradient Boosting']:
-    for i, row in feature_importance_df.head(5).iterrows():
-        print(f"- {row['Feature']} is a critical factor in house pricing (importance: {row['Importance']:.4f})")
+# Calculate improvement
+improvement = (test_rmse - ensemble_models[best_ensemble_name]['rmse']) / test_rmse * 100
+print(f"\nImprovement from best single model to best ensemble: {improvement:.2f}%")
+
+# 8. Select the best overall model (single or ensemble)
+if ensemble_models[best_ensemble_name]['rmse'] < test_rmse:
+    print("\nThe best ensemble model outperforms the best single model!")
+    if best_ensemble_name == 'Voting Ensemble (Equal Weights)':
+        final_ensemble_model = voting_ensemble
+    elif best_ensemble_name == 'Voting Ensemble (Weighted)':
+        final_ensemble_model = weighted_ensemble
+    else:  # Stacking Ensemble
+        final_ensemble_model = stacking_ensemble
+    
+    # Save the best ensemble model
+    ensemble_filename = 'houston_housing_best_ensemble_model.pkl'
+    with open(ensemble_filename, 'wb') as file:
+        pickle.dump(final_ensemble_model, file)
+    print(f"Best ensemble model saved to {ensemble_filename}")
+    
+    # For future predictions, use this model
+    best_prediction_model = final_ensemble_model
 else:
-    for i, row in importance_df.head(5).iterrows():
-        print(f"- {row['Feature']} is a critical factor in house pricing (importance: {row['Importance']:.4f})")
+    print("\nThe best single model outperforms all ensemble methods!")
+    best_prediction_model = final_model
+    print(f"Continuing with the best single model: {best_model_name}")
 
-print("\nPotential improvements:")
-print("1. Collect more data, especially for underrepresented neighborhoods")
-print("2. Add more external data sources (e.g., economic indicators, nearby amenities)")
-print("3. Try more advanced models like XGBoost or LightGBM")
-print("4. Implement time-series analysis to account for market trends")
-print("5. Deploy model as a web service for real-time predictions")
+# 9. Visualize model comparison
+plt.figure(figsize=(12, 6))
+model_names = list(ensemble_models.keys()) + [f"Best Single Model ({best_model_name})"]
+rmse_values = [metrics['rmse'] for metrics in ensemble_models.values()] + [test_rmse]
+r2_values = [metrics['r2'] for metrics in ensemble_models.values()] + [test_r2]
 
-print("\nThank you for following this end-to-end regression modeling tutorial!")
+plt.subplot(1, 2, 1)
+bars = plt.bar(model_names, rmse_values, color=['skyblue', 'lightgreen', 'lightcoral', 'gold'])
+plt.xticks(rotation=45, ha='right')
+plt.ylabel('RMSE (lower is better)')
+plt.title('RMSE Comparison')
 
-# -----------------------------------------------------------------------------
-# Bonus: Simple deployment example using Flask API (code only, not executed)
-# -----------------------------------------------------------------------------
+# Highlight the best model
+best_idx = np.argmin(rmse_values)
+bars[best_idx].set_color('darkgreen')
 
-"""
-from flask import Flask, request, jsonify
-import pandas as pd
-import pickle
+plt.subplot(1, 2, 2)
+bars = plt.bar(model_names, r2_values, color=['skyblue', 'lightgreen', 'lightcoral', 'gold'])
+plt.xticks(rotation=45, ha='right')
+plt.ylabel('R² (higher is better)')
+plt.title('R² Comparison')
 
-app = Flask(__name__)
+# Highlight the best model
+best_idx = np.argmax(r2_values)
+bars[best_idx].set_color('darkgreen')
 
-# Load the model
-with open('houston_housing_price_model.pkl', 'rb') as file:
-    model = pickle.load(file)
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    # Get the data from the POST request
-    data = request.get_json(force=True)
-    
-    # Prepare the features
-    features = pd.DataFrame([data])
-    
-    # Calculate engineered features
-    features['years_since_built'] = 2023 - features['year_built']
-    features['bath_bed_ratio'] = features['bathrooms'] / features['bedrooms'].replace(0, 1)
-    features['total_rooms'] = features['bedrooms'] + features['bathrooms']
-    features['lot_size_per_sqft'] = features['lot_size'] / features['sqft']
-    features['amenity_score'] = features['has_pool'] + features['has_garage'] + features['has_fireplace']
-    features['school_commute_ratio'] = features['school_rating'] / features['commute_time']
-    
-    # Make prediction
-    prediction = model.predict(features)[0]
-    
-    # Return the prediction
-    return jsonify({'predicted_price': round(float(prediction), 2)})
-
-if __name__ == '__main__':
-    app.run(port=5000, debug=True)
-"""
-
-# End of Notebook
+plt.tight_layout()
+plt.show()
