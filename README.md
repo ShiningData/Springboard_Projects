@@ -25,107 +25,109 @@ Disclaimer: If you are a Springboard DSC Student, I strongly suggest you refrain
 13. [Relax Inc. Data Science Challenge](http://localhost:8888/tree/Data_Science/Springboard_Projects/Take_Home_Challenge-Relax_Inc)
 
 
-Looking at your screenshot, I see you have a `feature_importance_dict` that contains condition names with their values and importance scores. Let me write a Python script to convert this data into a pandas DataFrame:
 
-```python
+
+python
 import pandas as pd
-import re
+import json
+from typing import Dict, List, Any, Union
 
-# Assuming feature_importance_dict is already defined and contains your data
-# Based on your screenshot, I'll create a function to extract and organize this data
-
-def convert_feature_importance_to_df(feature_importance_dict):
-    # Create lists to store our extracted data
-    all_conditions = []
-    all_importances = []
-    all_rule_indices = []
+def expand_nested_json(data: Union[List[Dict], Dict], separator: str = "_") -> pd.DataFrame:
+    """
+    Expands nested JSON data into a flattened DataFrame with fully expanded columns.
     
-    # Iterate through the dictionary items
-    for rule_idx, rule_data in feature_importance_dict.items():
-        # Extract condition names and importances from each rule
-        conditions = rule_data.get('conditions_names', [])
-        importances = rule_data.get('scaled_importances', [])
+    Args:
+        data: Input data, either a dictionary or a list of dictionaries
+        separator: Character to use when joining nested keys (default: "_")
         
-        # Process each condition to extract just the feature name
-        for i, condition in enumerate(conditions):
-            # Extract feature name (everything before the equals sign)
-            if isinstance(condition, str) and '=' in condition:
-                feature_name = condition.split('=')[0].strip()
-                
-                # Add to our lists
-                all_conditions.append(feature_name)
-                
-                # Get the corresponding importance value if available
-                importance_val = importances[i] if i < len(importances) else None
-                all_importances.append(importance_val)
-                
-                # Keep track of which rule this belongs to
-                all_rule_indices.append(rule_idx)
+    Returns:
+        pandas.DataFrame: Flattened DataFrame with expanded columns
+    """
+    # If input is a dictionary, convert to a list containing that dictionary
+    if isinstance(data, dict):
+        data = [data]
     
-    # Create a DataFrame from our collected data
-    df = pd.DataFrame({
-        'rule_index': all_rule_indices,
-        'feature': all_conditions,
-        'importance': all_importances
-    })
+    # If input is a string (JSON), parse it
+    if isinstance(data, str):
+        data = json.loads(data)
+        if isinstance(data, dict):
+            data = [data]
     
-    return df
-
-# Call the function to convert the dictionary to a DataFrame
-feature_importance_df = convert_feature_importance_to_df(feature_importance_dict)
-
-# Display the DataFrame
-print(feature_importance_df)
-
-# You might want to further process this data, such as:
-# - Get the average importance per feature across all rules
-avg_importance_by_feature = feature_importance_df.groupby('feature')['importance'].mean().reset_index()
-avg_importance_by_feature = avg_importance_by_feature.sort_values('importance', ascending=False)
-
-print("\nAverage Importance by Feature:")
-print(avg_importance_by_feature)
-
-# - Get unique features used in rules
-unique_features = feature_importance_df['feature'].unique()
-print("\nUnique Features:")
-print(unique_features)
-```
-
-If your `feature_importance_dict` has a different structure than what I've assumed, you might need to adjust the extraction logic. Looking at your screenshot, it appears the dict items contain tuples with feature names and values, followed by importance scores. Here's an alternative approach if the structure is different:
-
-```python
-import pandas as pd
-
-# Alternative approach if the structure is different
-def process_feature_importance_dict(feature_importance_dict):
-    data = []
+    # First convert to DataFrame
+    df = pd.DataFrame(data)
     
-    for rule_idx, rule_info in feature_importance_dict.items():
-        # Assuming rule_info is a tuple with conditions and importances
-        for item in rule_info:
-            if isinstance(item, list) and len(item) > 0:
-                for i, condition in enumerate(item):
-                    if isinstance(condition, str) and '=' in condition:
-                        feature_name = condition.split('=')[0].strip()
-                        value_part = condition.split('=')[1].strip()
-                        importance = None
+    # Function to flatten nested columns
+    def flatten_nested_columns(df: pd.DataFrame, separator: str = "_") -> pd.DataFrame:
+        # Create a copy to avoid modifying the original DataFrame
+        result_df = df.copy()
+        
+        # Find columns with dictionaries or lists
+        nested_columns = [
+            col for col in result_df.columns
+            if any(isinstance(val, (dict, list)) for val in result_df[col].dropna())
+        ]
+        
+        # No nested columns to expand
+        if not nested_columns:
+            return result_df
+            
+        # Process each nested column
+        for col in nested_columns:
+            # Handle dictionary columns
+            if any(isinstance(val, dict) for val in result_df[col].dropna()):
+                # Convert column to DataFrame
+                expanded = pd.json_normalize(
+                    result_df[col].apply(lambda x: {} if pd.isna(x) else x)
+                )
+                
+                # Rename columns with prefix
+                expanded.columns = [f"{col}{separator}{subcol}" for subcol in expanded.columns]
+                
+                # Drop the original column and join with expanded columns
+                result_df = result_df.drop(col, axis=1).join(expanded)
+            
+            # Handle list columns
+            elif any(isinstance(val, list) for val in result_df[col].dropna()):
+                # Handle lists of dictionaries
+                if any(isinstance(item, dict) for sublist in result_df[col].dropna() for item in sublist if sublist):
+                    # Create a temporary column with the index
+                    result_df['_temp_idx'] = range(len(result_df))
+                    
+                    # Explode the list column into separate rows
+                    exploded = result_df[[col, '_temp_idx']].explode(col)
+                    
+                    # Normalize the exploded dictionaries
+                    if not exploded.empty and any(isinstance(val, dict) for val in exploded[col].dropna()):
+                        expanded = pd.json_normalize(
+                            exploded[col].apply(lambda x: {} if pd.isna(x) else x)
+                        )
                         
-                        # Find corresponding importance if available
-                        if i < len(item) - 1 and isinstance(item[i+1], (int, float)):
-                            importance = item[i+1]
+                        # Prefix column names
+                        expanded.columns = [f"{col}{separator}{subcol}" for subcol in expanded.columns]
                         
-                        data.append({
-                            'rule_index': rule_idx,
-                            'feature': feature_name,
-                            'value': value_part,
-                            'importance': importance
-                        })
+                        # Join with the index column
+                        expanded['_temp_idx'] = exploded['_temp_idx'].values
+                        
+                        # Group by index and convert expanded columns to lists
+                        grouped = expanded.groupby('_temp_idx').agg(list)
+                        
+                        # Join with the original DataFrame
+                        result_df = result_df.drop(col, axis=1).join(grouped, on='_temp_idx')
+                    
+                    # Clean up temporary index column
+                    result_df = result_df.drop('_temp_idx', axis=1)
+                
+                # Handle simple lists (strings, numbers)
+                else:
+                    # Convert lists to strings for simple representation
+                    result_df[col] = result_df[col].apply(
+                        lambda x: json.dumps(x) if isinstance(x, list) else x
+                    )
+        
+        # Recursively process any new nested columns that were created
+        return flatten_nested_columns(result_df, separator)
     
-    return pd.DataFrame(data)
-
-# Create the DataFrame
-feature_df = process_feature_importance_dict(feature_importance_dict)
-print(feature_df)
-```
-
-Based on the exact structure of your `feature_importance_dict`, you might need to combine or modify these approaches. If you share more details about the exact format, I can provide a more accurate solution.
+    # Apply the recursive flattening
+    flattened_df = flatten_nested_columns(df, separator)
+    
+    return flattened_df
