@@ -32,16 +32,7 @@ import json
 from typing import Dict, List, Any, Union
 
 def expand_nested_json(data: Union[List[Dict], Dict], separator: str = "_") -> pd.DataFrame:
-    """
-    Expands nested JSON data into a flattened DataFrame with fully expanded columns.
-    
-    Args:
-        data: Input data, either a dictionary or a list of dictionaries
-        separator: Character to use when joining nested keys (default: "_")
-        
-    Returns:
-        pandas.DataFrame: Flattened DataFrame with expanded columns
-    """
+
     # If input is a dictionary, convert to a list containing that dictionary
     if isinstance(data, dict):
         data = [data]
