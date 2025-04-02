@@ -27,7 +27,6 @@ Disclaimer: If you are a Springboard DSC Student, I strongly suggest you refrain
 
 
 
-python
 import pandas as pd
 import json
 from typing import Dict, List, Any, Union
