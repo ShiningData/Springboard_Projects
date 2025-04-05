@@ -1,0 +1,91 @@
+import pandas as pd
+
+# Define the product categories
+meat = ['Seafood', 'Beef', 'Pork', 'Exotic Meat', 'Lamb', 'Poultry', 'Protein (Other)']
+fruit = ['Fruit & Vegetables']
+canned = ['Canned & Dry']
+nonAlcic = ['Wine', 'Spirits', 'Beer & Other'] 
+bakery = ['Bakery & Bread']
+supEq = ['Supplies & Equipment']
+diary = ['Dairy & Eggs']
+nonAlcBev = ['Beverage']
+frozen = ['Frozen']
+services = ['Services']
+
+# The complete product list
+productList = [meat, fruit, canned, nonAlcic, bakery, supEq, diary, nonAlcBev, frozen, services]
+category_names = ['Meat', 'Fruit', 'Canned', 'NonAlcoholic', 'Bakery', 
+                  'Supplies', 'Dairy', 'Beverage', 'Frozen', 'Services']
+
+# Create dictionary to map each category to its group name
+category_to_group = {}
+for i, category_list in enumerate(productList):
+    for category in category_list:
+        category_to_group[category] = category_names[i]
+
+# Function to process data incrementally
+def process_data_incrementally(filepath, chunksize=10000):
+    """
+    Process large CSV files incrementally and create separate dataframes
+    for each product category
+    
+    Args:
+        filepath: Path to the CSV file
+        chunksize: Number of rows to process at a time
+    
+    Returns:
+        Dictionary of dataframes for each category
+    """
+    # Initialize empty dataframes for each category
+    category_dfs = {name: pd.DataFrame() for name in category_names}
+    
+    # Read and process the CSV in chunks
+    total_rows_processed = 0
+    
+    for chunk in pd.read_csv(filepath, chunksize=chunksize):
+        total_rows_processed += len(chunk)
+        print(f"Processing chunk: {total_rows_processed} rows processed so far")
+        
+        # Process each category
+        for category_name in category_names:
+            # Get the corresponding category list from productList
+            idx = category_names.index(category_name)
+            category_list = productList[idx]
+            
+            # Filter rows for this category
+            category_chunk = chunk[chunk['distributor_product_column'].isin(category_list)]
+            
+            # Append to the category dataframe
+            if not category_chunk.empty:
+                if category_dfs[category_name].empty:
+                    category_dfs[category_name] = category_chunk
+                else:
+                    category_dfs[category_name] = pd.concat([category_dfs[category_name], category_chunk])
+    
+    # Print summary of results
+    print("\nProcessing complete!")
+    for category_name, df in category_dfs.items():
+        print(f"{category_name} DataFrame: {len(df)} rows")
+    
+    return category_dfs
+
+# Usage:
+# Replace 'your_large_file.csv' with your actual file path
+# category_dfs = process_data_incrementally('your_large_file.csv', chunksize=50000)
+
+# Optionally save each DataFrame to a separate CSV file
+def save_category_dataframes(category_dfs, output_dir='.'):
+    """Save each category DataFrame to a separate CSV file"""
+    import os
+    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    for category_name, df in category_dfs.items():
+        if not df.empty:
+            output_path = os.path.join(output_dir, f"{category_name.lower()}_products.csv")
+            df.to_csv(output_path, index=False)
+            print(f"Saved {category_name} DataFrame to {output_path}")
+
+# Example usage:
+# save_category_dataframes(category_dfs, 'output_directory')
