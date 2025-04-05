@@ -5,11 +5,11 @@ import pyarrow.parquet as pq
 meat = ['Seafood', 'Beef', 'Pork', 'Exotic Meat', 'Lamb', 'Poultry', 'Protein (Other)']
 fruit = ['Fruit & Vegetables']
 canned = ['Canned & Dry']
-nonAlcic = ['Wine', 'Spirits', 'Beer & Other'] 
+nonAlcic = ['Wine', 'Spirits', 'Beer & Other']  # Non-alcoholic category
 bakery = ['Bakery & Bread']
 supEq = ['Supplies & Equipment']
 diary = ['Dairy & Eggs']
-nonAlcBev = ['Beverage']
+nonAlcBev = ['Beverage']  # Another non-alcoholic category
 frozen = ['Frozen']
 services = ['Services']
 
@@ -18,11 +18,11 @@ productList = [meat, fruit, canned, nonAlcic, bakery, supEq, diary, nonAlcBev, f
 category_names = ['Meat', 'Fruit', 'Canned', 'NonAlcoholic', 'Bakery', 
                   'Supplies', 'Dairy', 'Beverage', 'Frozen', 'Services']
 
-# Function to process parquet data incrementally
+# Function to process parquet data incrementally, filtering for 'NON-ALCHOLIC'
 def process_parquet_incrementally(filepath, chunksize=10000):
     """
     Process large Parquet files incrementally and create separate dataframes
-    for each product category
+    for each product category, filtering for 'NON-ALCHOLIC' values
     
     Args:
         filepath: Path to the Parquet file
@@ -40,6 +40,7 @@ def process_parquet_incrementally(filepath, chunksize=10000):
     
     # Read and process the parquet file in chunks
     total_rows_processed = 0
+    total_nonalcoholic_rows = 0
     
     for batch in parquet_file.iter_batches(batch_size=chunksize):
         # Convert Arrow table to pandas DataFrame
@@ -50,14 +51,23 @@ def process_parquet_incrementally(filepath, chunksize=10000):
         progress_percent = (total_rows_processed / total_rows) * 100
         print(f"Processing: {total_rows_processed}/{total_rows} rows ({progress_percent:.1f}%)")
         
+        # Filter only rows with 'NON-ALCHOLIC' value
+        # IMPORTANT: This assumes there's a separate column indicating if a product is non-alcoholic
+        # If this is not correct, please adjust the condition
+        non_alcoholic_chunk = chunk[chunk['distributor_product_column'] == 'NON-ALCHOLIC']
+        total_nonalcoholic_rows += len(non_alcoholic_chunk)
+        
+        if len(non_alcoholic_chunk) == 0:
+            continue  # Skip this chunk if no non-alcoholic products
+            
         # Process each category
         for category_name in category_names:
             # Get the corresponding category list from productList
             idx = category_names.index(category_name)
             category_list = productList[idx]
             
-            # Filter rows for this category
-            category_chunk = chunk[chunk['distributor_product_column'].isin(category_list)]
+            # Filter rows for this category (from the already filtered non-alcoholic chunk)
+            category_chunk = non_alcoholic_chunk[non_alcoholic_chunk['distributor_product_column'].isin(category_list)]
             
             # Append to the category dataframe
             if not category_chunk.empty:
@@ -68,6 +78,7 @@ def process_parquet_incrementally(filepath, chunksize=10000):
     
     # Print summary of results
     print("\nProcessing complete!")
+    print(f"Total non-alcoholic rows found: {total_nonalcoholic_rows}")
     for category_name, df in category_dfs.items():
         print(f"{category_name} DataFrame: {len(df)} rows")
     
@@ -91,10 +102,10 @@ def save_category_dataframes(category_dfs, output_dir='.', format='parquet'):
     for category_name, df in category_dfs.items():
         if not df.empty:
             if format.lower() == 'parquet':
-                output_path = os.path.join(output_dir, f"{category_name.lower()}_products.parquet")
+                output_path = os.path.join(output_dir, f"{category_name.lower()}_nonalcoholic_products.parquet")
                 df.to_parquet(output_path, index=False)
             else:
-                output_path = os.path.join(output_dir, f"{category_name.lower()}_products.csv")
+                output_path = os.path.join(output_dir, f"{category_name.lower()}_nonalcoholic_products.csv")
                 df.to_csv(output_path, index=False)
             print(f"Saved {category_name} DataFrame ({len(df)} rows) to {output_path}")
 
