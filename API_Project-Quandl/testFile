@@ -1,4 +1,5 @@
 import pandas as pd
+import pyarrow.parquet as pq
 
 # Define the product categories
 meat = ['Seafood', 'Beef', 'Pork', 'Exotic Meat', 'Lamb', 'Poultry', 'Protein (Other)']
@@ -17,20 +18,14 @@ productList = [meat, fruit, canned, nonAlcic, bakery, supEq, diary, nonAlcBev, f
 category_names = ['Meat', 'Fruit', 'Canned', 'NonAlcoholic', 'Bakery', 
                   'Supplies', 'Dairy', 'Beverage', 'Frozen', 'Services']
 
-# Create dictionary to map each category to its group name
-category_to_group = {}
-for i, category_list in enumerate(productList):
-    for category in category_list:
-        category_to_group[category] = category_names[i]
-
-# Function to process data incrementally
-def process_data_incrementally(filepath, chunksize=10000):
+# Function to process parquet data incrementally
+def process_parquet_incrementally(filepath, chunksize=10000):
     """
-    Process large CSV files incrementally and create separate dataframes
+    Process large Parquet files incrementally and create separate dataframes
     for each product category
     
     Args:
-        filepath: Path to the CSV file
+        filepath: Path to the Parquet file
         chunksize: Number of rows to process at a time
     
     Returns:
@@ -39,12 +34,21 @@ def process_data_incrementally(filepath, chunksize=10000):
     # Initialize empty dataframes for each category
     category_dfs = {name: pd.DataFrame() for name in category_names}
     
-    # Read and process the CSV in chunks
+    # Get parquet file metadata
+    parquet_file = pq.ParquetFile(filepath)
+    total_rows = parquet_file.metadata.num_rows
+    
+    # Read and process the parquet file in chunks
     total_rows_processed = 0
     
-    for chunk in pd.read_csv(filepath, chunksize=chunksize):
+    for batch in parquet_file.iter_batches(batch_size=chunksize):
+        # Convert Arrow table to pandas DataFrame
+        chunk = batch.to_pandas()
+        
+        # Update progress
         total_rows_processed += len(chunk)
-        print(f"Processing chunk: {total_rows_processed} rows processed so far")
+        progress_percent = (total_rows_processed / total_rows) * 100
+        print(f"Processing: {total_rows_processed}/{total_rows} rows ({progress_percent:.1f}%)")
         
         # Process each category
         for category_name in category_names:
@@ -69,13 +73,16 @@ def process_data_incrementally(filepath, chunksize=10000):
     
     return category_dfs
 
-# Usage:
-# Replace 'your_large_file.csv' with your actual file path
-# category_dfs = process_data_incrementally('your_large_file.csv', chunksize=50000)
-
-# Optionally save each DataFrame to a separate CSV file
-def save_category_dataframes(category_dfs, output_dir='.'):
-    """Save each category DataFrame to a separate CSV file"""
+# Function to save each category DataFrame to a separate parquet file
+def save_category_dataframes(category_dfs, output_dir='.', format='parquet'):
+    """
+    Save each category DataFrame to a separate file
+    
+    Args:
+        category_dfs: Dictionary of category dataframes
+        output_dir: Directory to save files to
+        format: 'parquet' or 'csv'
+    """
     import os
     
     if not os.path.exists(output_dir):
@@ -83,9 +90,15 @@ def save_category_dataframes(category_dfs, output_dir='.'):
     
     for category_name, df in category_dfs.items():
         if not df.empty:
-            output_path = os.path.join(output_dir, f"{category_name.lower()}_products.csv")
-            df.to_csv(output_path, index=False)
-            print(f"Saved {category_name} DataFrame to {output_path}")
+            if format.lower() == 'parquet':
+                output_path = os.path.join(output_dir, f"{category_name.lower()}_products.parquet")
+                df.to_parquet(output_path, index=False)
+            else:
+                output_path = os.path.join(output_dir, f"{category_name.lower()}_products.csv")
+                df.to_csv(output_path, index=False)
+            print(f"Saved {category_name} DataFrame ({len(df)} rows) to {output_path}")
 
-# Example usage:
-# save_category_dataframes(category_dfs, 'output_directory')
+# Usage example:
+# Replace with your actual parquet file path
+# category_dfs = process_parquet_incrementally('your_data.parquet', chunksize=50000)
+# save_category_dataframes(category_dfs, 'output_directory', format='parquet')
