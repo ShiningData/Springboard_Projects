@@ -1,0 +1,78 @@
+ Order of Files to Run and Their Functions
+
+Based on the codebase, here's the order of files to run and what each file does:
+
+ 1. batch_rulex_script.py (Root Directory)
+
+This is the core file that defines the EnsembleModel and ModelConfig classes. It contains:
+
+- The EnsembleModel class that combines CatBoost and AutoGluon models
+- The ModelConfig Pydantic model for validation
+- Methods for training, saving, loading, and making predictions with the ensemble model
+
+This file doesn't need to be run directly, but it's imported by other scripts.
+
+ 2. train_and_predict.py
+
+This script:
+- Trains the ensemble model using the EnsembleModel class
+- Saves the trained model to disk
+- Makes predictions on test data
+- Demonstrates the complete workflow from training to prediction
+
+Run this first to create the model files needed by other scripts.
+
+ 3. display_predictions.py
+
+This script:
+- Loads the trained ensemble model and explainer
+- Generates test data
+- Makes predictions using the ensemble model
+- Displays a table with:
+  - Instance ID
+  - Ensemble class label
+  - CatBoost probability
+  - AutoGluon probability
+  - Ensemble probability (average of both models)
+  - Top 5 important features with their importance scores
+
+This script requires the model files created by train_and_predict.py.
+
+ 4. simple_prediction_table.py
+
+This is a simplified version of display_predictions.py that:
+- Doesn't rely on the actual EnsembleModel class
+- Generates random predictions and feature importance scores
+- Creates the same formatted table as display_predictions.py
+- Can be run independently without needing trained model files
+
+This script is useful for demonstration purposes or when you don't have trained models available.
+
+ 5. model_predictor.py
+
+This script:
+- Loads a trained model
+- Makes predictions on new data
+- Provides a simple interface for using the model in production
+
+This script requires the model files created by train_and_predict.py.
+
+ 6. local_interpretability.py
+
+This script:
+- Focuses on the RulexAI local instance interpretability
+- Explains how individual predictions are made
+- Shows which features are most important for each prediction
+
+This script requires the model and explainer files created by train_and_predict.py.
+
+ Summary of Execution Order
+
+1. Run train_and_predict.py first to create the model files
+2. Then run any of the following scripts depending on what you want to do:
+   - display_predictions.py for a complete view of predictions and feature importance
+   - model_predictor.py for making predictions on new data
+   - local_interpretability.py for detailed explanations of predictions
+   - simple_prediction_table.py for a demonstration without trained models
+
+The simple_prediction_table.py script is the most self-contained and can be run independently without any dependencies on other scripts or trained models.
