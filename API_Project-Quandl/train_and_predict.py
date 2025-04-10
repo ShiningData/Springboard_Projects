@@ -20,7 +20,7 @@ There are 10 CRC response codes as presented below:
 import pathlib
 import configparser
 import os
-from typing import Dict, Union, FrozenSet
+from typing import Dict, Union, FrozenSet, Tuple
 from enum import Enum
 
 # Load configuration
@@ -49,6 +49,134 @@ class CRCCode(str, Enum):
     INCONCLUSIVE = "CRC0000"
     NO_MATCH = "NO_MATCH"
 
+
+def check_threshold_conditions(pai_name: str, score: float) -> Union[str, None]:
+    """
+    Check if the result can be determined based on threshold conditions.
+    
+    Args:
+        pai_name: The PAI name match value
+        score: The overall match score
+        
+    Returns:
+        CRC code if determined by thresholds, None otherwise
+    """
+    # Check for inconclusive first (most restrictive)
+    if pai_name in MISSING_VALUES:
+        return CRCCode.INCONCLUSIVE
+    
+    # Check score thresholds
+    if score < LOWER_THRESHOLD:
+        return CRCCode.DECLINE
+        
+    if score > UPPER_THRESHOLD:
+        if pai_name == "Y":
+            return CRCCode.PASS
+        if pai_name == "N":
+            return CRCCode.WARNING_NAME
+        return CRCCode.INCONCLUSIVE
+    
+    return None
+
+
+def check_perfect_match(pai_name: str, fields: Tuple[str, ...]) -> Union[str, None]:
+    """
+    Check if there's a perfect match based on the PAI name and other fields.
+    
+    Args:
+        pai_name: The PAI name match value
+        fields: Tuple of other field values to check
+        
+    Returns:
+        CRC code if perfect match, None otherwise
+    """
+    if pai_name == "Y" and not any(field in C_N_VALUES for field in fields):
+        return CRCCode.PASS
+    
+    return None
+
+
+def count_mismatches(primary_fields: Tuple[str, ...], secondary_fields: Tuple[str, ...]) -> Tuple[int, int, int]:
+    """
+    Count the number of mismatches in primary and secondary fields.
+    
+    Args:
+        primary_fields: Tuple of primary field values
+        secondary_fields: Tuple of secondary field values
+        
+    Returns:
+        Tuple of (primary_mismatches, secondary_mismatches, total_mismatches)
+    """
+    primary_mismatches = sum(1 for field in primary_fields if field in C_N_VALUES)
+    secondary_mismatches = sum(1 for field in secondary_fields if field in C_N_VALUES)
+    total_mismatches = primary_mismatches + secondary_mismatches
+    
+    return primary_mismatches, secondary_mismatches, total_mismatches
+
+
+def handle_single_mismatch(address: str, hm_phone: str, wk_phone: str, 
+                          pai_id: str, pai_name: str, ssn: str, dob: str) -> Union[str, None]:
+    """
+    Handle the case where there is exactly one mismatch.
+    
+    Args:
+        address: Address match value
+        hm_phone: Home phone match value
+        wk_phone: Work phone match value
+        pai_id: PAI ID match value
+        pai_name: PAI name match value
+        ssn: SSN match value
+        dob: DOB match value
+        
+    Returns:
+        CRC code if single mismatch identified, None otherwise
+    """
+    if address in C_N_VALUES:
+        return CRCCode.CAUTION_ADDRESS
+    if hm_phone in C_N_VALUES or wk_phone in C_N_VALUES:
+        return CRCCode.CAUTION_PHONE
+    if pai_id in C_N_VALUES:
+        return CRCCode.CAUTION_ID
+    if pai_name in C_N_VALUES:
+        return CRCCode.WARNING_NAME
+    if ssn in C_N_VALUES:
+        return CRCCode.WARNING_TAX_ID
+    if dob in C_N_VALUES:
+        return CRCCode.WARNING_DOB
+    
+    return None
+
+
+def handle_multiple_mismatches(primary_mismatches: int, secondary_mismatches: int) -> Union[str, None]:
+    """
+    Handle the case where there are multiple mismatches.
+    
+    Args:
+        primary_mismatches: Number of primary field mismatches
+        secondary_mismatches: Number of secondary field mismatches
+        
+    Returns:
+        CRC code if multiple mismatches pattern identified, None otherwise
+    """
+    # All primary fields valid but secondary mismatches exist
+    if primary_mismatches == 0 and secondary_mismatches > 0:
+        return CRCCode.WARNING_MULTIPLE
+        
+    # One primary mismatch and any secondary mismatches
+    if primary_mismatches == 1 and secondary_mismatches >= 1:
+        return CRCCode.WARNING_MULTIPLE
+        
+    # Multiple secondary mismatches only
+    if primary_mismatches == 0 and secondary_mismatches >= 2:
+        return CRCCode.WARNING_MULTIPLE
+        
+    # Multiple primary mismatches
+    if primary_mismatches > 1:
+        return CRCCode.DECLINE
+    
+    return None
+
+
 def determine_result_code(data: Dict[str, Union[str, float]]) -> str:
     """
     Determine the appropriate CRC code based on input data.
@@ -60,26 +188,16 @@ def determine_result_code(data: Dict[str, Union[str, float]]) -> str:
     Returns:
         str: CRC code based on the rules
     """
-    # Direct access with type hints for better performance
+    # Extract key fields
     pai_name: str = data.get('PAINameMtch', '')
     score: float = float(data.get('OverallMtchScore', 0))
     
-    # Fast path: Check for inconclusive first (most restrictive)
-    if pai_name in MISSING_VALUES:
-        return CRCCode.INCONCLUSIVE
+    # Check threshold conditions first (fast path)
+    threshold_result = check_threshold_conditions(pai_name, score)
+    if threshold_result:
+        return threshold_result
     
-    # Fast path: Check score thresholds next
-    if score < LOWER_THRESHOLD:
-        return CRCCode.DECLINE
-        
-    if score > UPPER_THRESHOLD:
-        if pai_name == "Y":
-            return CRCCode.PASS
-        if pai_name == "N":
-            return CRCCode.WARNING_NAME
-        return CRCCode.INCONCLUSIVE
-    
-    # Get remaining fields only if needed (lazy evaluation)
+    # Extract remaining fields
     ssn: str = data.get('SSNMtch', '')
     dob: str = data.get('DOBMtch', '')
     address: str = data.get('PAIAddressMtch', '')
@@ -87,52 +205,29 @@ def determine_result_code(data: Dict[str, Union[str, float]]) -> str:
     wk_phone: str = data.get('WkPhoneMtch', '')
     pai_id: str = data.get('PAIIDMtch', '')
     
-    # Fast path: Check for perfect match
-    if pai_name == "Y":
-        if not any(field in C_N_VALUES for field in (ssn, dob, address, hm_phone, wk_phone, pai_id)):
-            return CRCCode.PASS
+    # Check for perfect match (fast path)
+    perfect_match = check_perfect_match(pai_name, (ssn, dob, address, hm_phone, wk_phone, pai_id))
+    if perfect_match:
+        return perfect_match
     
-    # Calculate mismatches using list comprehension for better performance
+    # Count mismatches
     primary_fields = (pai_name, ssn, dob)
     secondary_fields = (address, hm_phone, wk_phone, pai_id)
+    primary_mismatches, secondary_mismatches, total_mismatches = count_mismatches(primary_fields, secondary_fields)
     
-    primary_mismatches = sum(1 for field in primary_fields if field in C_N_VALUES)
-    secondary_mismatches = sum(1 for field in secondary_fields if field in C_N_VALUES)
-    total_mismatches = primary_mismatches + secondary_mismatches
-    
-    # Fast path: Handle single mismatches
+    # Handle single mismatch
     if total_mismatches == 1:
-        if address in C_N_VALUES:
-            return CRCCode.CAUTION_ADDRESS
-        if hm_phone in C_N_VALUES or wk_phone in C_N_VALUES:
-            return CRCCode.CAUTION_PHONE
-        if pai_id in C_N_VALUES:
-            return CRCCode.CAUTION_ID
-        if pai_name in C_N_VALUES:
-            return CRCCode.WARNING_NAME
-        if ssn in C_N_VALUES:
-            return CRCCode.WARNING_TAX_ID
-        if dob in C_N_VALUES:
-            return CRCCode.WARNING_DOB
+        single_mismatch = handle_single_mismatch(address, hm_phone, wk_phone, pai_id, pai_name, ssn, dob)
+        if single_mismatch:
+            return single_mismatch
     
     # Handle multiple mismatches
     if total_mismatches > 1:
-        # All primary fields valid but secondary mismatches exist
-        if primary_mismatches == 0 and secondary_mismatches > 0:
-            return CRCCode.WARNING_MULTIPLE
-            
-        # One primary mismatch and any secondary mismatches
-        if primary_mismatches == 1 and secondary_mismatches >= 1:
-            return CRCCode.WARNING_MULTIPLE
-            
-        # Multiple secondary mismatches only
-        if primary_mismatches == 0 and secondary_mismatches >= 2:
-            return CRCCode.WARNING_MULTIPLE
-            
-        # Multiple primary mismatches
-        if primary_mismatches > 1:
-            return CRCCode.DECLINE
+        multiple_mismatch = handle_multiple_mismatches(primary_mismatches, secondary_mismatches)
+        if multiple_mismatch:
+            return multiple_mismatch
     
+    # Default case
     return CRCCode.NO_MATCH
 
 
