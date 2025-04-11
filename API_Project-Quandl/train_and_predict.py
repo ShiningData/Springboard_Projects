@@ -1,49 +1,51 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Configuration Module
+Schemas Module
 
-Contains application configuration settings.
+Contains Pydantic models for API responses.
 """
-import logging
-from typing import Dict, Any, List
+from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("acc_auth_api")
 
-# API Configuration
-API_TITLE = "Account Authentication API"
-API_DESCRIPTION = "API for predicting account authentication result codes"
-API_VERSION = "0.0.1"
+class PredictionResponse(BaseModel):
+    """
+    Response model for prediction endpoints.
+    
+    Attributes:
+        customerResultCode (str): The predicted customer result code.
+    """
+    customerResultCode: str = Field(..., description="The predicted customer result code")
 
-# CORS Configuration
-CORS_ORIGINS: List[str] = ["*"]
-CORS_CREDENTIALS = True
-CORS_METHODS = ["*"]
-CORS_HEADERS = ["*"]
 
-# GZip Configuration
-GZIP_MIN_SIZE = 1000
+class ClientInfoResponse(BaseModel):
+    """
+    Response model for client info endpoint.
+    
+    Attributes:
+        client_host (str): The client's host address.
+        client_port (int): The client's port number.
+    """
+    client_host: str = Field(..., description="The client's host address")
+    client_port: int = Field(..., description="The client's port number")
 
-# Pre-defined constants for optimization
-REQUIRED_FIELDS = frozenset([
-    "NameMtch", "BusNameMtch", "SSNMtch", "DOBMtch", "AddressMtch", 
-    "CityMtch", "StateMtch", "ZipMtch", "HmPhoneMtch", "WkPhoneMtch", 
-    "IDTypeMtch", "IDNoMtch", "IDStateMtch", "OverallMtchScore"
-])
 
-BAA_COLUMNS = [
-    "PAINameMtch", "SSNMtch", "DOBMtch", "PAIAddressMtch",
-    "HmPhoneMtch", "WkPhoneMtch", "PAIIDMtch", "OverallMtchScore",
-]
+class HealthResponse(BaseModel):
+    """
+    Response model for health check endpoint.
+    
+    Attributes:
+        status (str): The health status of the API.
+    """
+    status: str = Field(..., description="The health status of the API")
 
-# Server Configuration
-HOST = "0.0.0.0"
-PORT = 8000
-LOG_LEVEL = "info"
-WORKERS = 4
-RELOAD = False  # Disable in production 
+
+class ErrorResponse(BaseModel):
+    """
+    Response model for error responses.
+    
+    Attributes:
+        detail (str): The error message.
+    """
+    detail: str = Field(..., description="The error message") 
