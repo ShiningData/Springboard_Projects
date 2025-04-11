@@ -5,12 +5,6 @@ Pydantic Data Validation
 
 Account Authentication Model Class.
 """
-__author__ = "Engin Turkmen"
-__credits__ = []
-__maintainer__ = "Engin Turkmen"
-__email__ = "engin.turkmen@pnc.com"
-__status__ = "Development"
-__version__ = "0.0.1"
 
 # Import Pydantic with version compatibility
 try:
