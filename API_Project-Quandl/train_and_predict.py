@@ -12,7 +12,23 @@ __email__ = "engin.turkmen@pnc.com"
 __status__ = "Development"
 __version__ = "0.0.1"
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+# Import Pydantic with version compatibility
+try:
+    # Try Pydantic v2 imports first
+    from pydantic import BaseModel, Field, field_validator, ConfigDict
+except ImportError:
+    try:
+        # Fall back to Pydantic v1 imports
+        from pydantic import BaseModel, Field, validator, ConfigDict
+        # Create an alias for compatibility
+        field_validator = validator
+    except ImportError:
+        # If both fail, try the most basic import
+        from pydantic import BaseModel, Field, validator
+        # Create aliases for compatibility
+        field_validator = validator
+        ConfigDict = dict
+
 from typing import Optional, Dict, Any, Set, FrozenSet, ClassVar, Literal, Union
 from enum import Enum
 from functools import lru_cache
@@ -102,32 +118,57 @@ class AccAuthModel(BaseModel):
     OverallMtchScore: int = Field(..., description="The overall match score for the customer.")
     
     # Use model_config for better performance in Pydantic v2
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "NameMtch": "Y",
-                "BusNameMtch": "Y",
-                "SSNMtch": "Y",
-                "DOBMtch": "Y",
-                "AddressMtch": "Y",
-                "CityMtch": "Y",
-                "StateMtch": "Y",
-                "ZipMtch": "Y",
-                "HmPhoneMtch": "Y",
-                "WkPhoneMtch": "Y",
-                "IDTypeMtch": "Y",
-                "IDNoMtch": "Y",
-                "IDStateMtch": "Y",
-                "OverallMtchScore": 100
+    # For Pydantic v1 compatibility, we'll use a try-except block
+    try:
+        model_config = ConfigDict(
+            json_schema_extra={
+                "example": {
+                    "NameMtch": "Y",
+                    "BusNameMtch": "Y",
+                    "SSNMtch": "Y",
+                    "DOBMtch": "Y",
+                    "AddressMtch": "Y",
+                    "CityMtch": "Y",
+                    "StateMtch": "Y",
+                    "ZipMtch": "Y",
+                    "HmPhoneMtch": "Y",
+                    "WkPhoneMtch": "Y",
+                    "IDTypeMtch": "Y",
+                    "IDNoMtch": "Y",
+                    "IDStateMtch": "Y",
+                    "OverallMtchScore": 100
+                }
+            },
+            validate_assignment=True,
+            extra="forbid",
+            # Enable frozen mode for better performance
+            frozen=True,
+            # Use arbitrary_types_allowed for better performance
+            arbitrary_types_allowed=True
+        )
+    except (NameError, TypeError):
+        # Fall back to Pydantic v1 config
+        class Config:
+            schema_extra = {
+                "example": {
+                    "NameMtch": "Y",
+                    "BusNameMtch": "Y",
+                    "SSNMtch": "Y",
+                    "DOBMtch": "Y",
+                    "AddressMtch": "Y",
+                    "CityMtch": "Y",
+                    "StateMtch": "Y",
+                    "ZipMtch": "Y",
+                    "HmPhoneMtch": "Y",
+                    "WkPhoneMtch": "Y",
+                    "IDTypeMtch": "Y",
+                    "IDNoMtch": "Y",
+                    "IDStateMtch": "Y",
+                    "OverallMtchScore": 100
+                }
             }
-        },
-        validate_assignment=True,
-        extra="forbid",
-        # Enable frozen mode for better performance
-        frozen=True,
-        # Use arbitrary_types_allowed for better performance
-        arbitrary_types_allowed=True
-    )
+            validate_assignment = True
+            extra = "forbid"
     
     @field_validator('OverallMtchScore')
     @classmethod
