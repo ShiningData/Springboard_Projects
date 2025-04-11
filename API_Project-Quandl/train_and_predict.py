@@ -1,313 +1,49 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Configuration Module
 
+Contains application configuration settings.
+"""
+import logging
+from typing import Dict, Any, List
 
-# Import Pydantic with version compatibility
-try:
-    # Try Pydantic v2 imports first
-    from pydantic import BaseModel, Field, field_validator, ConfigDict
-except ImportError:
-    try:
-        # Fall back to Pydantic v1 imports
-        from pydantic import BaseModel, Field, validator, ConfigDict
-        # Create an alias for compatibility
-        field_validator = validator
-    except ImportError:
-        # If both fail, try the most basic import
-        from pydantic import BaseModel, Field, validator
-        # Create aliases for compatibility
-        field_validator = validator
-        ConfigDict = dict
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("acc_auth_api")
 
-from typing import Optional, Dict, Any, Set, FrozenSet, ClassVar, Literal, Union
-from enum import Enum
-from functools import lru_cache
-import threading
-import time
-import json
-import hashlib
-from cachetools import LRUCache
-from validate_data import validate_matches, ValidationResult
+# API Configuration
+API_TITLE = "Account Authentication API"
+API_DESCRIPTION = "API for predicting account authentication result codes"
+API_VERSION = "0.0.1"
 
+# CORS Configuration
+CORS_ORIGINS: List[str] = ["*"]
+CORS_CREDENTIALS = True
+CORS_METHODS = ["*"]
+CORS_HEADERS = ["*"]
 
-# Define allowed values as enums for better validation performance
-class MatchStatus(str, Enum):
-    Y = "Y"
-    N = "N"
-    C = "C"
-    U = "U"
-    MISSING = "MISSING"
+# GZip Configuration
+GZIP_MIN_SIZE = 1000
 
+# Pre-defined constants for optimization
+REQUIRED_FIELDS = frozenset([
+    "NameMtch", "BusNameMtch", "SSNMtch", "DOBMtch", "AddressMtch", 
+    "CityMtch", "StateMtch", "ZipMtch", "HmPhoneMtch", "WkPhoneMtch", 
+    "IDTypeMtch", "IDNoMtch", "IDStateMtch", "OverallMtchScore"
+])
 
-# Thread-safe cache for model instances
-_model_cache = LRUCache(maxsize=10000)
-_cache_lock = threading.Lock()
+BAA_COLUMNS = [
+    "PAINameMtch", "SSNMtch", "DOBMtch", "PAIAddressMtch",
+    "HmPhoneMtch", "WkPhoneMtch", "PAIIDMtch", "OverallMtchScore",
+]
 
-
-class AccAuthModel(BaseModel):
-    """
-    A Pydantic model representing the input data required for bank account
-    authentication prediction.
-    
-    This model combines Pydantic's type validation with business rule validation
-    from validate_data.py.
-    """
-    # Use ClassVar for class-level constants to avoid instance overhead
-    _conditional_match_fields: ClassVar[FrozenSet[str]] = frozenset({
-        'NameMtch', 'BusNameMtch', 'AddressMtch', 'CityMtch', 'ZipMtch',
-        'HmPhoneMtch', 'WkPhoneMtch', 'SSNMtch', 'DOBMtch', 'IDNoMtch'
-    })
-    
-    _yn_only_fields: ClassVar[FrozenSet[str]] = frozenset({
-        'StateMtch', 'IDTypeMtch', 'IDStateMtch'
-    })
-    
-    # Define field defaults using Field for better performance
-    NameMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for Name.")
-    BusNameMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for Business Name.")
-    SSNMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for SSN.")
-    DOBMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for Date of Birth.")
-    AddressMtch: Optional[MatchStatus] = Field(default=MatchStatus.U, description="Match status for Address.")
-    CityMtch: Optional[MatchStatus] = Field(default=MatchStatus.U, description="Match status for City.")
-    StateMtch: Optional[MatchStatus] = Field(default=MatchStatus.U, description="Match status for State.")
-    ZipMtch: Optional[MatchStatus] = Field(default=MatchStatus.U, description="Match status for Zip Code.")
-    HmPhoneMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for Home Phone.")
-    WkPhoneMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for Work Phone.")
-    IDTypeMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for ID Type.")
-    IDNoMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for ID Number.")
-    IDStateMtch: Optional[MatchStatus] = Field(default=MatchStatus.MISSING, description="Match status for ID State.")
-    OverallMtchScore: int = Field(..., description="The overall match score for the customer.", ge=0, le=100)
-    
-    @field_validator("OverallMtchScore")
-    def validate_overall_match_score(cls, v: int) -> int:
-        """Validate the overall match score."""
-        if not 0 <= v <= 100:
-            raise ValueError("OverallMtchScore must be between 0 and 100")
-        return v
-    
-    # Use model_config for better performance in Pydantic v2
-    try:
-        model_config = ConfigDict(
-            json_schema_extra={
-                "example": {
-                    "NameMtch": "Y",
-                    "BusNameMtch": "Y",
-                    "SSNMtch": "Y",
-                    "DOBMtch": "Y",
-                    "AddressMtch": "Y",
-                    "CityMtch": "Y",
-                    "StateMtch": "Y",
-                    "ZipMtch": "Y",
-                    "HmPhoneMtch": "Y",
-                    "WkPhoneMtch": "Y",
-                    "IDTypeMtch": "Y",
-                    "IDNoMtch": "Y",
-                    "IDStateMtch": "Y",
-                    "OverallMtchScore": 100
-                }
-            },
-            validate_assignment=True,
-            extra="forbid",
-            frozen=True,
-            arbitrary_types_allowed=True
-        )
-    except (NameError, TypeError):
-        # Fall back to Pydantic v1 config
-        class Config:
-            schema_extra = {
-                "example": {
-                    "NameMtch": "Y",
-                    "BusNameMtch": "Y",
-                    "SSNMtch": "Y",
-                    "DOBMtch": "Y",
-                    "AddressMtch": "Y",
-                    "CityMtch": "Y",
-                    "StateMtch": "Y",
-                    "ZipMtch": "Y",
-                    "HmPhoneMtch": "Y",
-                    "WkPhoneMtch": "Y",
-                    "IDTypeMtch": "Y",
-                    "IDNoMtch": "Y",
-                    "IDStateMtch": "Y",
-                    "OverallMtchScore": 100
-                }
-            }
-            validate_assignment = True
-            extra = "forbid"
-    
-    def validate_business_rules(self) -> ValidationResult:
-        """
-        Validate the model instance against business rules using validate_data.py.
-        
-        Returns:
-            ValidationResult: Result of the validation
-        """
-        return validate_matches(self.model_dump())
-    
-    @classmethod
-    @lru_cache(maxsize=1024)
-    def _generate_cache_key(cls, **data) -> str:
-        """Generate a cache key from the input data."""
-        sorted_data = {k: data[k] for k in sorted(data.keys())}
-        data_str = json.dumps(sorted_data, sort_keys=True)
-        return hashlib.md5(data_str.encode()).hexdigest()
-    
-    @classmethod
-    def create(cls, **data):
-        """
-        Create a new instance with caching for performance.
-        
-        Args:
-            **data: Keyword arguments for model fields
-            
-        Returns:
-            AccAuthModel: A new model instance
-        """
-        cache_key = cls._generate_cache_key(**data)
-        
-        with _cache_lock:
-            if cache_key in _model_cache:
-                return _model_cache[cache_key]
-            
-            instance = cls(**data)
-            _model_cache[cache_key] = instance
-            return instance
-    
-    @staticmethod
-    def clear_cache() -> None:
-        """Clear the model cache."""
-        with _cache_lock:
-            _model_cache.clear()
-            AccAuthModel._generate_cache_key.cache_clear()
-    
-    @staticmethod
-    def get_cache_stats() -> Dict[str, Any]:
-        """
-        Get statistics about the model cache.
-        
-        Returns:
-            Dict containing cache statistics
-        """
-        with _cache_lock:
-            return {
-                "model_cache_size": len(_model_cache),
-                "cache_key_hits": AccAuthModel._generate_cache_key.cache_info().hits,
-                "cache_key_misses": AccAuthModel._generate_cache_key.cache_info().misses
-            }
-    
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        """
-        Override model_dump for better performance.
-        
-        Args:
-            **kwargs: Additional arguments for model_dump
-            
-        Returns:
-            Dict[str, Any]: Dictionary representation of the model
-        """
-        return {
-            "NameMtch": self.NameMtch,
-            "BusNameMtch": self.BusNameMtch,
-            "SSNMtch": self.SSNMtch,
-            "DOBMtch": self.DOBMtch,
-            "AddressMtch": self.AddressMtch,
-            "CityMtch": self.CityMtch,
-            "StateMtch": self.StateMtch,
-            "ZipMtch": self.ZipMtch,
-            "HmPhoneMtch": self.HmPhoneMtch,
-            "WkPhoneMtch": self.WkPhoneMtch,
-            "IDTypeMtch": self.IDTypeMtch,
-            "IDNoMtch": self.IDNoMtch,
-            "IDStateMtch": self.IDStateMtch,
-            "OverallMtchScore": self.OverallMtchScore
-        }
-
-
-# Alias for backward compatibility
-acc_auth_model = AccAuthModel
-
-
-# Example usage
-if __name__ == "__main__":
-    import time
-    
-    # Test data
-    test_data = {
-        "NameMtch": "Y",
-        "BusNameMtch": "Y", 
-        "SSNMtch": "Y",
-        "DOBMtch": "Y",
-        "AddressMtch": "Y",
-        "CityMtch": "Y",
-        "StateMtch": "Y",
-        "ZipMtch": "Y",
-        "HmPhoneMtch": "Y",
-        "WkPhoneMtch": "Y",
-        "IDTypeMtch": "Y",
-        "IDNoMtch": "Y",
-        "IDStateMtch": "Y",
-        "OverallMtchScore": 100
-    }
-    
-    # Performance test
-    iterations = 10000
-    start_time = time.time()
-    
-    for _ in range(iterations):
-        model = acc_auth_model(**test_data)
-        dict_data = model.model_dump()
-    
-    elapsed = (time.time() - start_time) * 1000 / iterations
-    
-    print(f"Average processing time: {elapsed:.3f}ms per model ({iterations} iterations)")
-    
-    # Test with cached creation
-    start_time = time.time()
-    
-    for _ in range(iterations):
-        model = acc_auth_model.create(**test_data)
-        dict_data = model.model_dump()
-    
-    cached_elapsed = (time.time() - start_time) * 1000 / iterations
-    
-    print(f"Average processing time with caching: {cached_elapsed:.3f}ms per model ({iterations} iterations)")
-    print(f"Speedup from caching: {elapsed/cached_elapsed:.2f}x")
-    
-    # Show cache statistics
-    cache_stats = acc_auth_model.get_cache_stats()
-    print("\nCache statistics:")
-    print(f"  Model cache size: {cache_stats['model_cache_size']}")
-    print(f"  Cache key hits: {cache_stats['cache_key_hits']}")
-    print(f"  Cache key misses: {cache_stats['cache_key_misses']}")
-    
-    # Show example model
-    model = acc_auth_model(**test_data)
-    print("\nModel instance created:")
-    print(f"NameMtch: {model.NameMtch}")
-    print(f"AddressMtch: {model.AddressMtch}")
-    print(f"OverallMtchScore: {model.OverallMtchScore}")
-    
-    # Test with minimal data (using defaults)
-    minimal_data = {
-        "OverallMtchScore": 95
-    }
-    
-    minimal_model = acc_auth_model(**minimal_data)
-    print("\nMinimal model (using defaults):")
-    print(f"NameMtch: {minimal_model.NameMtch}")
-    print(f"AddressMtch: {minimal_model.AddressMtch}")
-    print(f"OverallMtchScore: {minimal_model.OverallMtchScore}")
-    
-    # Validation test
-    try:
-        invalid_data = {
-            "NameMtch": "INVALID",
-            "OverallMtchScore": 95
-        }
-        invalid_model = acc_auth_model(**invalid_data)
-    except ValueError as e:
-        print(f"\nValidation error (expected): {e}")
-    
-    # Clear cache
-    acc_auth_model.clear_cache()
-    print("\nCache cleared")
+# Server Configuration
+HOST = "0.0.0.0"
+PORT = 8000
+LOG_LEVEL = "info"
+WORKERS = 4
+RELOAD = False  # Disable in production 
