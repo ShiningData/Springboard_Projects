@@ -1,51 +1,50 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Schemas Module
+Error Handlers Module
 
-Contains Pydantic models for API responses.
+Contains custom exception handlers for the FastAPI application.
 """
-from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import logging
+
+from schemas import ErrorResponse
+
+# Configure logging
+logger = logging.getLogger("acc_auth_api")
 
 
-class PredictionResponse(BaseModel):
+async def value_error_handler(request: Request, exc: ValueError):
     """
-    Response model for prediction endpoints.
+    Handler for ValueError exceptions.
     
-    Attributes:
-        customerResultCode (str): The predicted customer result code.
+    Args:
+        request: The request that caused the error
+        exc: The ValueError exception
+        
+    Returns:
+        JSONResponse: A 400 Bad Request response with the error details
     """
-    customerResultCode: str = Field(..., description="The predicted customer result code")
+    return JSONResponse(
+        status_code=400,
+        content=ErrorResponse(detail=str(exc)).model_dump()
+    )
 
 
-class ClientInfoResponse(BaseModel):
+async def general_exception_handler(request: Request, exc: Exception):
     """
-    Response model for client info endpoint.
+    Handler for general exceptions.
     
-    Attributes:
-        client_host (str): The client's host address.
-        client_port (int): The client's port number.
+    Args:
+        request: The request that caused the error
+        exc: The exception
+        
+    Returns:
+        JSONResponse: A 500 Internal Server Error response
     """
-    client_host: str = Field(..., description="The client's host address")
-    client_port: int = Field(..., description="The client's port number")
-
-
-class HealthResponse(BaseModel):
-    """
-    Response model for health check endpoint.
-    
-    Attributes:
-        status (str): The health status of the API.
-    """
-    status: str = Field(..., description="The health status of the API")
-
-
-class ErrorResponse(BaseModel):
-    """
-    Response model for error responses.
-    
-    Attributes:
-        detail (str): The error message.
-    """
-    detail: str = Field(..., description="The error message") 
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(detail="Internal server error").model_dump()
+    ) 
