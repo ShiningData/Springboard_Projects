@@ -169,29 +169,16 @@ def _schedule_cache_clear():
     _cache_clear_timer.daemon = True  # Allow the timer to be garbage collected when the program exits
     _cache_clear_timer.start()
 
-def validate_matches(data: Dict[str, Any]) -> ValidationResult:
+def _validate_input_type(data: Any) -> Optional[ValidationResult]:
     """
-    Validate that all the required keys exist in the input data and that
-    the values for each key are in the correct form.
-    
-    This function uses a vectorized approach for improved performance:
-    1. Using a field validation map to avoid repeated conditionals
-    2. Normalizing all values at once
-    3. Checking for missing fields in a single pass
-    4. Validating all fields in a single pass
-    5. Caching validation results for frequently encountered data
+    Validate that the input is a dictionary.
     
     Args:
-        data: A dictionary containing feature match information.
-            
+        data: The input to validate
+        
     Returns:
-        ValidationResult: A dataclass with validation result:
-            - valid (bool): True if all validations pass, False otherwise
-            - error (str): Error message if validation fails, None otherwise
-            - error_type (ValidationErrorType): Type of error if validation fails, None otherwise
-            - field_name (str): Name of the field that caused the error, None otherwise
+        ValidationResult if validation fails, None otherwise
     """
-    # Fast path: Check if data is None or not a dict
     if not isinstance(data, dict):
         return ValidationResult(
             valid=False,
@@ -200,7 +187,6 @@ def validate_matches(data: Dict[str, Any]) -> ValidationResult:
             field_name=None
         )
     
-    # Fast path: Check if data is empty
     if not data:
         return ValidationResult(
             valid=False,
@@ -209,7 +195,18 @@ def validate_matches(data: Dict[str, Any]) -> ValidationResult:
             field_name=None
         )
     
-    # Try to get cached result
+    return None
+
+def _get_cached_result(data: Dict[str, Any]) -> Optional[ValidationResult]:
+    """
+    Try to get a cached validation result for the given data.
+    
+    Args:
+        data: The data to check in the cache
+        
+    Returns:
+        Cached ValidationResult if found, None otherwise
+    """
     try:
         data_str = json.dumps(data, sort_keys=True)
         data_hash = _compute_data_hash(data_str)
@@ -222,59 +219,78 @@ def validate_matches(data: Dict[str, Any]) -> ValidationResult:
         # If serialization fails, continue with normal validation
         pass
     
-    # Check for unexpected fields - this is a common error case, so check early
+    return None
+
+def _cache_validation_result(data_hash: str, result: ValidationResult) -> None:
+    """
+    Cache a validation result.
+    
+    Args:
+        data_hash: The hash of the data
+        result: The validation result to cache
+    """
+    with _cache_lock:
+        _validation_cache[data_hash] = result
+
+def _validate_field_presence(data: Dict[str, Any]) -> Optional[ValidationResult]:
+    """
+    Validate that all required fields are present and no unexpected fields exist.
+    
+    Args:
+        data: The data to validate
+        
+    Returns:
+        ValidationResult if validation fails, None otherwise
+    """
+    # Check for unexpected fields
     unexpected_fields = set(data.keys()) - REQUIRED_FIELDS
     if unexpected_fields:
-        result = ValidationResult(
+        return ValidationResult(
             valid=False, 
             error=f"Unexpected fields: {', '.join(sorted(unexpected_fields))}",
             error_type=ValidationErrorType.UNEXPECTED_FIELD,
             field_name=list(unexpected_fields)[0]
         )
-        # Thread-safe cache update
-        with _cache_lock:
-            _validation_cache[data_hash] = result
-        return result
     
-    # Check for missing required fields - another common error case
+    # Check for missing required fields
     missing_fields = REQUIRED_FIELDS - set(data.keys())
     if missing_fields:
-        result = ValidationResult(
+        return ValidationResult(
             valid=False,
             error=f"Missing required fields: {', '.join(sorted(missing_fields))}",
             error_type=ValidationErrorType.MISSING_REQUIRED,
             field_name=list(missing_fields)[0]
         )
-        # Thread-safe cache update
-        with _cache_lock:
-            _validation_cache[data_hash] = result
-        return result
     
+    return None
+
+def _validate_field_values(data: Dict[str, Any]) -> Optional[ValidationResult]:
+    """
+    Validate that all field values are valid.
+    
+    Args:
+        data: The data to validate
+        
+    Returns:
+        ValidationResult if validation fails, None otherwise
+    """
     # Check for None values and empty strings first
     for field, value in data.items():
         if field != "OverallMtchScore":
             if value is None:
-                result = ValidationResult(
+                return ValidationResult(
                     valid=False,
                     error=f"None value not allowed for field {field}",
                     error_type=ValidationErrorType.INVALID_VALUE,
                     field_name=field
                 )
-                # Thread-safe cache update
-                with _cache_lock:
-                    _validation_cache[data_hash] = result
-                return result
             elif isinstance(value, str) and not value.strip():
-                result = ValidationResult(
+                return ValidationResult(
                     valid=False,
                     error=f"Empty string not allowed for field {field}",
                     error_type=ValidationErrorType.INVALID_VALUE,
                     field_name=field
                 )
-                # Thread-safe cache update
-                with _cache_lock:
-                    _validation_cache[data_hash] = result
-                return result
     
     # Normalize all values at once for better performance
     normalized_data = {k: normalize_input(v) for k, v in data.items()}
@@ -286,48 +302,108 @@ def validate_matches(data: Dict[str, Any]) -> ValidationResult:
             
         valid_values, error_type = FIELD_VALIDATION_MAP[field]
         if value not in valid_values:
-            result = ValidationResult(
+            return ValidationResult(
                 valid=False,
                 error=f"Invalid value for {field}: {value}",
                 error_type=error_type,
                 field_name=field
             )
-            # Thread-safe cache update
-            with _cache_lock:
-                _validation_cache[data_hash] = result
-            return result
     
-    # Validate OverallMtchScore separately
+    return None
+
+def _validate_score(data: Dict[str, Any]) -> Optional[ValidationResult]:
+    """
+    Validate the OverallMtchScore field.
+    
+    Args:
+        data: The data to validate
+        
+    Returns:
+        ValidationResult if validation fails, None otherwise
+    """
     try:
         score = float(data["OverallMtchScore"])
         if not (SCORE_MIN <= score <= SCORE_MAX):
-            result = ValidationResult(
+            return ValidationResult(
                 valid=False, 
                 error=f"OverallMtchScore must be between {SCORE_MIN} and {SCORE_MAX}, got: {score}",
                 error_type=ValidationErrorType.INVALID_SCORE,
                 field_name="OverallMtchScore"
             )
-            # Thread-safe cache update
-            with _cache_lock:
-                _validation_cache[data_hash] = result
-            return result
     except (ValueError, TypeError):
-        result = ValidationResult(
+        return ValidationResult(
             valid=False,
             error=f"OverallMtchScore must be a number, got: {data['OverallMtchScore']}",
             error_type=ValidationErrorType.INVALID_SCORE_TYPE,
             field_name="OverallMtchScore"
         )
-        # Thread-safe cache update
-        with _cache_lock:
-            _validation_cache[data_hash] = result
+    
+    return None
+
+def validate_matches(data: Dict[str, Any]) -> ValidationResult:
+    """
+    Validate that all the required keys exist in the input data and that
+    the values for each key are in the correct form.
+    
+    This function uses a modular approach for improved maintainability:
+    1. Input type validation
+    2. Cache lookup
+    3. Field presence validation
+    4. Field value validation
+    5. Score validation
+    
+    Args:
+        data: A dictionary containing feature match information.
+            
+    Returns:
+        ValidationResult: A dataclass with validation result:
+            - valid (bool): True if all validations pass, False otherwise
+            - error (str): Error message if validation fails, None otherwise
+            - error_type (ValidationErrorType): Type of error if validation fails, None otherwise
+            - field_name (str): Name of the field that caused the error, None otherwise
+    """
+    # Step 1: Validate input type
+    result = _validate_input_type(data)
+    if result:
+        return result
+    
+    # Step 2: Try to get cached result
+    data_hash = None
+    try:
+        data_str = json.dumps(data, sort_keys=True)
+        data_hash = _compute_data_hash(data_str)
+        cached_result = _get_cached_result(data)
+        if cached_result:
+            return cached_result
+    except (TypeError, ValueError):
+        # If serialization fails, continue with normal validation
+        pass
+    
+    # Step 3: Validate field presence
+    result = _validate_field_presence(data)
+    if result:
+        if data_hash:
+            _cache_validation_result(data_hash, result)
+        return result
+    
+    # Step 4: Validate field values
+    result = _validate_field_values(data)
+    if result:
+        if data_hash:
+            _cache_validation_result(data_hash, result)
+        return result
+    
+    # Step 5: Validate score
+    result = _validate_score(data)
+    if result:
+        if data_hash:
+            _cache_validation_result(data_hash, result)
         return result
     
     # All validations passed
     result = ValidationResult(valid=True)
-    # Thread-safe cache update
-    with _cache_lock:
-        _validation_cache[data_hash] = result
+    if data_hash:
+        _cache_validation_result(data_hash, result)
     return result
 
 def validate_matches_with_error_type(data: Dict[str, Any]) -> Tuple[bool, Union[str, None], Union[ValidationErrorType, None], Union[str, None]]:
