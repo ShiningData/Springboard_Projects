@@ -1,146 +1,153 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Middleware Module
+Prediction Service Module
 
-Contains custom middleware for the FastAPI application.
+Contains the core prediction logic and validation functions.
 """
+from fastapi import HTTPException
+from pydantic import ValidationError
+from typing import Dict, Any, List, Tuple
 import time
 import logging
-from typing import Callable, Dict, Tuple
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
-from starlette.responses import JSONResponse
-from datetime import datetime, timedelta
+import functools
+from cachetools import TTLCache, cached
 
-from monitoring import record_api_latency
+from models import acc_auth_model
+from validate_data import validate_matches
+from create_pai_mapping import (
+    mapping_address_match,
+    mapping_id_match,
+    mapping_name_match
+)
+from rule_base_model import determine_result_code
 
 # Configure logging
 logger = logging.getLogger("acc_auth_api")
 
+# Pre-defined constants for optimization
+REQUIRED_FIELDS = frozenset([
+    "NameMtch", "BusNameMtch", "SSNMtch", "DOBMtch", "AddressMtch", 
+    "CityMtch", "StateMtch", "ZipMtch", "HmPhoneMtch", "WkPhoneMtch", 
+    "IDTypeMtch", "IDNoMtch", "IDStateMtch", "OverallMtchScore"
+])
 
-class ProcessTimeMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to add a process time header to the response.
-    """
-    def __init__(self, app: ASGIApp):
-        super().__init__(app)
-    
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        start_time = time.time()
-        
-        # Process the request
-        response = await call_next(request)
-        
-        # Calculate process time
-        process_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-        
-        # Add header to response
-        response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
-        
-        # Record latency for performance monitoring
-        record_api_latency(request.url.path, process_time)
-        
-        # Log slow requests
-        if process_time > 200:  # Log requests taking more than 200ms
-            logger.warning(f"Slow request to {request.url.path}: {process_time:.2f}ms")
-        
-        return response
+BAA_COLUMNS = [
+    "PAINameMtch", "SSNMtch", "DOBMtch", "PAIAddressMtch",
+    "HmPhoneMtch", "WkPhoneMtch", "PAIIDMtch", "OverallMtchScore",
+]
 
+# Cache for mapping functions with 1-hour TTL
+mapping_cache = TTLCache(maxsize=1000, ttl=3600)
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
+# Dependency for request validation
+async def validate_request(request: acc_auth_model) -> Dict[str, Any]:
     """
-    Middleware to implement rate limiting.
-    
-    This middleware tracks the number of requests from each client IP
-    and returns a 429 Too Many Requests response if the limit is exceeded.
-    """
-    def __init__(self, app: ASGIApp, requests: int = 100, period: int = 60):
-        super().__init__(app)
-        self.requests = requests  # Maximum number of requests
-        self.period = period      # Time period in seconds
-        self.clients: Dict[str, Tuple[int, datetime]] = {}
-    
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Get client IP
-        client_ip = request.client.host if request.client else "unknown"
-        
-        # Get current time
-        now = datetime.now()
-        
-        # Check if client exists in tracking
-        if client_ip in self.clients:
-            count, last_reset = self.clients[client_ip]
-            
-            # Check if period has elapsed, reset if needed
-            if (now - last_reset).total_seconds() > self.period:
-                count = 0
-                last_reset = now
-            
-            # Increment count
-            count += 1
-            
-            # Check if limit exceeded
-            if count > self.requests:
-                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-                return JSONResponse(
-                    status_code=429,
-                    content={
-                        "detail": "Too many requests",
-                        "retry_after": self.period - (now - last_reset).total_seconds()
-                    }
-                )
-            
-            # Update client tracking
-            self.clients[client_ip] = (count, last_reset)
-        else:
-            # First request from this client
-            self.clients[client_ip] = (1, now)
-        
-        # Process the request
-        response = await call_next(request)
-        
-        # Add rate limit headers
-        response.headers["X-RateLimit-Limit"] = str(self.requests)
-        response.headers["X-RateLimit-Remaining"] = str(
-            self.requests - self.clients[client_ip][0]
-        )
-        response.headers["X-RateLimit-Reset"] = str(
-            int((self.clients[client_ip][1] + timedelta(seconds=self.period)).timestamp())
-        )
-        
-        return response
-
-
-# Function to add process time header (for backward compatibility)
-async def add_process_time_header(request: Request, call_next: Callable) -> Response:
-    """
-    Add a process time header to the response.
+    Dependency for request validation and conversion.
     
     Args:
-        request: The request object
-        call_next: The next middleware or route handler
+        request: The Pydantic model from the request
         
     Returns:
-        The response with the process time header
+        Dict: Validated dictionary data
     """
+    try:
+        # Use model_dump() for Pydantic v2 or dict() for v1
+        return request.model_dump() if hasattr(request, "model_dump") else request.dict()
+    except ValidationError as e:
+        logger.error(f"Request validation error: {str(e)}")
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+# Cached mapping functions
+@cached(cache=mapping_cache)
+def cached_name_match(name_match: str, bus_name_match: str) -> str:
+    """Cached version of name match mapping"""
+    return mapping_name_match(name_match, bus_name_match)
+
+@cached(cache=mapping_cache)
+def cached_address_match(address_match: str, city_match: str, state_match: str, zip_match: str) -> str:
+    """Cached version of address match mapping"""
+    return mapping_address_match(address_match, city_match, state_match, zip_match)
+
+@cached(cache=mapping_cache)
+def cached_id_match(id_type_match: str, id_no_match: str, id_state_match: str) -> str:
+    """Cached version of ID match mapping"""
+    return mapping_id_match(id_type_match, id_no_match, id_state_match)
+
+
+# Core prediction logic
+def acc_auth_prediction(request_data: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Predict the customer result code based on match statuses from
+    an input request.
+    
+    Parameters:
+        request_data (dict): A dictionary containing feature match information for
+        various customer attributes.
+            
+    Returns:
+        dict: A dictionary containing the customer result code
+        ('customerResultCode') after evaluating the matches.
+        
+    Raises:
+        ValueError: If validation fails due to missing or unexpected
+                  values in the input.
+    """
+    # Start timing
     start_time = time.time()
     
-    # Process the request
-    response = await call_next(request)
+    # Validate required fields exist - use set operations for efficiency
+    missing_fields = REQUIRED_FIELDS - set(request_data.keys())
+    if missing_fields:
+        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
     
-    # Calculate process time
-    process_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+    # Normalize input data - handle None and empty values in one pass
+    normalized_data = {
+        key: "MISSING" if value is None or value == "" else value
+        for key, value in request_data.items()
+    }
     
-    # Add header to response
-    response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+    # Generate PAI fields efficiently using cached mapping functions
+    pai_values = [
+        # PAINameMtch
+        cached_name_match(
+            normalized_data["NameMtch"],
+            normalized_data["BusNameMtch"]
+        ),
+        # SSNMtch
+        normalized_data["SSNMtch"],
+        # DOBMtch
+        normalized_data["DOBMtch"],
+        # PAIAddressMtch
+        cached_address_match(
+            normalized_data["AddressMtch"],
+            normalized_data["CityMtch"],
+            normalized_data["StateMtch"],
+            normalized_data["ZipMtch"]
+        ),
+        # HmPhoneMtch
+        normalized_data["HmPhoneMtch"],
+        # WkPhoneMtch
+        normalized_data["WkPhoneMtch"],
+        # PAIIDMtch
+        cached_id_match(
+            normalized_data["IDTypeMtch"],
+            normalized_data["IDNoMtch"],
+            normalized_data["IDStateMtch"]
+        ),
+        # OverallMtchScore
+        normalized_data["OverallMtchScore"]
+    ]
     
-    # Record latency for performance monitoring
-    record_api_latency(request.url.path, process_time)
+    # Create BAA dictionary efficiently
+    baa_dict = dict(zip(BAA_COLUMNS, pai_values))
     
-    # Log slow requests
-    if process_time > 200:  # Log requests taking more than 200ms
-        logger.warning(f"Slow request to {request.url.path}: {process_time:.2f}ms")
+    # Determine result code
+    result_code = determine_result_code(baa_dict)
     
-    return response 
+    # Log performance metrics
+    elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+    logger.info(f"Prediction completed in {elapsed_time:.2f}ms")
+    
+    return {"customerResultCode": result_code} 
