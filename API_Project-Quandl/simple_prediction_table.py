@@ -48,6 +48,10 @@ def test_normalize_input():
     assert normalize_input("y") == Y_VALUE
     assert normalize_input("n") == N_VALUE
     assert normalize_input("u") == U_VALUE
+    
+    # Test with invalid values
+    assert normalize_input("invalid") == MISSING_VALUE
+    assert normalize_input("123") == MISSING_VALUE
 
 # Test mapping_address_match function
 def test_mapping_address_match():
@@ -218,4 +222,38 @@ def test_create_pai_features():
     result = create_pai_features(data)
     assert result["PAINameMtch"] == MISSING_VALUE
     assert result["PAIAddressMtch"] == MISSING_VALUE
-    assert result["PAIIDMtch"] == MISSING_VALUE 
+    assert result["PAIIDMtch"] == MISSING_VALUE
+    
+    # Test with missing fields
+    data = {
+        "NameMtch": Y_VALUE,
+        "BusNameMtch": Y_VALUE,
+        "AddressMtch": Y_VALUE,
+        "CityMtch": Y_VALUE,
+        "StateMtch": Y_VALUE,
+        "ZipMtch": Y_VALUE,
+        # Missing IDTypeMtch, IDNoMtch, IDStateMtch
+    }
+    result = create_pai_features(data)
+    assert result["PAINameMtch"] == Y_VALUE
+    assert result["PAIAddressMtch"] == Y_VALUE
+    assert result["PAIIDMtch"] == MISSING_VALUE  # Missing fields default to MISSING_VALUE
+    
+    # Test with additional fields
+    data = {
+        "NameMtch": Y_VALUE,
+        "BusNameMtch": Y_VALUE,
+        "AddressMtch": Y_VALUE,
+        "CityMtch": Y_VALUE,
+        "StateMtch": Y_VALUE,
+        "ZipMtch": Y_VALUE,
+        "IDTypeMtch": Y_VALUE,
+        "IDNoMtch": Y_VALUE,
+        "IDStateMtch": Y_VALUE,
+        "AdditionalField": "SomeValue"  # Additional field should be preserved
+    }
+    result = create_pai_features(data)
+    assert result["PAINameMtch"] == Y_VALUE
+    assert result["PAIAddressMtch"] == Y_VALUE
+    assert result["PAIIDMtch"] == Y_VALUE
+    assert result["AdditionalField"] == "SomeValue"  # Additional field should be preserved 
