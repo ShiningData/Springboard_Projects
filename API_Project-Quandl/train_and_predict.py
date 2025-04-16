@@ -1,236 +1,373 @@
-import pandas as pd
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Load Testing Script for Rule Engine API
+
+This script performs load testing on the API endpoints to measure latency performance.
+It tests both the prediction endpoint and the health check endpoint under various load conditions.
+"""
+import asyncio
+import time
+import statistics
+import json
+from typing import Dict, List, Any, Tuple
+import httpx
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
-import gc
-import os
 
-def incremental_stratified_sampling(
-    data_path, 
-    target_column='FE_DenialStatus',
-    group_column='claimUniqueId',
-    initial_sample_size=100000,
-    increment_size=100000,
-    max_sample_size=1000000,
-    output_dir='sampled_datasets',
-    random_state=42
-):
-    """
-    Incrementally sample from a large dataset while maintaining class proportion
-    and ensuring new samples include previous ones.
-    
-    Parameters:
-    -----------
-    data_path : str
-        Path to the large dataset file (CSV)
-    target_column : str
-        Name of the binary target variable column
-    group_column : str
-        Name of the column to use for grouping
-    initial_sample_size : int
-        Size of the first sample
-    increment_size : int
-        Size to increase each subsequent sample by
-    max_sample_size : int
-        Maximum sample size to reach
-    output_dir : str
-        Directory to save sampled datasets
-    random_state : int
-        Random seed for reproducibility
-    """
-    # Create output directory if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Read the large dataset's target and group columns (to save memory)
-    print(f"Reading target and group columns from {data_path}")
-    df_cols = pd.read_csv(data_path, usecols=[target_column, group_column])
-    
-    # Get unique groups and their associated targets
-    print("Identifying unique groups and their targets")
-    group_targets = df_cols.groupby(group_column)[target_column].first().reset_index()
-    
-    # Calculate class distribution for stratification
-    class_counts = group_targets[target_column].value_counts(normalize=True)
-    print(f"Class distribution: {class_counts.to_dict()}")
-    
-    # Initialize variables to track sampled groups
-    sampled_groups = set()
-    current_sample_size = initial_sample_size
-    
-    while current_sample_size <= max_sample_size:
-        print(f"\nSampling dataset of size {current_sample_size}")
-        
-        # If this is the first iteration, sample from scratch
-        if len(sampled_groups) == 0:
-            # Stratified sampling of groups
-            groups_class_0 = group_targets[group_targets[target_column] == 0][group_column].tolist()
-            groups_class_1 = group_targets[group_targets[target_column] == 1][group_column].tolist()
-            
-            # Calculate how many groups to sample from each class
-            n_class_0 = int(current_sample_size * class_counts[0])
-            n_class_1 = current_sample_size - n_class_0
-            
-            # Sample groups
-            sampled_groups_0 = np.random.RandomState(random_state).choice(
-                groups_class_0, size=min(n_class_0, len(groups_class_0)), replace=False
-            )
-            sampled_groups_1 = np.random.RandomState(random_state).choice(
-                groups_class_1, size=min(n_class_1, len(groups_class_1)), replace=False
-            )
-            
-            # Combine sampled groups
-            current_groups = np.concatenate([sampled_groups_0, sampled_groups_1])
-            sampled_groups = set(current_groups)
-        else:
-            # For subsequent iterations, add more groups while keeping previous ones
-            additional_size = current_sample_size - len(sampled_groups)
-            
-            if additional_size <= 0:
-                print(f"Already sampled {len(sampled_groups)} groups, which exceeds requested size")
-                break
-                
-            # Filter out already sampled groups
-            remaining_groups = group_targets[~group_targets[group_column].isin(sampled_groups)]
-            
-            # Stratified sampling for additional groups
-            groups_class_0 = remaining_groups[remaining_groups[target_column] == 0][group_column].tolist()
-            groups_class_1 = remaining_groups[remaining_groups[target_column] == 1][group_column].tolist()
-            
-            # Calculate how many additional groups to sample from each class
-            n_class_0 = int(additional_size * class_counts[0])
-            n_class_1 = additional_size - n_class_0
-            
-            # Sample additional groups
-            if n_class_0 > 0 and len(groups_class_0) > 0:
-                additional_groups_0 = np.random.RandomState(random_state + len(sampled_groups)).choice(
-                    groups_class_0, size=min(n_class_0, len(groups_class_0)), replace=False
-                )
-            else:
-                additional_groups_0 = []
-                
-            if n_class_1 > 0 and len(groups_class_1) > 0:
-                additional_groups_1 = np.random.RandomState(random_state + len(sampled_groups)).choice(
-                    groups_class_1, size=min(n_class_1, len(groups_class_1)), replace=False
-                )
-            else:
-                additional_groups_1 = []
-            
-            # Combine sampled groups
-            additional_groups = np.concatenate([additional_groups_0, additional_groups_1])
-            sampled_groups.update(additional_groups)
-            current_groups = list(sampled_groups)
-        
-        # Read only the necessary rows from the full dataset
-        print(f"Reading full data for {len(current_groups)} groups")
-        
-        # Read the dataset in chunks to handle large files
-        chunk_size = 1000000  # Adjust based on available memory
-        chunks = []
-        
-        for chunk in pd.read_csv(data_path, chunksize=chunk_size):
-            filtered_chunk = chunk[chunk[group_column].isin(current_groups)]
-            if not filtered_chunk.empty:
-                chunks.append(filtered_chunk)
-                
-        sampled_df = pd.concat(chunks) if chunks else pd.DataFrame()
-        
-        # Apply the group_stratified_split function to the sampled data
-        X_train, X_test, y_train, y_test = group_stratified_split(sampled_df)
-        
-        # Save the train and test datasets
-        output_path = os.path.join(output_dir, f"sample_{current_sample_size}")
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-            
-        print(f"Saving train and test datasets to {output_path}")
-        pd.concat([X_train, y_train], axis=1).to_csv(
-            os.path.join(output_path, "train.csv"), index=False
-        )
-        pd.concat([X_test, y_test], axis=1).to_csv(
-            os.path.join(output_path, "test.csv"), index=False
-        )
-        
-        # Log the actual sample size
-        actual_size = len(sampled_df)
-        print(f"Actual sample size: {actual_size}")
-        print(f"Class distribution in sample: {sampled_df[target_column].value_counts(normalize=True).to_dict()}")
-        
-        # Clean up memory
-        del sampled_df, chunks
-        gc.collect()
-        
-        # Increment the sample size for the next iteration
-        current_sample_size += increment_size
+# Test data scenarios for each CRC code
+TEST_SCENARIOS = {
+    "CRC1000": {  # Pass - Perfect match
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 95
+    },
+    "CRC2100": {  # Caution - Address mismatch
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "N",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 85
+    },
+    "CRC2200": {  # Caution - Phone mismatch
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "N",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 85
+    },
+    "CRC2300": {  # Caution - ID mismatch
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "N",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 85
+    },
+    "CRC3100": {  # Warning - Name mismatch
+        "NameMtch": "N",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 75
+    },
+    "CRC3200": {  # Warning - Tax ID mismatch
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "N",
+        "DOBMtch": "Y",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 75
+    },
+    "CRC3300": {  # Warning - DOB mismatch
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "N",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 75
+    },
+    "CRC3900": {  # Warning - Multiple mismatches
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "N",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "N",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 65
+    },
+    "CRC4000": {  # Decline - Score below threshold
+        "NameMtch": "Y",
+        "BusNameMtch": "Y",
+        "SSNMtch": "N",
+        "DOBMtch": "N",
+        "AddressMtch": "N",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "N",
+        "WkPhoneMtch": "N",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "N",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 25
+    },
+    "CRC0000": {  # Inconclusive - Missing data
+        "NameMtch": "MISSING",
+        "BusNameMtch": "Y",
+        "SSNMtch": "Y",
+        "DOBMtch": "Y",
+        "AddressMtch": "Y",
+        "CityMtch": "Y",
+        "StateMtch": "Y",
+        "ZipMtch": "Y",
+        "HmPhoneMtch": "Y",
+        "WkPhoneMtch": "Y",
+        "IDTypeMtch": "Y",
+        "IDNoMtch": "Y",
+        "IDStateMtch": "Y",
+        "OverallMtchScore": 95
+    }
+}
 
-def group_stratified_split(df, n_splits=1, test_size=0.2, random_state=42):
+# API endpoints
+PREDICTION_ENDPOINT = "http://localhost:8000/get-result-code"
+HEALTH_ENDPOINT = "http://localhost:8000/health"
+
+async def make_request(client: httpx.AsyncClient, endpoint: str, data: Dict[str, Any] = None) -> Tuple[float, int, str]:
     """
-    Splits the data into training and testing sets using group-based
-    stratification.
+    Make a request to the specified endpoint and measure latency.
     
-    Parameters:
-        df (pd.DataFrame): The input dataframe containing the features and
-            target variable. The dataframe should include the columns
-            'FE_DenialStatus' for the target and 'claimUniqueId' for grouping.
-            
+    Args:
+        client: The httpx client
+        endpoint: The API endpoint to test
+        data: The data to send (for POST requests)
+        
     Returns:
-        X_train (pd.DataFrame): Training set features.
-        X_test (pd.DataFrame): Testing set features.
-        y_train (pd.Series): Training set target labels.
-        y_test (pd.Series): Testing set target labels.
+        Tuple containing the latency in milliseconds, status code, and response body
     """
-    # Encode Target Variable
-    label_encoder = LabelEncoder()
-    df["FE_DenialStatus"] = label_encoder.fit_transform(df["FE_DenialStatus"])
+    start_time = time.time()
     
-    # Split data
-    X = df.drop(columns=["FE_DenialStatus"])
-    y = df["FE_DenialStatus"]
-    groups = df["claimUniqueId"]
-    
-    # Initialize GroupShuffleSplit
-    gss = GroupShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=random_state)
-    
-    # Perform the split and ensure stratification
-    for train_idx, test_idx in gss.split(X, y, groups):
-        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+    try:
+        if data:
+            response = await client.post(endpoint, json=data)
+        else:
+            response = await client.get(endpoint)
         
-        # Check Stratification
-        if (y_train.mean() != y.mean()) or (y_test.mean() != y.mean()):
-            continue
-        break
-    
-    logging.info("Training Data Shape for Modeling: " + str(
-        X_train.shape
-    ))
-    
-    logging.info(
-        "Test Data Shape For Predictions: " + str(
-        X_test.shape
-    ))
-    
-    del X, y
-    gc.collect()
-    
-    return X_train, X_test, y_train, y_test
+        latency = (time.time() - start_time) * 1000  # Convert to milliseconds
+        return latency, response.status_code, response.text
+    except Exception as e:
+        print(f"Error making request: {e}")
+        return -1, -1, str(e)
 
-# Example usage
+async def run_load_test(endpoint: str, data: Dict[str, Any] = None, 
+                        num_requests: int = 100, concurrency: int = 10) -> List[Tuple[float, int, str]]:
+    """
+    Run a load test on the specified endpoint.
+    
+    Args:
+        endpoint: The API endpoint to test
+        data: The data to send (for POST requests)
+        num_requests: The number of requests to make
+        concurrency: The number of concurrent requests
+        
+    Returns:
+        List of tuples containing latencies, status codes, and responses
+    """
+    results = []
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        tasks = []
+        for _ in range(num_requests):
+            tasks.append(make_request(client, endpoint, data))
+            
+            # Process in batches based on concurrency
+            if len(tasks) >= concurrency:
+                batch_results = await asyncio.gather(*tasks)
+                results.extend([r for r in batch_results if r[0] > 0])
+                tasks = []
+        
+        # Process any remaining tasks
+        if tasks:
+            batch_results = await asyncio.gather(*tasks)
+            results.extend([r for r in batch_results if r[0] > 0])
+    
+    return results
+
+def calculate_statistics(results: List[Tuple[float, int, str]]) -> Dict[str, Any]:
+    """
+    Calculate statistics for the latencies and responses.
+    
+    Args:
+        results: List of tuples containing latencies, status codes, and responses
+        
+    Returns:
+        Dictionary containing statistics and response distribution
+    """
+    if not results:
+        return {
+            "min": 0,
+            "max": 0,
+            "mean": 0,
+            "median": 0,
+            "p95": 0,
+            "p99": 0,
+            "response_codes": {},
+            "status_codes": {}
+        }
+    
+    latencies = [r[0] for r in results]
+    status_codes = {}
+    response_codes = {}
+    
+    for _, status, response in results:
+        status_codes[status] = status_codes.get(status, 0) + 1
+        try:
+            response_data = json.loads(response)
+            if "customerResultcode" in response_data:
+                response_codes[response_data["customerResultcode"]] = response_codes.get(response_data["customerResultcode"], 0) + 1
+        except:
+            pass
+    
+    return {
+        "min": min(latencies),
+        "max": max(latencies),
+        "mean": statistics.mean(latencies),
+        "median": statistics.median(latencies),
+        "p95": np.percentile(latencies, 95),
+        "p99": np.percentile(latencies, 99),
+        "response_codes": response_codes,
+        "status_codes": status_codes
+    }
+
+def plot_latency_distribution(latencies: List[float], title: str, filename: str):
+    """
+    Plot the latency distribution.
+    
+    Args:
+        latencies: List of latencies in milliseconds
+        title: Title for the plot
+        filename: Filename to save the plot
+    """
+    plt.figure(figsize=(10, 6))
+    plt.hist(latencies, bins=50, alpha=0.7, color='blue')
+    plt.axvline(statistics.mean(latencies), color='red', linestyle='dashed', linewidth=1, label=f'Mean: {statistics.mean(latencies):.2f}ms')
+    plt.axvline(statistics.median(latencies), color='green', linestyle='dashed', linewidth=1, label=f'Median: {statistics.median(latencies):.2f}ms')
+    plt.axvline(np.percentile(latencies, 95), color='purple', linestyle='dashed', linewidth=1, label=f'95th percentile: {np.percentile(latencies, 95):.2f}ms')
+    plt.title(title)
+    plt.xlabel('Latency (ms)')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig(filename)
+    plt.close()
+
+async def main():
+    parser = argparse.ArgumentParser(description='Load test the Rule Engine API')
+    parser.add_argument('--scenario', type=str, choices=list(TEST_SCENARIOS.keys()) + ['all'],
+                        help='Scenario to test (default: all)')
+    parser.add_argument('--requests', type=int, default=100, help='Number of requests to make (default: 100)')
+    parser.add_argument('--concurrency', type=int, default=10, help='Number of concurrent requests (default: 10)')
+    parser.add_argument('--plot', action='store_true', help='Generate latency distribution plots')
+    
+    args = parser.parse_args()
+    
+    print(f"Starting load test with {args.requests} requests and concurrency of {args.concurrency}")
+    
+    results = {}
+    
+    # Test each scenario
+    scenarios_to_test = [args.scenario] if args.scenario and args.scenario != 'all' else TEST_SCENARIOS.keys()
+    
+    for scenario in scenarios_to_test:
+        print(f"\n=== Testing Scenario: {scenario} ===")
+        test_data = TEST_SCENARIOS[scenario]
+        
+        # Run the load test
+        test_results = await run_load_test(PREDICTION_ENDPOINT, test_data, args.requests, args.concurrency)
+        stats = calculate_statistics(test_results)
+        
+        # Print statistics
+        print(f"Statistics for {scenario}:")
+        print(f"  Min: {stats['min']:.2f}ms")
+        print(f"  Max: {stats['max']:.2f}ms")
+        print(f"  Mean: {stats['mean']:.2f}ms")
+        print(f"  Median: {stats['median']:.2f}ms")
+        print(f"  95th percentile: {stats['p95']:.2f}ms")
+        print(f"  99th percentile: {stats['p99']:.2f}ms")
+        print("\nResponse Code Distribution:")
+        for code, count in stats['response_codes'].items():
+            print(f"  {code}: {count} requests")
+        
+        # Generate plot if requested
+        if args.plot:
+            plot_latency_distribution(
+                [r[0] for r in test_results],
+                f'Latency Distribution - {scenario}',
+                f'latency_{scenario}.png'
+            )
+        
+        results[scenario] = {
+            "statistics": stats,
+            "latencies": [r[0] for r in test_results]
+        }
+    
+    # Save all results to JSON file
+    with open('load_test_results.json', 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    print("\nResults saved to load_test_results.json")
+
 if __name__ == "__main__":
-    import logging
-    from sklearn.preprocessing import LabelEncoder
-    from sklearn.model_selection import GroupShuffleSplit
-    
-    logging.basicConfig(level=logging.INFO)
-    
-    # Set parameters
-    data_path = "path/to/your/large_dataset.csv"  # Replace with your dataset path
-    initial_sample = 100000
-    increment = 100000
-    max_size = 1000000  # Increase as needed up to 100 million
-    
-    incremental_stratified_sampling(
-        data_path=data_path,
-        initial_sample_size=initial_sample,
-        increment_size=increment,
-        max_sample_size=max_size
-    )
+    asyncio.run(main()) 
