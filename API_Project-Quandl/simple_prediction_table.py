@@ -1,460 +1,221 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Data validation module for rule-based model inputs.
-
-This module provides validation for input data dictionaries used by the rule-based model.
-It ensures all required fields are present and contain valid values according to business rules.
-
-Raw input features and their valid values:
-- NameMtch, BusNameMtch: 'Y','N','C','U','MISSING'
-- AddressMtch, CityMtch, ZipMtch: 'Y','N','C','U','MISSING'
-- StateMtch: 'Y','N','U','MISSING'
-- IDTypeMtch, IDStateMtch: 'Y','N','C','U','MISSING'
-- IDNoMtch: 'Y','N','U','MISSING'
-- SSNMtch, DOBMtch, HmPhoneMtch, WkPhoneMtch: 'Y','N','C','U','MISSING'
-- OverallMtchScore: numeric value between 0.0 and 100.0
+Unit tests for create_pai_mapping.py
 """
+import pytest
+import sys
+import os
 
-from typing import Dict, Any, Set, FrozenSet, Union, Tuple, Optional, List
-from dataclasses import dataclass
-from enum import Enum, auto
-from functools import lru_cache
-import time
-import hashlib
-import json
-import threading
-from cachetools import LRUCache, TTLCache
-import logging
+# Add the parent directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Set up logging
-logger = logging.getLogger(__name__)
+from create_pai_mapping import (
+    normalize_input,
+    mapping_address_match,
+    mapping_id_match,
+    mapping_name_match,
+    create_pai_features
+)
 
-# Constants for optimization
-DEFAULT_RETURN = "N"
+# Constants for testing
+Y_VALUE = "Y"
+N_VALUE = "N"
+U_VALUE = "U"
 MISSING_VALUE = "MISSING"
+DEFAULT_RETURN = "N"
 
-# Match indicators
-Y = "Y"
-N = "N"
-C = "C"
-U = "U"
+# Test normalize_input function
+def test_normalize_input():
+    """Test the normalize_input function with various inputs"""
+    # Test with None
+    assert normalize_input(None) == MISSING_VALUE
+    
+    # Test with empty string
+    assert normalize_input("") == MISSING_VALUE
+    
+    # Test with valid string
+    assert normalize_input("Y") == Y_VALUE
+    assert normalize_input("N") == N_VALUE
+    assert normalize_input("U") == U_VALUE
+    
+    # Test with whitespace
+    assert normalize_input(" Y ") == Y_VALUE
+    assert normalize_input(" N ") == N_VALUE
+    assert normalize_input(" U ") == U_VALUE
+    
+    # Test with case
+    assert normalize_input("y") == Y_VALUE
+    assert normalize_input("n") == N_VALUE
+    assert normalize_input("u") == U_VALUE
 
-# Valid values for each feature type
-NAME_VALID_VALUES = frozenset({Y, N, C, U, MISSING_VALUE})
-ADDRESS_VALID_VALUES = frozenset({Y, N, C, U, MISSING_VALUE})
-STATE_VALID_VALUES = frozenset({Y, N, U, MISSING_VALUE})
-ID_TYPE_STATE_VALID_VALUES = frozenset({Y, N, C, U, MISSING_VALUE})
-ID_NO_VALID_VALUES = frozenset({Y, N, U, MISSING_VALUE})
-SSN_DOB_PHONE_VALID_VALUES = frozenset({Y, N, C, U, MISSING_VALUE})
+# Test mapping_address_match function
+def test_mapping_address_match():
+    """Test the mapping_address_match function with various inputs"""
+    # Test with all Y values
+    assert mapping_address_match(Y_VALUE, Y_VALUE, Y_VALUE, Y_VALUE) == Y_VALUE
+    
+    # Test with all N values
+    assert mapping_address_match(N_VALUE, N_VALUE, N_VALUE, N_VALUE) == N_VALUE
+    
+    # Test with all U values
+    assert mapping_address_match(U_VALUE, U_VALUE, U_VALUE, U_VALUE) == U_VALUE
+    
+    # Test with all MISSING values
+    assert mapping_address_match(MISSING_VALUE, MISSING_VALUE, MISSING_VALUE, MISSING_VALUE) == MISSING_VALUE
+    
+    # Test with None values
+    assert mapping_address_match(None, None, None, None) == MISSING_VALUE
+    
+    # Test with empty values
+    assert mapping_address_match("", "", "", "") == MISSING_VALUE
+    
+    # Test with mixed values
+    assert mapping_address_match(Y_VALUE, MISSING_VALUE, U_VALUE, N_VALUE) == N_VALUE  # N takes precedence
+    assert mapping_address_match(N_VALUE, Y_VALUE, Y_VALUE, Y_VALUE) == N_VALUE  # N takes precedence
+    assert mapping_address_match(Y_VALUE, Y_VALUE, N_VALUE, Y_VALUE) == N_VALUE  # N takes precedence
+    
+    # Test with None and empty mixed with Y_VALUE and MISSING_VALUE
+    assert mapping_address_match(None, Y_VALUE, "", MISSING_VALUE) == N_VALUE  # Mixed values not in ADDRESS_MAPPING return DEFAULT_RETURN (N_VALUE)
+    
+    # Test with whitespace
+    assert mapping_address_match(" Y ", " N ", " U ", " MISSING ") == N_VALUE  # Whitespace is stripped and N takes precedence
 
-# Score range constants
-SCORE_MIN = 0.0
-SCORE_MAX = 100.0
+# Test mapping_id_match function
+def test_mapping_id_match():
+    """Test the mapping_id_match function with various inputs"""
+    # Test with all Y values
+    assert mapping_id_match(Y_VALUE, Y_VALUE, Y_VALUE) == Y_VALUE
+    
+    # Test with all N values
+    assert mapping_id_match(N_VALUE, N_VALUE, N_VALUE) == N_VALUE
+    
+    # Test with all U values
+    assert mapping_id_match(U_VALUE, U_VALUE, U_VALUE) == U_VALUE
+    
+    # Test with all MISSING values
+    assert mapping_id_match(MISSING_VALUE, MISSING_VALUE, MISSING_VALUE) == MISSING_VALUE
+    
+    # Test with None values
+    assert mapping_id_match(None, None, None) == MISSING_VALUE
+    
+    # Test with empty values
+    assert mapping_id_match("", "", "") == MISSING_VALUE
+    
+    # Test with mixed values
+    assert mapping_id_match(Y_VALUE, N_VALUE, U_VALUE) == N_VALUE  # IDNoMtch is N
+    assert mapping_id_match(N_VALUE, Y_VALUE, MISSING_VALUE) == Y_VALUE  # IDNoMtch is Y
+    assert mapping_id_match(U_VALUE, MISSING_VALUE, Y_VALUE) == MISSING_VALUE  # IDNoMtch is MISSING
+    
+    # Test with None and empty mixed
+    assert mapping_id_match(None, Y_VALUE, "") == Y_VALUE
+    assert mapping_id_match("", None, N_VALUE) == N_VALUE
+    
+    # Test with whitespace
+    assert mapping_id_match(" Y ", " N ", " U ") == N_VALUE
 
-# Required fields for validation
-REQUIRED_FIELDS = frozenset({
-    # Mapped features
-    "NameMtch", "BusNameMtch",
-    "AddressMtch", "CityMtch", "StateMtch", "ZipMtch",
-    "IDTypeMtch", "IDNoMtch", "IDStateMtch",
-    # Unmapped features
-    "SSNMtch", "DOBMtch", "HmPhoneMtch", "WkPhoneMtch",
-    "OverallMtchScore"
-})
+# Test mapping_name_match function
+def test_mapping_name_match():
+    """Test the mapping_name_match function with various inputs"""
+    # Test with all Y values
+    assert mapping_name_match(Y_VALUE, Y_VALUE) == Y_VALUE
+    
+    # Test with all N values
+    assert mapping_name_match(N_VALUE, N_VALUE) == N_VALUE
+    
+    # Test with all U values
+    assert mapping_name_match(U_VALUE, U_VALUE) == U_VALUE
+    
+    # Test with all MISSING values
+    assert mapping_name_match(MISSING_VALUE, MISSING_VALUE) == MISSING_VALUE
+    
+    # Test with None values
+    assert mapping_name_match(None, None) == MISSING_VALUE
+    
+    # Test with empty values
+    assert mapping_name_match("", "") == MISSING_VALUE
+    
+    # Test with mixed values
+    assert mapping_name_match(Y_VALUE, N_VALUE) == Y_VALUE  # NameMtch is Y
+    assert mapping_name_match(N_VALUE, Y_VALUE) == N_VALUE  # NameMtch is N
+    assert mapping_name_match(U_VALUE, Y_VALUE) == U_VALUE  # NameMtch is U
+    assert mapping_name_match(MISSING_VALUE, Y_VALUE) == Y_VALUE  # NameMtch is MISSING, BusNameMtch is Y
+    assert mapping_name_match(MISSING_VALUE, MISSING_VALUE) == MISSING_VALUE  # Both MISSING
+    
+    # Test with None and empty mixed
+    assert mapping_name_match(None, Y_VALUE) == Y_VALUE
+    assert mapping_name_match("", None) == MISSING_VALUE
+    
+    # Test with whitespace
+    assert mapping_name_match(" Y ", " N ") == Y_VALUE
 
-# Cache configuration
-VALIDATION_CACHE_MAX_SIZE = 10000  # Maximum number of entries in the validation cache
-VALIDATION_CACHE_TTL = 3600  # Time-to-live for cache entries in seconds (1 hour)
-CACHE_CLEAR_INTERVAL = 86400  # Interval for periodic cache clearing in seconds (24 hours)
+# Test create_pai_features function
+def test_create_pai_features():
+    """Test the create_pai_features function with various inputs."""
+    # Test with all Y values
+    data = {
+        "NameMtch": Y_VALUE,
+        "BusNameMtch": Y_VALUE,
+        "AddressMtch": Y_VALUE,
+        "CityMtch": Y_VALUE,
+        "StateMtch": Y_VALUE,
+        "ZipMtch": Y_VALUE,
+        "IDTypeMtch": Y_VALUE,
+        "IDNoMtch": Y_VALUE,
+        "IDStateMtch": Y_VALUE
+    }
+    result = create_pai_features(data)
+    assert result["PAINameMtch"] == Y_VALUE
+    assert result["PAIAddressMtch"] == Y_VALUE
+    assert result["PAIIDMtch"] == Y_VALUE
 
-# Validation result class for better type safety and clarity
-@dataclass(frozen=True)
-class ValidationResult:
-    """Result of data validation with error details if validation failed."""
-    valid: bool
-    error: Union[str, None] = None
-    error_type: Optional['ValidationErrorType'] = None
-    field_name: Optional[str] = None
+    # Test with all N values
+    data = {
+        "NameMtch": N_VALUE,
+        "BusNameMtch": N_VALUE,
+        "AddressMtch": N_VALUE,
+        "CityMtch": N_VALUE,
+        "StateMtch": N_VALUE,
+        "ZipMtch": N_VALUE,
+        "IDTypeMtch": N_VALUE,
+        "IDNoMtch": N_VALUE,
+        "IDStateMtch": N_VALUE
+    }
+    result = create_pai_features(data)
+    assert result["PAINameMtch"] == N_VALUE
+    assert result["PAIAddressMtch"] == N_VALUE
+    assert result["PAIIDMtch"] == N_VALUE
 
-# Error types for more specific error handling
-class ValidationErrorType(Enum):
-    """Types of validation errors that can occur."""
-    MISSING_KEYS = auto()
-    UNEXPECTED_KEYS = auto()
-    INVALID_SCORE = auto()
-    INVALID_SCORE_TYPE = auto()
-    INVALID_CATEGORICAL_VALUE = auto()
-    INVALID_VALUE = auto()
-    MISSING_REQUIRED = auto()
-    UNEXPECTED_FIELD = auto()
-    INVALID_TYPE = auto()
+    # Test with mixed values
+    data = {
+        "NameMtch": Y_VALUE,
+        "BusNameMtch": N_VALUE,
+        "AddressMtch": Y_VALUE,
+        "CityMtch": N_VALUE,
+        "StateMtch": Y_VALUE,
+        "ZipMtch": N_VALUE,
+        "IDTypeMtch": Y_VALUE,
+        "IDNoMtch": N_VALUE,
+        "IDStateMtch": Y_VALUE
+    }
+    result = create_pai_features(data)
+    assert result["PAINameMtch"] == Y_VALUE  # Y takes precedence for name match
+    assert result["PAIAddressMtch"] == N_VALUE  # N takes precedence for address match
+    assert result["PAIIDMtch"] == N_VALUE  # N takes precedence for ID match
 
-# Field validation mapping for vectorized validation
-# Using a dictionary for O(1) lookups
-FIELD_VALIDATION_MAP = {
-    # Name fields
-    "NameMtch": (NAME_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "BusNameMtch": (NAME_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    
-    # Address fields
-    "AddressMtch": (ADDRESS_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "CityMtch": (ADDRESS_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "ZipMtch": (ADDRESS_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "StateMtch": (STATE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    
-    # ID fields
-    "IDTypeMtch": (ID_TYPE_STATE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "IDStateMtch": (ID_TYPE_STATE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "IDNoMtch": (ID_NO_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    
-    # Unmapped fields
-    "SSNMtch": (SSN_DOB_PHONE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "DOBMtch": (SSN_DOB_PHONE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "HmPhoneMtch": (SSN_DOB_PHONE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-    "WkPhoneMtch": (SSN_DOB_PHONE_VALID_VALUES, ValidationErrorType.INVALID_VALUE),
-}
-
-# Pre-compute common validation results for performance
-@lru_cache(maxsize=1024)
-def _compute_data_hash(data_str: str) -> str:
-    """Compute a hash of the data for caching validation results."""
-    return hashlib.md5(data_str.encode()).hexdigest()
-
-@lru_cache(maxsize=2048)
-def normalize_input(value: Any) -> str:
-    """
-    Normalize input value for consistent comparison.
-    
-    Args:
-        value: The input value to normalize.
-        
-    Returns:
-        str: The normalized value, or MISSING_VALUE if the input is None or empty.
-    """
-    if value is None:
-        return MISSING_VALUE
-    
-    if not isinstance(value, str):
-        return MISSING_VALUE
-        
-    value = value.strip()
-    if not value:  # Check if empty after stripping
-        return MISSING_VALUE
-        
-    return value.upper()
-
-# Thread-safe cache for validation results with size limit and TTL
-_validation_cache = TTLCache(maxsize=VALIDATION_CACHE_MAX_SIZE, ttl=VALIDATION_CACHE_TTL)
-_cache_lock = threading.Lock()
-
-# Timer for periodic cache clearing
-_cache_clear_timer = None
-
-def _schedule_cache_clear():
-    """Schedule periodic cache clearing."""
-    global _cache_clear_timer
-    
-    def clear_cache_periodically():
-        """Clear cache periodically and reschedule."""
-        clear_validation_cache()
-        _schedule_cache_clear()
-    
-    # Cancel existing timer if any
-    if _cache_clear_timer:
-        _cache_clear_timer.cancel()
-    
-    # Schedule next cache clear
-    _cache_clear_timer = threading.Timer(CACHE_CLEAR_INTERVAL, clear_cache_periodically)
-    _cache_clear_timer.daemon = True  # Allow the timer to be garbage collected when the program exits
-    _cache_clear_timer.start()
-
-def _validate_input_type(data: Any) -> Optional[ValidationResult]:
-    """
-    Validate that the input is a dictionary.
-    
-    Args:
-        data: The input to validate
-        
-    Returns:
-        ValidationResult if validation fails, None otherwise
-    """
-    if not isinstance(data, dict):
-        return ValidationResult(
-            valid=False,
-            error="Input must be a dictionary",
-            error_type=ValidationErrorType.INVALID_TYPE,
-            field_name=None
-        )
-    
-    if not data:
-        return ValidationResult(
-            valid=False,
-            error="Input dictionary is empty",
-            error_type=ValidationErrorType.MISSING_KEYS,
-            field_name=None
-        )
-    
-    return None
-
-def _get_cached_result(data: Dict[str, Any]) -> Optional[ValidationResult]:
-    """
-    Try to get a cached validation result for the given data.
-    
-    Args:
-        data: The data to check in the cache
-        
-    Returns:
-        Cached ValidationResult if found, None otherwise
-    """
-    try:
-        data_str = json.dumps(data, sort_keys=True)
-        data_hash = _compute_data_hash(data_str)
-        
-        # Thread-safe cache access
-        with _cache_lock:
-            if data_hash in _validation_cache:
-                return _validation_cache[data_hash]
-    except (TypeError, ValueError):
-        # If serialization fails, continue with normal validation
-        pass
-    
-    return None
-
-def _cache_validation_result(data_hash: str, result: ValidationResult) -> None:
-    """
-    Cache a validation result.
-    
-    Args:
-        data_hash: The hash of the data
-        result: The validation result to cache
-    """
-    with _cache_lock:
-        _validation_cache[data_hash] = result
-
-def _validate_field_presence(data: Dict[str, Any]) -> Optional[ValidationResult]:
-    """
-    Validate that all required fields are present and no unexpected fields exist.
-    
-    Args:
-        data: The data to validate
-        
-    Returns:
-        ValidationResult if validation fails, None otherwise
-    """
-    # Check for unexpected fields
-    unexpected_fields = set(data.keys()) - REQUIRED_FIELDS
-    if unexpected_fields:
-        return ValidationResult(
-            valid=False, 
-            error=f"Unexpected fields: {', '.join(sorted(unexpected_fields))}",
-            error_type=ValidationErrorType.UNEXPECTED_FIELD,
-            field_name=list(unexpected_fields)[0]
-        )
-    
-    # Check for missing required fields
-    missing_fields = REQUIRED_FIELDS - set(data.keys())
-    if missing_fields:
-        return ValidationResult(
-            valid=False,
-            error=f"Missing required fields: {', '.join(sorted(missing_fields))}",
-            error_type=ValidationErrorType.MISSING_REQUIRED,
-            field_name=list(missing_fields)[0]
-        )
-    
-    return None
-
-def _validate_field_values(data: Dict[str, Any]) -> Optional[ValidationResult]:
-    """
-    Validate that all field values are valid.
-    
-    Args:
-        data: The data to validate
-        
-    Returns:
-        ValidationResult if validation fails, None otherwise
-    """
-    # Check for None values and empty strings first
-    for field, value in data.items():
-        if field != "OverallMtchScore":
-            if value is None:
-                return ValidationResult(
-                    valid=False,
-                    error=f"None value not allowed for field {field}",
-                    error_type=ValidationErrorType.INVALID_VALUE,
-                    field_name=field
-                )
-            elif isinstance(value, str) and not value.strip():
-                return ValidationResult(
-                    valid=False,
-                    error=f"Empty string not allowed for field {field}",
-                    error_type=ValidationErrorType.INVALID_VALUE,
-                    field_name=field
-                )
-    
-    # Normalize all values at once for better performance
-    normalized_data = {k: normalize_input(v) for k, v in data.items()}
-    
-    # Validate all fields except OverallMtchScore
-    for field, value in normalized_data.items():
-        if field == "OverallMtchScore":
-            continue
-            
-        valid_values, error_type = FIELD_VALIDATION_MAP[field]
-        if value not in valid_values:
-            return ValidationResult(
-                valid=False,
-                error=f"Invalid value for {field}: {value}",
-                error_type=error_type,
-                field_name=field
-            )
-    
-    return None
-
-def _validate_score(data: Dict[str, Any]) -> Optional[ValidationResult]:
-    """
-    Validate the OverallMtchScore field.
-    
-    Args:
-        data: The data to validate
-        
-    Returns:
-        ValidationResult if validation fails, None otherwise
-    """
-    try:
-        score = float(data["OverallMtchScore"])
-        if not (SCORE_MIN <= score <= SCORE_MAX):
-            return ValidationResult(
-                valid=False, 
-                error=f"OverallMtchScore must be between {SCORE_MIN} and {SCORE_MAX}, got: {score}",
-                error_type=ValidationErrorType.INVALID_SCORE,
-                field_name="OverallMtchScore"
-            )
-    except (ValueError, TypeError):
-        return ValidationResult(
-            valid=False,
-            error=f"OverallMtchScore must be a number, got: {data['OverallMtchScore']}",
-            error_type=ValidationErrorType.INVALID_SCORE_TYPE,
-            field_name="OverallMtchScore"
-        )
-    
-    return None
-
-def validate_matches(data: Dict[str, Any]) -> ValidationResult:
-    """
-    Validate that all the required keys exist in the input data and that
-    the values for each key are in the correct form.
-    
-    This function uses a modular approach for improved maintainability:
-    1. Input type validation
-    2. Cache lookup
-    3. Field presence validation
-    4. Field value validation
-    5. Score validation
-    
-    Args:
-        data: A dictionary containing feature match information.
-            
-    Returns:
-        ValidationResult: A dataclass with validation result:
-            - valid (bool): True if all validations pass, False otherwise
-            - error (str): Error message if validation fails, None otherwise
-            - error_type (ValidationErrorType): Type of error if validation fails, None otherwise
-            - field_name (str): Name of the field that caused the error, None otherwise
-    """
-    # Step 1: Validate input type
-    result = _validate_input_type(data)
-    if result:
-        return result
-    
-    # Step 2: Try to get cached result
-    data_hash = None
-    try:
-        data_str = json.dumps(data, sort_keys=True)
-        data_hash = _compute_data_hash(data_str)
-        cached_result = _get_cached_result(data)
-        if cached_result:
-            return cached_result
-    except (TypeError, ValueError):
-        # If serialization fails, continue with normal validation
-        pass
-    
-    # Step 3: Validate field presence
-    result = _validate_field_presence(data)
-    if result:
-        if data_hash:
-            _cache_validation_result(data_hash, result)
-        return result
-    
-    # Step 4: Validate field values
-    result = _validate_field_values(data)
-    if result:
-        if data_hash:
-            _cache_validation_result(data_hash, result)
-        return result
-    
-    # Step 5: Validate score
-    result = _validate_score(data)
-    if result:
-        if data_hash:
-            _cache_validation_result(data_hash, result)
-        return result
-    
-    # All validations passed
-    result = ValidationResult(valid=True)
-    if data_hash:
-        _cache_validation_result(data_hash, result)
-    return result
-
-def validate_matches_with_error_type(data: Dict[str, Any]) -> Tuple[bool, Union[str, None], Union[ValidationErrorType, None], Union[str, None]]:
-    """
-    Enhanced validation that also returns the specific error type.
-    
-    Args:
-        data: A dictionary containing feature match information.
-            
-    Returns:
-        Tuple containing:
-            - bool: True if valid, False otherwise
-            - str: Error message if invalid, None otherwise
-            - ValidationErrorType: Type of error if invalid, None otherwise
-            - str: Field name that caused the error, None otherwise
-    """
-    result = validate_matches(data)
-    return result.valid, result.error, result.error_type, result.field_name
-
-def clear_validation_cache() -> None:
-    """Clear the validation cache to free memory."""
-    global _validation_cache
-    
-    # Thread-safe cache clearing
-    with _cache_lock:
-        _validation_cache.clear()
-        normalize_input.cache_clear()
-        _compute_data_hash.cache_clear()
-    
-    logger.info("Validation cache cleared")
-
-def get_cache_stats() -> Dict[str, Any]:
-    """
-    Get statistics about the validation cache.
-    
-    Returns:
-        Dict containing cache statistics:
-            - validation_cache_size: Number of entries in the validation cache
-            - normalize_input_hits: Number of hits in the normalize_input cache
-            - normalize_input_misses: Number of misses in the normalize_input cache
-            - data_hash_hits: Number of hits in the data hash cache
-            - data_hash_misses: Number of misses in the data hash cache
-    """
-    with _cache_lock:
-        return {
-            "validation_cache_size": len(_validation_cache),
-            "normalize_input_hits": normalize_input.cache_info().hits,
-            "normalize_input_misses": normalize_input.cache_info().misses,
-            "data_hash_hits": _compute_data_hash.cache_info().hits,
-            "data_hash_misses": _compute_data_hash.cache_info().misses
-        }
-
-# Initialize periodic cache clearing
-_schedule_cache_clear()
+    # Test with missing values
+    data = {
+        "NameMtch": MISSING_VALUE,
+        "BusNameMtch": MISSING_VALUE,
+        "AddressMtch": MISSING_VALUE,
+        "CityMtch": MISSING_VALUE,
+        "StateMtch": MISSING_VALUE,
+        "ZipMtch": MISSING_VALUE,
+        "IDTypeMtch": MISSING_VALUE,
+        "IDNoMtch": MISSING_VALUE,
+        "IDStateMtch": MISSING_VALUE
+    }
+    result = create_pai_features(data)
+    assert result["PAINameMtch"] == MISSING_VALUE
+    assert result["PAIAddressMtch"] == MISSING_VALUE
+    assert result["PAIIDMtch"] == MISSING_VALUE 
