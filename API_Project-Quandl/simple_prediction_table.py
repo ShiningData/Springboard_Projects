@@ -1,135 +1,146 @@
-import os
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Middleware Module
+
+Contains custom middleware for the FastAPI application.
+"""
+import time
 import logging
-import numpy as np
-import pandas as pd
-from pathlib import Path
-import pickle
-from typing import Dict, List, Any
+from typing import Callable, Dict, Tuple
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
+from starlette.responses import JSONResponse
+from datetime import datetime, timedelta
+
+from monitoring import record_api_latency
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("acc_auth_api")
 
-def generate_test_data(n_samples: int = 5, n_features: int = 10) -> pd.DataFrame:
+
+class ProcessTimeMiddleware(BaseHTTPMiddleware):
     """
-    Generate test data for prediction.
+    Middleware to add a process time header to the response.
+    """
+    def __init__(self, app: ASGIApp):
+        super().__init__(app)
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        start_time = time.time()
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # Calculate process time
+        process_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        # Add header to response
+        response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+        
+        # Record latency for performance monitoring
+        record_api_latency(request.url.path, process_time)
+        
+        # Log slow requests
+        if process_time > 200:  # Log requests taking more than 200ms
+            logger.warning(f"Slow request to {request.url.path}: {process_time:.2f}ms")
+        
+        return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to implement rate limiting.
+    
+    This middleware tracks the number of requests from each client IP
+    and returns a 429 Too Many Requests response if the limit is exceeded.
+    """
+    def __init__(self, app: ASGIApp, requests: int = 100, period: int = 60):
+        super().__init__(app)
+        self.requests = requests  # Maximum number of requests
+        self.period = period      # Time period in seconds
+        self.clients: Dict[str, Tuple[int, datetime]] = {}
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Get client IP
+        client_ip = request.client.host if request.client else "unknown"
+        
+        # Get current time
+        now = datetime.now()
+        
+        # Check if client exists in tracking
+        if client_ip in self.clients:
+            count, last_reset = self.clients[client_ip]
+            
+            # Check if period has elapsed, reset if needed
+            if (now - last_reset).total_seconds() > self.period:
+                count = 0
+                last_reset = now
+            
+            # Increment count
+            count += 1
+            
+            # Check if limit exceeded
+            if count > self.requests:
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "detail": "Too many requests",
+                        "retry_after": self.period - (now - last_reset).total_seconds()
+                    }
+                )
+            
+            # Update client tracking
+            self.clients[client_ip] = (count, last_reset)
+        else:
+            # First request from this client
+            self.clients[client_ip] = (1, now)
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # Add rate limit headers
+        response.headers["X-RateLimit-Limit"] = str(self.requests)
+        response.headers["X-RateLimit-Remaining"] = str(
+            self.requests - self.clients[client_ip][0]
+        )
+        response.headers["X-RateLimit-Reset"] = str(
+            int((self.clients[client_ip][1] + timedelta(seconds=self.period)).timestamp())
+        )
+        
+        return response
+
+
+# Function to add process time header (for backward compatibility)
+async def add_process_time_header(request: Request, call_next: Callable) -> Response:
+    """
+    Add a process time header to the response.
     
     Args:
-        n_samples: Number of samples to generate
-        n_features: Number of features
+        request: The request object
+        call_next: The next middleware or route handler
         
     Returns:
-        DataFrame containing test data
+        The response with the process time header
     """
-    feature_names = [f'feature_{i}' for i in range(n_features)]
-    X = np.random.randn(n_samples, n_features)
-    return pd.DataFrame(X, columns=feature_names)
-
-def get_predictions_and_importance(data: pd.DataFrame, top_n_features: int = 5) -> List[Dict[str, Any]]:
-    """
-    Get predictions and feature importance scores for each instance.
+    start_time = time.time()
     
-    Args:
-        data: DataFrame containing instances to predict
-        top_n_features: Number of top features to return
-        
-    Returns:
-        List of dictionaries containing predictions and feature importance scores
-    """
-    try:
-        results = []
-        
-        # Generate random predictions for demonstration
-        catboost_probs = np.random.rand(len(data))
-        autogluon_probs = np.random.rand(len(data))
-        
-        # Average the probabilities
-        ensemble_probs = (catboost_probs + autogluon_probs) / 2
-        
-        # Get class labels (assuming binary classification)
-        ensemble_labels = (ensemble_probs > 0.5).astype(int)
-        
-        # Get feature importance for each instance
-        for idx, instance in data.iterrows():
-            # Generate random feature importance scores
-            feature_importance = []
-            for feature in data.columns:
-                importance = np.random.rand()  # Placeholder for actual importance
-                feature_importance.append({
-                    'feature': feature,
-                    'importance': float(importance)
-                })
-            
-            # Sort by importance score in descending order
-            feature_importance.sort(key=lambda x: x['importance'], reverse=True)
-            
-            # Get top N features if specified
-            if top_n_features is not None:
-                feature_importance = feature_importance[:top_n_features]
-            
-            results.append({
-                'instance_id': idx,
-                'ensemble_label': int(ensemble_labels[idx]),
-                'catboost_prob': float(catboost_probs[idx]),
-                'autogluon_prob': float(autogluon_probs[idx]),
-                'ensemble_prob': float(ensemble_probs[idx]),
-                'feature_importance': feature_importance
-            })
-        
-        return results
-        
-    except Exception as e:
-        logger.error(f"Failed to get predictions and importance: {str(e)}")
-        raise
-
-def display_results(results: List[Dict[str, Any]]) -> None:
-    """
-    Display the results in a formatted table.
+    # Process the request
+    response = await call_next(request)
     
-    Args:
-        results: List of dictionaries containing predictions and feature importance scores
-    """
-    print("\n" + "="*120)
-    print("PREDICTIONS AND LOCAL INSTANCE INTERPRETABILITY")
-    print("="*120)
+    # Calculate process time
+    process_time = (time.time() - start_time) * 1000  # Convert to milliseconds
     
-    # Print header
-    print(f"{'Instance':<10} {'Label':<8} {'CatBoost':<10} {'AutoGluon':<12} {'Ensemble':<10} {'Top 5 Important Features'}")
-    print("-"*120)
+    # Add header to response
+    response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
     
-    # Print each row
-    for result in results:
-        # Format feature importance as a string
-        feature_str = ", ".join([f"{feat['feature']}({feat['importance']:.4f})" for feat in result['feature_importance']])
-        
-        # Ensure the line doesn't exceed the terminal width
-        if len(feature_str) > 60:
-            feature_str = feature_str[:57] + "..."
-        
-        print(f"{result['instance_id']:<10} {result['ensemble_label']:<8} {result['catboost_prob']:.4f} {result['autogluon_prob']:.4f} {result['ensemble_prob']:.4f} {feature_str}")
+    # Record latency for performance monitoring
+    record_api_latency(request.url.path, process_time)
     
-    print("="*120)
-
-def main():
-    """
-    Main function to display 5 data points with their predictions and RulexAI local instance interpretability.
-    """
-    try:
-        # Generate test data
-        test_df = generate_test_data(n_samples=5, n_features=10)
-        
-        # Get predictions and feature importance
-        results = get_predictions_and_importance(test_df, top_n_features=5)
-        
-        # Display results
-        display_results(results)
-        
-    except Exception as e:
-        logger.error(f"An error occurred in main: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    main() 
+    # Log slow requests
+    if process_time > 200:  # Log requests taking more than 200ms
+        logger.warning(f"Slow request to {request.url.path}: {process_time:.2f}ms")
+    
+    return response 
