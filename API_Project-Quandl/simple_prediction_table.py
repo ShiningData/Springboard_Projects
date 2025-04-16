@@ -1,153 +1,152 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Prediction Service Module
+Prediction Routes Module
 
-Contains the core prediction logic and validation functions.
+Contains API routes for prediction endpoints.
 """
-from fastapi import HTTPException
-from pydantic import ValidationError
-from typing import Dict, Any, List, Tuple
-import time
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Any
 import logging
-import functools
-from cachetools import TTLCache, cached
 
 from models import acc_auth_model
-from validate_data import validate_matches
-from create_pai_mapping import (
-    mapping_address_match,
-    mapping_id_match,
-    mapping_name_match
-)
-from rule_base_model import determine_result_code
+from schemas import PredictionResponse, ErrorResponse
+from services.prediction_service import acc_auth_prediction, validate_request
 
 # Configure logging
 logger = logging.getLogger("acc_auth_api")
 
-# Pre-defined constants for optimization
-REQUIRED_FIELDS = frozenset([
-    "NameMtch", "BusNameMtch", "SSNMtch", "DOBMtch", "AddressMtch", 
-    "CityMtch", "StateMtch", "ZipMtch", "HmPhoneMtch", "WkPhoneMtch", 
-    "IDTypeMtch", "IDNoMtch", "IDStateMtch", "OverallMtchScore"
-])
+# Create router
+router = APIRouter(
+    prefix="/prediction",
+    tags=["prediction"],
+    responses={
+        404: {"model": ErrorResponse, "description": "Not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"}
+    },
+)
 
-BAA_COLUMNS = [
-    "PAINameMtch", "SSNMtch", "DOBMtch", "PAIAddressMtch",
-    "HmPhoneMtch", "WkPhoneMtch", "PAIIDMtch", "OverallMtchScore",
-]
 
-# Cache for mapping functions with 1-hour TTL
-mapping_cache = TTLCache(maxsize=1000, ttl=3600)
-
-# Dependency for request validation
-async def validate_request(request: acc_auth_model) -> Dict[str, Any]:
+@router.post("/acc_auth/", 
+          status_code=status.HTTP_200_OK, 
+          response_model=PredictionResponse,
+          response_model_exclude_none=True)
+async def predict_api(request_data: Dict[str, Any] = Depends(validate_request)):
     """
-    Dependency for request validation and conversion.
-    
-    Args:
-        request: The Pydantic model from the request
-        
-    Returns:
-        Dict: Validated dictionary data
-    """
-    try:
-        # Use model_dump() for Pydantic v2 or dict() for v1
-        return request.model_dump() if hasattr(request, "model_dump") else request.dict()
-    except ValidationError as e:
-        logger.error(f"Request validation error: {str(e)}")
-        raise HTTPException(status_code=422, detail=str(e))
-
-
-# Cached mapping functions
-@cached(cache=mapping_cache)
-def cached_name_match(name_match: str, bus_name_match: str) -> str:
-    """Cached version of name match mapping"""
-    return mapping_name_match(name_match, bus_name_match)
-
-@cached(cache=mapping_cache)
-def cached_address_match(address_match: str, city_match: str, state_match: str, zip_match: str) -> str:
-    """Cached version of address match mapping"""
-    return mapping_address_match(address_match, city_match, state_match, zip_match)
-
-@cached(cache=mapping_cache)
-def cached_id_match(id_type_match: str, id_no_match: str, id_state_match: str) -> str:
-    """Cached version of ID match mapping"""
-    return mapping_id_match(id_type_match, id_no_match, id_state_match)
-
-
-# Core prediction logic
-def acc_auth_prediction(request_data: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Predict the customer result code based on match statuses from
-    an input request.
+    Predict the result code for bank account authentication based on
+    the provided input data.
     
     Parameters:
-        request_data (dict): A dictionary containing feature match information for
-        various customer attributes.
-            
-    Returns:
-        dict: A dictionary containing the customer result code
-        ('customerResultCode') after evaluating the matches.
+        request_data: Validated dictionary data from the request
         
-    Raises:
-        ValueError: If validation fails due to missing or unexpected
-                  values in the input.
+    Returns:
+        PredictionResponse: A dictionary containing the predicted authentication result.
     """
-    # Start timing
-    start_time = time.time()
+    try:
+        return acc_auth_prediction(request_data)
+    except ValueError as e:
+        logger.error(f"Prediction error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") 
+
+===================================================================================================
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+System Router Module
+
+Contains system-related endpoints like health checks and client information.
+"""
+from fastapi import APIRouter
+from typing import Dict
+
+# Create router
+router = APIRouter(
+    prefix="/system",
+    tags=["system"]
+)
+
+@router.get("/health")
+async def health_check() -> Dict[str, str]:
+    """
+    Health check endpoint.
     
-    # Validate required fields exist - use set operations for efficiency
-    missing_fields = REQUIRED_FIELDS - set(request_data.keys())
-    if missing_fields:
-        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+    Returns:
+        Dict[str, str]: Status message indicating the API is healthy
+    """
+    return {"status": "healthy"}
+
+@router.get("/client_info")
+async def client_info() -> Dict[str, str]:
+    """
+    Client information endpoint.
     
-    # Normalize input data - handle None and empty values in one pass
-    normalized_data = {
-        key: "MISSING" if value is None or value == "" else value
-        for key, value in request_data.items()
+    Returns:
+        Dict[str, str]: Client information including version and environment
+    """
+    return {
+        "version": "0.0.1",
+        "environment": "development",
+        "status": "active"
+    } 
+
+===========================================================
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+System Routes Module
+
+Contains API routes for system-related endpoints like health checks.
+"""
+from fastapi import APIRouter, Request
+import logging
+
+from schemas import ClientInfoResponse, HealthResponse, ErrorResponse
+
+# Configure logging
+logger = logging.getLogger("acc_auth_api")
+
+# Create router
+router = APIRouter(
+    prefix="",
+    tags=["system"],
+    responses={
+        404: {"model": ErrorResponse, "description": "Not found"},
+        500: {"model": ErrorResponse, "description": "Internal server error"}
+    },
+)
+
+
+@router.get("/client/", response_model=ClientInfoResponse)
+def client_info(request: Request):
+    """
+    Retrieve and return the client's host and port information.
+    
+    Parameters:
+        request (Request): The incoming HTTP request object containing
+        client details.
+        
+    Returns:
+        ClientInfoResponse: A dictionary with the client's host and port information
+    """
+    return {
+        "client_host": request.client.host,
+        "client_port": request.client.port,
     }
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health_check():
+    """
+    Simple health check endpoint
     
-    # Generate PAI fields efficiently using cached mapping functions
-    pai_values = [
-        # PAINameMtch
-        cached_name_match(
-            normalized_data["NameMtch"],
-            normalized_data["BusNameMtch"]
-        ),
-        # SSNMtch
-        normalized_data["SSNMtch"],
-        # DOBMtch
-        normalized_data["DOBMtch"],
-        # PAIAddressMtch
-        cached_address_match(
-            normalized_data["AddressMtch"],
-            normalized_data["CityMtch"],
-            normalized_data["StateMtch"],
-            normalized_data["ZipMtch"]
-        ),
-        # HmPhoneMtch
-        normalized_data["HmPhoneMtch"],
-        # WkPhoneMtch
-        normalized_data["WkPhoneMtch"],
-        # PAIIDMtch
-        cached_id_match(
-            normalized_data["IDTypeMtch"],
-            normalized_data["IDNoMtch"],
-            normalized_data["IDStateMtch"]
-        ),
-        # OverallMtchScore
-        normalized_data["OverallMtchScore"]
-    ]
-    
-    # Create BAA dictionary efficiently
-    baa_dict = dict(zip(BAA_COLUMNS, pai_values))
-    
-    # Determine result code
-    result_code = determine_result_code(baa_dict)
-    
-    # Log performance metrics
-    elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-    logger.info(f"Prediction completed in {elapsed_time:.2f}ms")
-    
-    return {"customerResultCode": result_code} 
+    Returns:
+        HealthResponse: A dictionary with the health status
+    """
+    return {"status": "healthy"} 
+
