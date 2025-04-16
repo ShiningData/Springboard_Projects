@@ -1,173 +1,165 @@
-import os
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Main Module for Model Prediction through the FastAPI
+
+Conduct API request for BAA response data, validate the data values,
+and apply rule based model to predict the counterparty result code.
+"""
+__author__ = "Engin Turkmen"
+__credits__ = []
+__maintainer__ = "Engin Turkmen"
+__email__ = "engin.turkmen@pnc.com"
+__status__ = "Development"
+__version__ = "0.0.1"
+
+from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
 import logging
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Union, Any, Optional
-from pathlib import Path
-import pickle
+import os
+from datetime import datetime
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
+# Import custom modules
+from config import (
+    API_TITLE, API_DESCRIPTION, API_VERSION,
+    CORS_ORIGINS, CORS_CREDENTIALS, CORS_METHODS, CORS_HEADERS,
+    HOST, PORT, LOG_LEVEL, ENVIRONMENT
 )
-logger = logging.getLogger(__name__)
+from rule_base_model import determine_result_code
 
-class SimplePredictor:
+# Define Pydantic models for request/response
+class ResultCodeRequest(BaseModel):
     """
-    A simplified predictor that loads a model and explainer, makes predictions,
-    and gets feature importance scores.
+    Request model for the get-result-code endpoint.
     """
-    
-    def __init__(
-        self,
-        model_path: Union[str, Path],
-        explainer_path: Union[str, Path]
-    ):
-        """
-        Initialize the predictor.
-        
-        Args:
-            model_path: Path to the saved model
-            explainer_path: Path to the saved explainer
-        """
-        self.model_path = Path(model_path)
-        self.explainer_path = Path(explainer_path)
-        self.model = None
-        self.explainer = None
-        
-        # Validate paths
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Model path does not exist: {self.model_path}")
-        if not self.explainer_path.exists():
-            raise FileNotFoundError(f"Explainer path does not exist: {self.explainer_path}")
-    
-    def load_models(self) -> None:
-        """Load both the model and explainer."""
-        try:
-            # Load model
-            logger.info(f"Loading model from {self.model_path}")
-            with open(self.model_path, 'rb') as f:
-                self.model = pickle.load(f)
-            
-            # Load explainer
-            logger.info(f"Loading explainer from {self.explainer_path}")
-            with open(self.explainer_path, 'rb') as f:
-                self.explainer = pickle.load(f)
-            
-            logger.info("Successfully loaded both model and explainer")
-            
-        except Exception as e:
-            logger.error(f"Failed to load models: {str(e)}")
-            raise
-    
-    def predict_with_importance(
-        self,
-        data: pd.DataFrame,
-        top_n_features: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """
-        Make predictions and get feature importance scores for each instance.
-        
-        Args:
-            data: DataFrame containing instances to predict
-            top_n_features: Number of top features to return (if None, return all)
-            
-        Returns:
-            List of dictionaries containing predictions and feature importance scores
-        """
-        if self.model is None or self.explainer is None:
-            raise ValueError("Models not loaded. Call load_models() first.")
-        
-        try:
-            results = []
-            
-            # Make predictions for all instances
-            # This is a simplified version - in a real implementation,
-            # you would use the model's predict method
-            predictions = np.random.rand(len(data))  # Placeholder for actual predictions
-            
-            # Get feature importance for each instance
-            for idx, instance in data.iterrows():
-                # This is a simplified version - in a real implementation,
-                # you would use the explainer's explain method
-                feature_importance = []
-                for feature in data.columns:
-                    importance = np.random.rand()  # Placeholder for actual importance
-                    feature_importance.append({
-                        'feature': feature,
-                        'importance': float(importance)
-                    })
-                
-                # Sort by importance score in descending order
-                feature_importance.sort(key=lambda x: x['importance'], reverse=True)
-                
-                # Get top N features if specified
-                if top_n_features is not None:
-                    feature_importance = feature_importance[:top_n_features]
-                
-                results.append({
-                    'instance_id': idx,
-                    'prediction': float(predictions[idx]),
-                    'feature_importance': feature_importance
-                })
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"Failed to make predictions: {str(e)}")
-            raise
+    NameMtch: str = Field(..., description="Name match value (Y, N, C, MISSING, N/A)")
+    BusNameMtch: str = Field(..., description="Business Name match value (Y, N, C, MISSING, N/A)")
+    SSNMtch: str = Field(..., description="SSN match value (Y, N, C, MISSING, N/A)")
+    DOBMtch: str = Field(..., description="Date of Birth match value (Y, N, C, MISSING, N/A)")
+    AddressMtch: str = Field(..., description="Address match value (Y, N, C, MISSING, N/A)")
+    CityMtch: str = Field(..., description="City match value (Y, N, C, MISSING, N/A)")
+    StateMtch: str = Field(..., description="State match value (Y, N, C, MISSING, N/A)")
+    ZipMtch: str = Field(..., description="Zip match value (Y, N, C, MISSING, N/A)")
+    HmPhoneMtch: str = Field(..., description="Home Phone match value (Y, N, C, MISSING, N/A)")
+    WkPhoneMtch: str = Field(..., description="Work Phone match value (Y, N, C, MISSING, N/A)")
+    IDTypeMtch: str = Field(..., description="ID Type match value (Y, N, C, MISSING, N/A)")
+    IDNoMtch: str = Field(..., description="ID Number match value (Y, N, C, MISSING, N/A)")
+    IDStateMtch: str = Field(..., description="ID State match value (Y, N, C, MISSING, N/A)")
+    OverallMtchScore: float = Field(..., description="Overall match score (0-100)")
 
-def main():
+class ResultCodeResponse(BaseModel):
     """
-    Example usage of the SimplePredictor class.
+    Response model for the get-result-code endpoint.
+    """
+    customerResultcode: str = Field(..., description="Customer result code (e.g., CRC1000)")
+
+# Configure logging with more detailed format for production
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
+
+# Configure logging with more detailed format for production
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(f"{log_dir}/api_{datetime.now().strftime('%Y%m%d')}.log")
+    ]
+)
+logger = logging.getLogger("acc_auth_api")
+
+# Create FastAPI app
+app = FastAPI(
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION,
+    # Enable docs only in non-production environments
+    docs_url=None if ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if ENVIRONMENT == "production" else "/redoc"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=CORS_CREDENTIALS,
+    allow_methods=CORS_METHODS,
+    allow_headers=CORS_HEADERS,
+)
+
+# Health check endpoint for production monitoring
+@app.get("/health", tags=["system"])
+async def health_check():
+    """
+    Health check endpoint for production monitoring.
+    
+    Returns:
+        Dict with health status
+    """
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": API_VERSION,
+        "environment": ENVIRONMENT
+    }
+
+@app.post("/get-result-code", tags=["prediction"], response_model=ResultCodeResponse)
+async def get_result_code(data: ResultCodeRequest) -> ResultCodeResponse:
+    """
+    Get the customer result code based on the input data.
+    
+    This endpoint uses the rule-based model to determine the appropriate
+    customer result code based on the input data.
+    
+    Args:
+        data: Input data containing matching fields and scores
+        
+    Returns:
+        Dict with customer result code
     """
     try:
-        # Configuration
-        model_dir = Path("rulex_explanations")
-        model_path = model_dir / "model.pkl"
-        explainer_path = model_dir / "explainer.pkl"
+        # Convert Pydantic model to dict
+        data_dict = data.model_dump()
         
-        # Create model and explainer files if they don't exist
-        if not model_path.exists():
-            logger.info(f"Creating dummy model file at {model_path}")
-            model_dir.mkdir(parents=True, exist_ok=True)
-            with open(model_path, 'wb') as f:
-                pickle.dump({"dummy": "model"}, f)
+        # Map the input fields to the expected fields for the rule engine
+        mapped_data = {
+            "PAINameMtch": data_dict["NameMtch"],
+            "SSNMtch": data_dict["SSNMtch"],
+            "DOBMtch": data_dict["DOBMtch"],
+            "PAIAddressMtch": data_dict["AddressMtch"],
+            "HmPhoneMtch": data_dict["HmPhoneMtch"],
+            "WkPhoneMtch": data_dict["WkPhoneMtch"],
+            "PAIIDMtch": data_dict["IDNoMtch"],
+            "OverallMtchScore": data_dict["OverallMtchScore"]
+        }
         
-        if not explainer_path.exists():
-            logger.info(f"Creating dummy explainer file at {explainer_path}")
-            with open(explainer_path, 'wb') as f:
-                pickle.dump({"dummy": "explainer"}, f)
+        # Use the rule-based model to determine the result code
+        result_code = determine_result_code(mapped_data)
         
-        # Initialize predictor
-        predictor = SimplePredictor(model_path, explainer_path)
-        
-        # Load models
-        predictor.load_models()
-        
-        # Generate example data
-        n_samples = 5
-        n_features = 10
-        feature_names = [f'feature_{i}' for i in range(n_features)]
-        
-        X = np.random.randn(n_samples, n_features)
-        test_df = pd.DataFrame(X, columns=feature_names)
-        
-        # Make predictions with feature importance
-        results = predictor.predict_with_importance(test_df, top_n_features=3)
-        
-        # Print results
-        for result in results:
-            print(f"\nInstance {result['instance_id']}:")
-            print(f"Prediction: {result['prediction']:.4f}")
-            print("Top 3 Important Features:")
-            for feat in result['feature_importance']:
-                print(f"  {feat['feature']}: {feat['importance']:.4f}")
-        
+        # Return the result in the specified format
+        return ResultCodeResponse(customerResultcode=result_code)
     except Exception as e:
-        logger.error(f"An error occurred in main: {str(e)}")
-        raise
+        # Log the error with more context
+        logger.error(f"Error determining result code: {str(e)}", exc_info=True)
+        # Raise HTTP exception with appropriate status code
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail={"message": "Error determining result code", "type": "prediction_error"}
+        )
 
 if __name__ == "__main__":
-    main() 
+    import uvicorn
+    
+    # Configure uvicorn with appropriate settings
+    uvicorn_config = {
+        "app": "main:app",
+        "host": HOST,
+        "port": PORT,
+        "log_level": LOG_LEVEL,
+        "reload": True,
+    }
+    
+    # Run the server
+    uvicorn.run(**uvicorn_config)
