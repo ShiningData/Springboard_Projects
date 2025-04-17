@@ -1,160 +1,135 @@
-import os
-import logging
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Union, Any, Optional
-from pathlib import Path
-import sys
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Prediction Service Module
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from batch_rulex_script import EnsembleModel, ModelConfig
-from local_interpretability import LocalInterpretabilityManager
+Contains the core prediction logic and validation functions.
+"""
+from fastapi import HTTPException, status
+from pydantic import ValidationError
+from typing import Dict, Any, List, Tuple
+import time
+import logging
+import functools
+from cachetools import TTLCache, cached
+
+from models import acc_auth_model
+from validate_data import validate_matches
+from create_pai_mapping import create_pai_features
+from rule_base_model import determine_result_code
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("acc_auth_api")
 
-class ModelPredictor:
-    """
-    Handles loading models and explainers, making predictions, and getting feature importance scores.
-    """
-    
-    def __init__(
-        self,
-        model_path: Union[str, Path],
-        explainer_path: Union[str, Path]
-    ):
-        """
-        Initialize the model predictor.
-        
-        Args:
-            model_path: Path to the saved ensemble model
-            explainer_path: Path to the saved RulexAI explainer
-        """
-        self.model_path = Path(model_path)
-        self.explainer_path = Path(explainer_path)
-        self.model = None
-        self.interpretability_manager = None
-        
-        # Validate paths
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Model path does not exist: {self.model_path}")
-        if not self.explainer_path.exists():
-            raise FileNotFoundError(f"Explainer path does not exist: {self.explainer_path}")
-    
-    def load_models(self) -> None:
-        """Load both the ensemble model and RulexAI explainer."""
-        try:
-            # Load ensemble model
-            logger.info(f"Loading ensemble model from {self.model_path}")
-            self.model = EnsembleModel(ModelConfig(
-                target_column='target',  # This will be updated from saved config
-                categorical_features=[],
-                numerical_features=[]  # This will be updated from saved config
-            ))
-            self.model.load(self.model_path)
-            
-            # Load interpretability manager and explainer
-            logger.info(f"Loading RulexAI explainer from {self.explainer_path}")
-            self.interpretability_manager = LocalInterpretabilityManager(
-                model_path=str(self.model_path),
-                cache_dir=str(self.explainer_path.parent)
-            )
-            self.interpretability_manager.load_explainer(str(self.explainer_path))
-            
-            logger.info("Successfully loaded both models")
-            
-        except Exception as e:
-            logger.error(f"Failed to load models: {str(e)}")
-            raise
-    
-    def predict_with_importance(
-        self,
-        data: pd.DataFrame,
-        top_n_features: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """
-        Make predictions and get feature importance scores for each instance.
-        
-        Args:
-            data: DataFrame containing instances to predict
-            top_n_features: Number of top features to return (if None, return all)
-            
-        Returns:
-            List of dictionaries containing predictions and feature importance scores
-        """
-        if self.model is None or self.interpretability_manager is None:
-            raise ValueError("Models not loaded. Call load_models() first.")
-        
-        try:
-            results = []
-            
-            # Make predictions for all instances
-            predictions = self.model.predict(data)
-            
-            # Get feature importance for each instance
-            for idx, instance in data.iterrows():
-                instance_df = pd.DataFrame([instance])
-                feature_importance = self.interpretability_manager.get_feature_importance(instance_df)
-                
-                # Get top N features if specified
-                if top_n_features is not None:
-                    feature_importance = feature_importance[:top_n_features]
-                
-                results.append({
-                    'instance_id': idx,
-                    'prediction': float(predictions[idx]),
-                    'feature_importance': feature_importance
-                })
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"Failed to make predictions: {str(e)}")
-            raise
+# Pre-defined constants for optimization
+REQUIRED_FIELDS = frozenset([
+    "NameMtch", "BusNameMtch", "SSNMtch", "DOBMtch", "AddressMtch", 
+    "CityMtch", "StateMtch", "ZipMtch", "HmPhoneMtch", "WkPhoneMtch", 
+    "IDTypeMtch", "IDNoMtch", "IDStateMtch", "OverallMtchScore"
+])
 
-def main():
+BAA_COLUMNS = [
+    "PAINameMtch", "SSNMtch", "DOBMtch", "PAIAddressMtch",
+    "HmPhoneMtch", "WkPhoneMtch", "PAIIDMtch", "OverallMtchScore",
+]
+
+# Cache for mapping functions with 1-hour TTL
+mapping_cache = TTLCache(maxsize=1000, ttl=3600)
+
+# Dependency for request validation
+async def validate_request(request: acc_auth_model) -> Dict[str, Any]:
     """
-    Example usage of the ModelPredictor class.
+    Dependency for request validation and conversion.
+    
+    Args:
+        request: The Pydantic model from the request
+        
+    Returns:
+        Dict: Validated dictionary data
     """
     try:
-        # Configuration
-        model_dir = Path("rulex_explanations")
-        model_path = model_dir / "ensemble_model"
-        explainer_path = model_dir / "rulexai_explainer.pkl"
+        # Use model_dump() for Pydantic v2 or dict() for v1
+        data_dict = request.model_dump() if hasattr(request, "model_dump") else request.dict()
         
-        # Initialize predictor
-        predictor = ModelPredictor(model_path, explainer_path)
-        
-        # Load models
-        predictor.load_models()
-        
-        # Generate example data
-        n_samples = 5
-        n_features = 10
-        feature_names = [f'feature_{i}' for i in range(n_features)]
-        
-        X = np.random.randn(n_samples, n_features)
-        test_df = pd.DataFrame(X, columns=feature_names)
-        
-        # Make predictions with feature importance
-        results = predictor.predict_with_importance(test_df, top_n_features=3)
-        
-        # Print results
-        for result in results:
-            print(f"\nInstance {result['instance_id']}:")
-            print(f"Prediction: {result['prediction']:.4f}")
-            print("Top 3 Important Features:")
-            for feat in result['feature_importance']:
-                print(f"  {feat['feature']}: {feat['importance']:.4f}")
-        
-    except Exception as e:
-        logger.error(f"An error occurred in main: {str(e)}")
+        # Validate the data using the custom validation function
+        validation_result = validate_matches(data_dict)
+        if not validation_result.valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": validation_result.error,
+                    "type": validation_result.error_type.name if validation_result.error_type else "validation_error",
+                    "field": validation_result.field_name
+                }
+            )
+            
+        return data_dict
+    except HTTPException:
+        # Re-raise HTTP exceptions
         raise
+    except ValidationError as e:
+        logger.error(f"Request validation error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error during validation: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Error validating request", "type": "validation_error"}
+        )
 
-if __name__ == "__main__":
-    main() 
+# Core prediction logic
+def acc_auth_prediction(request_data: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Predict the customer result code based on match statuses from
+    an input request.
+    
+    Parameters:
+        request_data (dict): A dictionary containing feature match information for
+        various customer attributes.
+            
+    Returns:
+        dict: A dictionary containing the customer result code
+        ('customerResultCode') after evaluating the matches.
+        
+    Raises:
+        HTTPException: If validation fails due to missing or unexpected
+                  values in the input.
+    """
+    # Start timing
+    start_time = time.time()
+    
+    try:
+        # Validate the data using the custom validation function
+        validation_result = validate_matches(request_data)
+        if not validation_result.valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": validation_result.error,
+                    "type": validation_result.error_type.name if validation_result.error_type else "validation_error",
+                    "field": validation_result.field_name
+                }
+            )
+        
+        # Use the create_pai_features function to map the input fields to PAI features
+        mapped_data = create_pai_features(request_data)
+        
+        # Determine result code
+        result_code = determine_result_code(mapped_data)
+        
+        # Log performance metrics
+        elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        logger.info(f"Prediction completed in {elapsed_time:.2f}ms")
+        
+        return {"customerResultCode": result_code}
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log the error with more context
+        logger.error(f"Error determining result code: {str(e)}", exc_info=True)
+        # Raise HTTP exception with appropriate status code
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail={"message": "Error determining result code", "type": "prediction_error"}
+        ) 
