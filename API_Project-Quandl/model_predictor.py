@@ -1,119 +1,53 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Main Module for Model Prediction through the FastAPI
+Routers Package
 
-Conduct API request for BAA response data, validate the data values,
-and apply rule based model to predict the counterparty result code.
+Contains all API route modules for the rule engine application.
+Routes are organized by domain (prediction, system) for better maintainability.
 """
+from routers.prediction_routes import router as prediction_router
+from routers.system_routes import router as system_router
 
-from fastapi import FastAPI, HTTPException, status, Depends, Request
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, Any, Optional
-from pydantic import BaseModel, Field
+__all__ = ["prediction_router", "system_router"] 
+
+===========================================
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Prediction Routes Module
+
+Contains API routes for prediction endpoints.
+"""
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from typing import Dict, Any
 import logging
-import os
 from datetime import datetime
 
-# Import custom modules
-from config import (
-    API_TITLE, API_DESCRIPTION, API_VERSION,
-    CORS_ORIGINS, CORS_CREDENTIALS, CORS_METHODS, CORS_HEADERS,
-    HOST, PORT, LOG_LEVEL, ENVIRONMENT
-)
 from models import AccAuthModel
-from services.prediction_service import (
-    acc_auth_prediction, 
-    validate_request,
-    clear_caches
-)
+from services.prediction_service import acc_auth_prediction, validate_request, clear_caches
 
-# Define response model for the API
-class ResultCodeResponse(BaseModel):
-    """
-    Response model for the get-result-code endpoint.
-    """
-    customerResultcode: str = Field(..., description="Customer result code (e.g., CRC1000)")
-
-# Define models for client info endpoint
-class ClientInfoRequest(BaseModel):
-    """
-    Request model for the get-client-info endpoint.
-    """
-    clientId: str = Field(..., description="Unique identifier for the client")
-
-class ClientInfo(BaseModel):
-    """
-    Model for client information.
-    """
-    clientId: str = Field(..., description="Unique identifier for the client")
-    clientHost: str = Field(..., description="Client's host address")
-    clientPort: int = Field(..., description="Client's port number")
-    lastUpdated: datetime = Field(default_factory=datetime.now, description="Last time client info was updated")
-
-class ClientInfoResponse(BaseModel):
-    """
-    Response model for the get-client-info endpoint.
-    """
-    client: ClientInfo = Field(..., description="Client information")
-
-# Configure logging with more detailed format for production
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
-
-# Configure logging with more detailed format for production
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(f"{log_dir}/api_{datetime.now().strftime('%Y%m%d')}.log")
-    ]
-)
+# Configure logging
 logger = logging.getLogger("acc_auth_api")
 
-# Create FastAPI app
-app = FastAPI(
-    title=API_TITLE,
-    description=API_DESCRIPTION,
-    version=API_VERSION,
-    # Enable docs only in non-production environments
-    docs_url=None if ENVIRONMENT == "production" else "/docs",
-    redoc_url=None if ENVIRONMENT == "production" else "/redoc"
+# Create router
+router = APIRouter(
+    prefix="",
+    tags=["prediction"],
+    responses={
+        404: {"description": "Not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"}
+    },
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=CORS_CREDENTIALS,
-    allow_methods=CORS_METHODS,
-    allow_headers=CORS_HEADERS,
-)
-
-# Health check endpoint for production monitoring
-@app.get("/health", tags=["system"])
-async def health_check():
-    """
-    Health check endpoint for production monitoring.
-    
-    Returns:
-        Dict with health status
-    """
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "version": API_VERSION,
-        "environment": ENVIRONMENT
-    }
-
-@app.post("/get-result-code", tags=["prediction"], response_model=ResultCodeResponse)
-async def get_result_code(data: AccAuthModel, request: Request) -> ResultCodeResponse:
+@router.post("/get-result-code", 
+          status_code=status.HTTP_200_OK,
+          response_model=Dict[str, str])
+async def get_result_code(data: AccAuthModel, request: Request):
     """
     Get the customer result code based on the input data.
-    
-    This endpoint uses the rule-based model to determine the appropriate
-    customer result code based on the input data.
     
     Args:
         data: Input data containing matching fields and scores
@@ -134,59 +68,17 @@ async def get_result_code(data: AccAuthModel, request: Request) -> ResultCodeRes
         # Use the prediction service to get the result code
         result = acc_auth_prediction(data_dict)
         
-        # Return the result in the specified format
-        return ResultCodeResponse(customerResultcode=result["customerResultCode"])
+        return result
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        # Log the error with more context
         logger.error(f"Error determining result code: {str(e)}", exc_info=True)
-        # Raise HTTP exception with appropriate status code
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail={"message": "Error determining result code", "type": "prediction_error"}
         )
 
-@app.post("/get-client-info", tags=["client"], response_model=ClientInfoResponse)
-async def get_client_info(data: ClientInfoRequest, request: Request) -> ClientInfoResponse:
-    """
-    Get client information based on the client ID.
-    
-    This endpoint retrieves client information including host and port.
-    
-    Args:
-        data: Input data containing client ID
-        request: FastAPI request object for client information
-        
-    Returns:
-        Client information including host and port
-    """
-    try:
-        # Get client information from the request
-        client_host = request.client.host
-        client_port = request.client.port
-        
-        # Create client info object
-        client = ClientInfo(
-            clientId=data.clientId,
-            clientHost=client_host,
-            clientPort=client_port,
-            lastUpdated=datetime.now()
-        )
-        
-        # Return the client info
-        return ClientInfoResponse(client=client)
-    except Exception as e:
-        # Log the error with more context
-        logger.error(f"Error retrieving client info: {str(e)}", exc_info=True)
-        # Raise HTTP exception with appropriate status code
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail={"message": "Error retrieving client information", "type": "database_error"}
-        )
-
-@app.post("/clear-caches", tags=["system"])
+@router.post("/clear-caches")
 async def clear_caches_endpoint():
     """
     Clear all caches used by the prediction service.
@@ -198,25 +90,124 @@ async def clear_caches_endpoint():
         clear_caches()
         return {"status": "success", "message": "All caches cleared"}
     except Exception as e:
-        # Log the error with more context
         logger.error(f"Error clearing caches: {str(e)}", exc_info=True)
-        # Raise HTTP exception with appropriate status code
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail={"message": "Error clearing caches", "type": "system_error"}
+        ) 
+
+
+==============================
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+System Router Module
+
+Contains system-related endpoints like health checks and client information.
+"""
+from fastapi import APIRouter
+from typing import Dict
+
+# Create router
+router = APIRouter(
+    prefix="/system",
+    tags=["system"]
+)
+
+@router.get("/health")
+async def health_check() -> Dict[str, str]:
+    """
+    Health check endpoint.
+    
+    Returns:
+        Dict[str, str]: Status message indicating the API is healthy
+    """
+    return {"status": "healthy"}
+
+@router.get("/client_info")
+async def client_info() -> Dict[str, str]:
+    """
+    Client information endpoint.
+    
+    Returns:
+        Dict[str, str]: Client information including version and environment
+    """
+    return {
+        "version": "0.0.1",
+        "environment": "development",
+        "status": "active"
+    } 
+
+===============================
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+System Routes Module
+
+Contains API routes for system-related endpoints like health checks.
+"""
+from fastapi import APIRouter, Request, HTTPException, status
+from typing import Dict, Any
+import logging
+from datetime import datetime
+
+# Configure logging
+logger = logging.getLogger("acc_auth_api")
+
+# Create router
+router = APIRouter(
+    prefix="",
+    tags=["system"],
+    responses={
+        404: {"description": "Not found"},
+        500: {"description": "Internal server error"}
+    },
+)
+
+@router.post("/get-client-info")
+async def get_client_info(request: Request) -> Dict[str, Any]:
+    """
+    Get client information based on the request.
+    
+    Args:
+        request: FastAPI request object for client information
+        
+    Returns:
+        Dict with client information
+    """
+    try:
+        # Get client information from the request
+        client_host = request.client.host
+        client_port = request.client.port
+        
+        # Create client info object
+        client_info = {
+            "clientId": f"{client_host}:{client_port}",
+            "clientHost": client_host,
+            "clientPort": client_port,
+            "lastUpdated": datetime.now().isoformat()
+        }
+        
+        return {"client": client_info}
+    except Exception as e:
+        logger.error(f"Error retrieving client info: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail={"message": "Error retrieving client information", "type": "database_error"}
         )
 
-if __name__ == "__main__":
-    import uvicorn
+@router.get("/health")
+async def health_check() -> Dict[str, str]:
+    """
+    Health check endpoint for production monitoring.
     
-    # Configure uvicorn with appropriate settings
-    uvicorn_config = {
-        "app": "main:app",
-        "host": HOST,
-        "port": PORT,
-        "log_level": LOG_LEVEL,
-        "reload": True,
-    }
-    
-    # Run the server
-    uvicorn.run(**uvicorn_config)
+    Returns:
+        Dict with health status
+    """
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    } 
+
