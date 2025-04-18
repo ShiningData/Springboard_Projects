@@ -1,148 +1,147 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Prediction Service Module
+Main Module for Model Prediction through the FastAPI
 
-Contains the core prediction logic and validation functions.
+Conduct API request for BAA response data, validate the data values,
+and apply rule based model to predict the counterparty result code.
 """
-from fastapi import HTTPException, status
-from pydantic import ValidationError
+__author__ = "Engin Turkmen"
+__credits__ = []
+__maintainer__ = "Engin Turkmen"
+__email__ = "engin.turkmen@pnc.com"
+__status__ = "Development"
+__version__ = "0.0.1"
+
+from fastapi import FastAPI, HTTPException, status, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, Optional
-import time
+from pydantic import BaseModel, Field
 import logging
-import functools
-from cachetools import TTLCache, cached
-import threading
+import os
+from datetime import datetime
 
-from models import AccAuthModel, MatchStatus
-from validate_data import validate_matches, ValidationResult
-from create_pai_mapping import create_pai_features
-from rule_base_model import determine_result_code
+# Import custom modules
+from config import (
+    API_TITLE, API_DESCRIPTION, API_VERSION,
+    CORS_ORIGINS, CORS_CREDENTIALS, CORS_METHODS, CORS_HEADERS,
+    HOST, PORT, LOG_LEVEL, ENVIRONMENT
+)
+from models import AccAuthModel
+from services.prediction_service import (
+    acc_auth_prediction, 
+    validate_request,
+    clear_caches
+)
 
-# Configure logging
+# Define response model for the API
+class ResultCodeResponse(BaseModel):
+    """
+    Response model for the get-result-code endpoint.
+    """
+    customerResultcode: str = Field(..., description="Customer result code (e.g., CRC1000)")
+
+# Define models for client info endpoint
+class ClientInfoRequest(BaseModel):
+    """
+    Request model for the get-client-info endpoint.
+    """
+    clientId: str = Field(..., description="Unique identifier for the client")
+
+class ClientInfo(BaseModel):
+    """
+    Model for client information.
+    """
+    clientId: str = Field(..., description="Unique identifier for the client")
+    clientHost: str = Field(..., description="Client's host address")
+    clientPort: int = Field(..., description="Client's port number")
+    lastUpdated: datetime = Field(default_factory=datetime.now, description="Last time client info was updated")
+
+class ClientInfoResponse(BaseModel):
+    """
+    Response model for the get-client-info endpoint.
+    """
+    client: ClientInfo = Field(..., description="Client information")
+
+# Configure logging with more detailed format for production
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
+
+# Configure logging with more detailed format for production
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(f"{log_dir}/api_{datetime.now().strftime('%Y%m%d')}.log")
+    ]
+)
 logger = logging.getLogger("acc_auth_api")
 
-# Pre-defined constants for optimization
-REQUIRED_FIELDS = frozenset([
-    "NameMtch", "BusNameMtch", "SSNMtch", "DOBMtch", "AddressMtch", 
-    "CityMtch", "StateMtch", "ZipMtch", "HmPhoneMtch", "WkPhoneMtch", 
-    "IDTypeMtch", "IDNoMtch", "IDStateMtch", "OverallMtchScore"
-])
+# Create FastAPI app
+app = FastAPI(
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION,
+    # Enable docs only in non-production environments
+    docs_url=None if ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if ENVIRONMENT == "production" else "/redoc"
+)
 
-BAA_COLUMNS = [
-    "PAINameMtch", "SSNMtch", "DOBMtch", "PAIAddressMtch",
-    "HmPhoneMtch", "WkPhoneMtch", "PAIIDMtch", "OverallMtchScore",
-]
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=CORS_CREDENTIALS,
+    allow_methods=CORS_METHODS,
+    allow_headers=CORS_HEADERS,
+)
 
-# Cache for mapping functions with 1-hour TTL
-mapping_cache = TTLCache(maxsize=1000, ttl=3600)
-
-# Cache for prediction results with 5-minute TTL
-# Using a thread-safe cache for concurrent access
-prediction_cache = TTLCache(maxsize=10000, ttl=300)
-_cache_lock = threading.Lock()
-
-# Dependency for request validation
-async def validate_request(request: AccAuthModel) -> Dict[str, Any]:
+# Health check endpoint for production monitoring
+@app.get("/health", tags=["system"])
+async def health_check():
     """
-    Dependency for request validation and conversion.
+    Health check endpoint for production monitoring.
+    
+    Returns:
+        Dict with health status
+    """
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": API_VERSION,
+        "environment": ENVIRONMENT
+    }
+
+@app.post("/get-result-code", tags=["prediction"], response_model=ResultCodeResponse)
+async def get_result_code(data: AccAuthModel, request: Request) -> ResultCodeResponse:
+    """
+    Get the customer result code based on the input data.
+    
+    This endpoint uses the rule-based model to determine the appropriate
+    customer result code based on the input data.
     
     Args:
-        request: The Pydantic model from the request
+        data: Input data containing matching fields and scores
+        request: FastAPI request object for client information
         
     Returns:
-        Dict: Validated dictionary data
-        
-    Raises:
-        HTTPException: If validation fails
+        Dict with customer result code
     """
     try:
-        # Use model_dump() for Pydantic v2 or dict() for v1
-        data_dict = request.model_dump() if hasattr(request, "model_dump") else request.dict()
+        # Log client information
+        client_host = request.client.host
+        client_port = request.client.port
+        logger.info(f"Request from client: {client_host}:{client_port}")
         
-        # Validate the data using the custom validation function
-        validation_result = validate_matches(data_dict)
-        if not validation_result.valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "message": validation_result.error,
-                    "type": validation_result.error_type.name if validation_result.error_type else "validation_error",
-                    "field": validation_result.field_name
-                }
-            )
-            
-        return data_dict
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except ValidationError as e:
-        logger.error(f"Request validation error: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error during validation: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"message": "Error validating request", "type": "validation_error"}
-        )
-
-# Core prediction logic
-def acc_auth_prediction(request_data: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Predict the customer result code based on match statuses from
-    an input request.
-    
-    Parameters:
-        request_data (dict): A dictionary containing feature match information for
-        various customer attributes.
-            
-    Returns:
-        dict: A dictionary containing the customer result code
-        ('customerResultCode') after evaluating the matches.
+        # Convert model to dict for processing
+        data_dict = data.model_dump()
         
-    Raises:
-        HTTPException: If validation fails due to missing or unexpected
-                  values in the input.
-    """
-    # Start timing
-    start_time = time.time()
-    
-    try:
-        # Check cache first with thread safety
-        cache_key = _generate_cache_key(request_data)
-        with _cache_lock:
-            if cache_key in prediction_cache:
-                logger.info("Prediction result retrieved from cache")
-                return prediction_cache[cache_key]
+        # Use the prediction service to get the result code
+        result = acc_auth_prediction(data_dict)
         
-        # Validate the data using the custom validation function
-        validation_result = validate_matches(request_data)
-        if not validation_result.valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "message": validation_result.error,
-                    "type": validation_result.error_type.name if validation_result.error_type else "validation_error",
-                    "field": validation_result.field_name
-                }
-            )
-        
-        # Use the create_pai_features function to map the input fields to PAI features
-        mapped_data = create_pai_features(request_data)
-        
-        # Determine result code
-        result_code = determine_result_code(mapped_data)
-        
-        # Cache the result with thread safety
-        result = {"customerResultCode": result_code}
-        with _cache_lock:
-            prediction_cache[cache_key] = result
-        
-        # Log performance metrics
-        elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-        logger.info(f"Prediction completed in {elapsed_time:.2f}ms")
-        
-        return result
+        # Return the result in the specified format
+        return ResultCodeResponse(customerResultcode=result["customerResultCode"])
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
@@ -155,28 +154,75 @@ def acc_auth_prediction(request_data: Dict[str, Any]) -> Dict[str, str]:
             detail={"message": "Error determining result code", "type": "prediction_error"}
         )
 
-def _generate_cache_key(data: Dict[str, Any]) -> str:
+@app.post("/get-client-info", tags=["client"], response_model=ClientInfoResponse)
+async def get_client_info(data: ClientInfoRequest, request: Request) -> ClientInfoResponse:
     """
-    Generate a cache key from the input data.
+    Get client information based on the client ID.
+    
+    This endpoint retrieves client information including host and port.
     
     Args:
-        data: Input data dictionary
+        data: Input data containing client ID
+        request: FastAPI request object for client information
         
     Returns:
-        str: Cache key
+        Client information including host and port
     """
-    # Sort the dictionary to ensure consistent keys
-    sorted_data = {k: data[k] for k in sorted(data.keys())}
-    # Convert to string and hash
-    data_str = str(sorted_data)
-    return hash(data_str)
+    try:
+        # Get client information from the request
+        client_host = request.client.host
+        client_port = request.client.port
+        
+        # Create client info object
+        client = ClientInfo(
+            clientId=data.clientId,
+            clientHost=client_host,
+            clientPort=client_port,
+            lastUpdated=datetime.now()
+        )
+        
+        # Return the client info
+        return ClientInfoResponse(client=client)
+    except Exception as e:
+        # Log the error with more context
+        logger.error(f"Error retrieving client info: {str(e)}", exc_info=True)
+        # Raise HTTP exception with appropriate status code
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail={"message": "Error retrieving client information", "type": "database_error"}
+        )
 
-# Clear caches
-def clear_caches() -> None:
+@app.post("/clear-caches", tags=["system"])
+async def clear_caches_endpoint():
     """
     Clear all caches used by the prediction service.
+    
+    Returns:
+        Dict with status
     """
-    with _cache_lock:
-        mapping_cache.clear()
-        prediction_cache.clear()
-    logger.info("All prediction service caches cleared") 
+    try:
+        clear_caches()
+        return {"status": "success", "message": "All caches cleared"}
+    except Exception as e:
+        # Log the error with more context
+        logger.error(f"Error clearing caches: {str(e)}", exc_info=True)
+        # Raise HTTP exception with appropriate status code
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail={"message": "Error clearing caches", "type": "system_error"}
+        )
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    # Configure uvicorn with appropriate settings
+    uvicorn_config = {
+        "app": "main:app",
+        "host": HOST,
+        "port": PORT,
+        "log_level": LOG_LEVEL,
+        "reload": True,
+    }
+    
+    # Run the server
+    uvicorn.run(**uvicorn_config)
