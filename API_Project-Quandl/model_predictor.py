@@ -6,12 +6,6 @@ Main Module for Model Prediction through the FastAPI
 Conduct API request for BAA response data, validate the data values,
 and apply rule based model to predict the counterparty result code.
 """
-__author__ = "Engin Turkmen"
-__credits__ = []
-__maintainer__ = "Engin Turkmen"
-__email__ = "engin.turkmen@pnc.com"
-__status__ = "Development"
-__version__ = "0.0.1"
 
 from fastapi import FastAPI, HTTPException, status, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
