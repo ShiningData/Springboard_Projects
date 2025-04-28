@@ -1,30 +1,36 @@
-MRMG Documentation Preparation Process
+Subject: Next Steps: MRMG Documentation Preparation and Review Process
 
-1. Prepare Required Documentation Based on Tiering Level  
-- Based on the model’s assigned tier, begin preparing the required MRMG documentation. The latest acceptable document templates can be found [here](https://app.wss.pncint.net/sites/EMT/MRMGPages/FormsAndTemplates.aspx).  
-- Documentation requirements will vary depending on the Model Tier Level associated with your MIF. Be sure to select the appropriate documents before beginning the process. These typically include, but are not limited to:  
-    - Model Documentation  
-    - Change Log  
-    - Outcome Analysis  
-    - Operating Manual  
-    - Appendix K – Models with Compliance Laws and Regulations (For this form, you may need to coordinate with Meredith B. Andrews regarding applicable Consumer Protection Laws and requirements. There is also an email address provided on the form’s first page for further questions, though response times may vary.)
+Dear Team,
 
-2. Establish a Documentation Review and Tracking Process  
-- Create a timeline and tracking system for documentation preparation, review, and approval.  
-- Share a MRMG Review Tracking Form via SharePoint with all collaborators, including CIB MRMG POCs, stakeholders, the DSI Team reviewer, and your manager.
-- Use the tracking form to monitor progress, with designated status fields such as Not Started, In Progress, and Completed for each document.
-- Ensure all peer reviews, business stakeholder feedback, and input from Monika and Daniel are accurately documented in the tracking form.
-- The model developer will coordinate and oversee all documentation efforts.
+As part of our model development workflow, I have downloaded all required MRMG document templates based on our assigned tier and placed them in our designated project folder within the DSI MRMG Documentation directory. You can access the folder directly for the latest templates and materials.
 
-3. Conduct Team Review and Alignment  
-- Upon completion of initial documentation and reviews, schedule a meeting with the DSI Team, Daniel, Monika, and relevant stakeholders to review the materials and confirm alignment prior to meeting with the MRMG team.
+Please review the following documents, which are now available in the project folder:
 
-4. Meet with MRMG Team and Finalize Submission  
-- Arrange a meeting with the MRMG team to present your model and documentation. Gather their feedback, make any necessary revisions, and finalize all documents.
-- Close out the tracking form and download all finalized files to your local environment.
-- Upload the completed documentation to the designated MRMG repository or link provided by the MRMG team.
+Model Documentation
 
-5. Affirm Model Owner Documentation  
-- After documents are uploaded, the MRMG team will send an email to the Model Owner containing the Model Owner Affirmation link.
-- The Model Owner must complete the affirmation using the provided documentation link to finalize the process.
+Change Log
 
+Outcome Analysis
+
+Operating Manual
+
+Appendix K – Models with Compliance Laws and Regulations
+(Note: For Appendix K, please be prepared to coordinate with Meredith B. Andrews regarding Consumer Protection Laws, if applicable.)
+
+Action Items & Process:
+
+Document Preparation:
+Begin drafting your assigned sections using the templates provided. If you are unsure which documents pertain to your responsibilities, please confirm with me or consult the C&IB MRMG Points of Contact.
+
+Tracking Progress:
+I have also uploaded the MRMG Documents Preparation and Review Tracking Form to the project folder. Please update this form regularly to indicate your progress (Not Started/In Progress/Completed) for each document.
+
+Review and Feedback:
+Once you have completed your drafts, upload them to the same folder and update the tracking form. All documents will be subject to peer review and input from Monika, Daniel, and relevant business stakeholders. Please document all feedback and revisions in the tracking form.
+
+Questions and Support:
+If you need clarification regarding document content or process steps, do not hesitate to reach out to me directly. For regulatory content in Appendix K, contact details are provided on the form’s first page.
+
+Our goal is to keep this process organized, transparent, and collaborative. Please ensure you are working from the correct templates and keep the tracking form current as we move through preparation and review.
+
+Thank you for your attention and cooperation.
