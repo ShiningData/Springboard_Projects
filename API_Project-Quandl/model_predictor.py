@@ -1,43 +1,55 @@
-# Assuming 'df' is your DataFrame with a column 'adjustmentReasonCode' containing lists as strings
-# For example: "[item1, item2, item3]" or "['item1', 'item2']"
+Overview:  
+A Model Exception Form is required when a model needs to be used prior to validation. Exceptions are only permitted after the model has completed the MICR process and the final tier has been approved by the modeling team. The following steps outline the process for requesting and obtaining an exception:
 
-# Method 1: Using string manipulation and counting commas
-# This is a simple approach but may not work for all cases
-df['adjustmentReasonCode_count'] = df['adjustmentReasonCode'].apply(
-    lambda x: 0 if x == '[]' else (x.count(',') + 1) if isinstance(x, str) else 0
-)
+ Step-by-Step Procedure
 
-# Method 2: Using literal_eval to parse the string into an actual list
-# This is more robust but slightly more computationally expensive
-import ast
-def count_list_elements(value):
-    try:
-        if isinstance(value, str):
-            # Convert string representation of list to actual list
-            parsed_list = ast.literal_eval(value)
-            if isinstance(parsed_list, list):
-                return len(parsed_list)
-        return 0  # Return 0 for non-list values or empty lists
-    except:
-        return 0  # Return 0 for values that can't be parsed
+1. Complete the MICR and Final Tier Approval:  
+- Ensure the model has gone through the full MICR (Model Inventory Change Request) process.
+- The modeling team must review and accept the final tier assigned by MRMG.  
+- The model must be officially entered into the inventory before an exception request can be made.
 
-df['adjustmentReasonCode_count'] = df['adjustmentReasonCode'].apply(count_list_elements)
+2. Determine the Exception Need and Timeline:  
+- Identify the period during which the model will be used before validation is complete.
+- Exceptions are typically required when immediate model usage is necessary, but validation documentation will be submitted at a later date.
+- Clearly establish the anticipated documentation submission date, as MRMG will not approve the exception without this date.
 
-# Method 3: Using regex for more complex list formats
-# This can be helpful if the list format is inconsistent
-import re
-def count_elements_regex(value):
-    try:
-        if isinstance(value, str) and value.strip().startswith('[') and value.strip().endswith(']'):
-            # Remove the brackets
-            content = value[1:-1].strip()
-            if not content:  # Empty list
-                return 0
-            # Count elements by splitting on commas not within quotes
-            matches = re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")++', content)
-            return len(matches)
-        return 0
-    except:
-        return 0
+3. Plan the Exception Duration:  
+- The exception should cover the entire period between initial model use and the expected validation date.
+- Typically, an exception spans approximately five to six months to accommodate both pre-validation use and the validation process itself.
+- For example, if model documentation will be submitted eight weeks after initial use, the exception should also include an additional 10–12 weeks to cover the validation period.
 
-df['adjustmentReasonCode_count'] = df['adjustmentReasonCode'].apply(count_elements_regex)
+4. Prepare and Submit the Exception Request:  
+- Draft the Model Exception Form, including detailed justification for the exception, the planned usage period, and the documentation submission date.
+- Submit the exception request through the appropriate channels, ensuring all required information and approvals are included.
+
+5. MRMG Review and Follow-Up:  
+- MRMG will review the submitted exception request.
+- The review process can take anywhere from one to several weeks, depending on complexity and validator availability.
+- Regularly follow up with MRMG and address any technical issues or requests for clarification to expedite the process.
+- Aim to complete this review within two weeks whenever possible.
+
+6. Exception Approval and Model Usage:  
+- Upon approval, the exception allows the model to be used for the specified period prior to validation.
+- Continue to monitor timelines and ensure the validation documentation is submitted as scheduled.
+
+---
+
+ Notes and Additional Considerations
+
+- Exceptions are only granted after the model is in the official inventory and the final tier is accepted by the modeling team.
+- The urgency and business need for the model may impact the exception’s duration and priority.
+- Once the exception period ends or the model is validated, the exception is no longer applicable.
+- Throughout the process, ensure all committee reviews (e.g., RAU, governing committees, risk committees) are completed as needed.
+
+---
+
+Summary of Technical Steps in the Tiering Workflow:
+
+1. Once MICR is submitted, a draft MICR is created automatically.
+2. Validate all required committee approvals and gather necessary documentation.
+3. Complete the Model Use and Tiering Template (typically the green section of the Excel sheet).
+4. Transfer answers from the Excel sheet into the online E-form as required.
+5. The system will auto-populate a proposed model tier.
+6. MRMG reviews the proposed tier, with the possibility of adjustment.
+7. Upon agreement, the tier is finalized and accepted by the modeling team.
+8. If an exception is needed, initiate the exception request following the above process.
