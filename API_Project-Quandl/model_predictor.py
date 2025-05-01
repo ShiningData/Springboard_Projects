@@ -1,4 +1,14 @@
-def create_report(n_clicks, value):
+@callback(
+    Output("download", "data"),
+    Input("button_download_wire_report", "n_clicks"),
+    Input("dropdown_report_timeframe", "value"),
+    prevent_initial_call=True,
+    background=True,
+)
+def create_report(
+    n_clicks,
+    value,
+):
     if n_clicks is None:
         raise PreventUpdate
     
@@ -9,62 +19,83 @@ def create_report(n_clicks, value):
     table = f"wire_final_report_{value}_months"
     
     # Get only necessary columns to reduce memory footprint
-    required_columns = ['col1', 'col2', 'col3']  # Replace with your actual needed columns
-    df = query_data_table(
+    # Specify only the columns you need instead of querying all columns
+    df = _query_data_table(
         table,
-        columns=required_columns
+        # Add column list here if applicable
     )
     
-    # Convert to appropriate data types to reduce memory usage
+    # Optimize dataframe memory usage before conversion
+    df = optimize_dataframe(df)
+    
+    # Process excel file directly to send_bytes without caching
+    return stream_excel_file(df, f"wire_trx_{value}.xlsx")
+
+def optimize_dataframe(df):
+    """Optimize DataFrame memory usage before Excel conversion."""
+    # Convert object columns to categories when appropriate
     for col in df.select_dtypes(include=['object']).columns:
-        if df[col].nunique() / len(df) < 0.5:  # If cardinality is low, convert to category
+        if df[col].nunique() / len(df) < 0.5:
             df[col] = df[col].astype('category')
     
-    # Use chunked processing for large dataframes
-    return stream_excel_report(df, f"wire_trx_{value}")
+    # Downcast numeric columns
+    for col in df.select_dtypes(include=['int']).columns:
+        df[col] = pd.to_numeric(df[col], downcast='integer')
+    
+    for col in df.select_dtypes(include=['float']).columns:
+        df[col] = pd.to_numeric(df[col], downcast='float')
+    
+    return df
 
-def stream_excel_report(df, filename_prefix):
-    from io import BytesIO
+def stream_excel_file(df, filename):
+    """Stream DataFrame to Excel without caching."""
     import tempfile
     import os
     
-    # Create a temporary file instead of keeping everything in memory
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
-        # Use the optimized xlsx writer with reduced memory options
+    logging.debug("Starting optimized conversion to xlsx file")
+    
+    # Use a temporary file to avoid memory issues
+    with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+        # Set up xlsxwriter with memory optimization options
         writer = pd.ExcelWriter(
             tmp.name,
             engine='xlsxwriter',
-            engine_kwargs={'options': {'constant_memory': True, 'in_memory': False}}
+            engine_kwargs={'options': {'constant_memory': True}}
         )
         
-        # Write in chunks if dataframe is large
-        chunk_size = 10000
-        if len(df) > chunk_size:
-            # Write the header
-            df.iloc[0:0].to_excel(writer, index=False, sheet_name="sheet1")
+        # For very large DataFrames, use chunking
+        max_rows = 100000  # Adjust based on your typical data size
+        if len(df) > max_rows:
+            # Write the header first
+            df.iloc[:0].to_excel(writer, index=False, sheet_name="sheet1")
             
-            # Write the data in chunks
-            for i in range(0, len(df), chunk_size):
-                logging.debug(f"Writing chunk {i//chunk_size + 1}")
-                chunk = df.iloc[i:i+chunk_size]
-                chunk.to_excel(
-                    writer, 
-                    index=False, 
-                    sheet_name="sheet1",
-                    startrow=i+1,  # +1 for header
-                    header=False
+            # Write data in chunks
+            for start_row in range(0, len(df), max_rows):
+                end_row = min(start_row + max_rows, len(df))
+                logging.debug(f"Writing rows {start_row} to {end_row}")
+                
+                df.iloc[start_row:end_row].to_excel(
+                    writer,
+                    startrow=start_row + 1,  # +1 for header row
+                    index=False,
+                    header=False,
+                    sheet_name="sheet1"
                 )
         else:
+            # For smaller DataFrames, write all at once
             df.to_excel(writer, index=False, sheet_name="sheet1")
-            
+        
+        # Close the writer to ensure all data is written
         writer.close()
         
-        # Read the file in chunks directly to the response
+        # Read the file in binary mode
         with open(tmp.name, 'rb') as f:
-            excel_data = f.read()
+            data = f.read()
         
-        # Clean up the temp file
+        # Clean up the temporary file
         os.unlink(tmp.name)
     
-    # Send the file directly without caching
-    return dcc.send_bytes(excel_data, f"{filename_prefix}.xlsx")
+    logging.debug("Finished optimized conversion to xlsx file")
+    
+    # Return directly without caching
+    return dcc.send_bytes(data, filename)
