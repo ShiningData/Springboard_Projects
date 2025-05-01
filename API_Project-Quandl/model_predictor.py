@@ -1,3 +1,17 @@
+import pandas as pd
+import logging
+import tempfile
+import os
+from dash import callback, Input, Output, dcc, ctx, no_update
+from dash.exceptions import PreventUpdate
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Define the callback for the download button
 @callback(
     Output("download", "data"),
     Input("button_download_wire_report", "n_clicks"),
@@ -15,27 +29,56 @@ def create_report(
     logging.info(f"{_PAGE} {_NAME} update callback triggered")
     logging.debug(f"Callback context = {ctx.triggered_id}")
     
-    value = int(value[:2])
-    table = f"wire_final_report_{value}_months"
+    try:
+        # Extract value from dropdown
+        value = int(value[:2])
+        table = f"wire_final_report_{value}_months"
+        
+        # Query data table
+        logging.debug(f"Querying table: {table}")
+        df = _query_data_table(
+            table,
+            # Specify only needed columns if applicable
+        )
+        
+        # Verify data was retrieved successfully
+        if df is None or df.empty:
+            logging.error(f"No data retrieved from table {table}")
+            raise PreventUpdate
+            
+        logging.debug(f"Retrieved dataframe with {len(df)} rows and {len(df.columns)} columns")
+        
+        # Optimize dataframe for memory efficiency
+        df = optimize_dataframe(df)
+        
+        # Process to Excel and return download
+        filename = f"wire_trx_{value}.xlsx"
+        return export_dataframe_to_excel(df, filename)
+        
+    except Exception as e:
+        logging.exception(f"Error in create_report: {str(e)}")
+        return no_update
+
+def _query_data_table(table, columns=None):
+    """
+    Query data from the specified table.
+    Replace this function with your actual data query implementation.
+    """
+    # Your existing query implementation...
+    # This is a placeholder - use your actual query function
     
-    # Get only necessary columns to reduce memory footprint
-    # Specify only the columns you need instead of querying all columns
-    df = _query_data_table(
-        table,
-        # Add column list here if applicable
-    )
-    
-    # Optimize dataframe memory usage before conversion
-    df = optimize_dataframe(df)
-    
-    # Process excel file directly to send_bytes without caching
-    return stream_excel_file(df, f"wire_trx_{value}.xlsx")
+    return df  # Return the queried dataframe
 
 def optimize_dataframe(df):
-    """Optimize DataFrame memory usage before Excel conversion."""
+    """Optimize DataFrame memory usage."""
+    logging.debug("Optimizing DataFrame memory usage")
+    
+    # Make a copy to avoid modifying the original
+    df = df.copy()
+    
     # Convert object columns to categories when appropriate
     for col in df.select_dtypes(include=['object']).columns:
-        if df[col].nunique() / len(df) < 0.5:
+        if df[col].nunique() / len(df) < 0.5:  # If low cardinality
             df[col] = df[col].astype('category')
     
     # Downcast numeric columns
@@ -47,55 +90,86 @@ def optimize_dataframe(df):
     
     return df
 
-def stream_excel_file(df, filename):
-    """Stream DataFrame to Excel without caching."""
-    import tempfile
-    import os
+def export_dataframe_to_excel(df, filename):
+    """Export DataFrame to Excel with optimized memory usage."""
+    logging.debug(f"Starting export to Excel: {filename}")
     
-    logging.debug("Starting optimized conversion to xlsx file")
-    
-    # Use a temporary file to avoid memory issues
-    with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
-        # Set up xlsxwriter with memory optimization options
-        writer = pd.ExcelWriter(
-            tmp.name,
-            engine='xlsxwriter',
-            engine_kwargs={'options': {'constant_memory': True}}
-        )
+    try:
+        # Debug - Check column information
+        logging.debug(f"DataFrame columns before export: {list(df.columns)}")
         
-        # For very large DataFrames, use chunking
-        max_rows = 100000  # Adjust based on your typical data size
-        if len(df) > max_rows:
-            # Write the header first
-            df.iloc[:0].to_excel(writer, index=False, sheet_name="sheet1")
+        # Handle MultiIndex columns if present
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [' '.join(str(x) for x in col).strip() if isinstance(col, tuple) else col for col in df.columns]
+        
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+            temp_path = tmp.name
+        
+        logging.debug(f"Created temporary file: {temp_path}")
+        
+        # Write DataFrame to Excel in chunks if large
+        chunk_size = 50000  # Adjust based on your data size
+        if len(df) > chunk_size:
+            logging.debug(f"Large DataFrame detected ({len(df)} rows). Using chunked writing.")
             
-            # Write data in chunks
-            for start_row in range(0, len(df), max_rows):
-                end_row = min(start_row + max_rows, len(df))
-                logging.debug(f"Writing rows {start_row} to {end_row}")
+            # Initialize writer with openpyxl (tends to have fewer issues with columns)
+            with pd.ExcelWriter(temp_path, engine='openpyxl') as writer:
+                # Write header first
+                df.iloc[:0].to_excel(writer, sheet_name='sheet1', index=False)
                 
-                df.iloc[start_row:end_row].to_excel(
-                    writer,
-                    startrow=start_row + 1,  # +1 for header row
-                    index=False,
-                    header=False,
-                    sheet_name="sheet1"
-                )
+                # Write data in chunks
+                for i in range(0, len(df), chunk_size):
+                    chunk_end = min(i + chunk_size, len(df))
+                    logging.debug(f"Writing chunk {i//chunk_size + 1}: rows {i} to {chunk_end}")
+                    
+                    chunk = df.iloc[i:chunk_end]
+                    chunk.to_excel(
+                        writer,
+                        sheet_name='sheet1',
+                        startrow=i + 1,  # +1 for header
+                        index=False,
+                        header=False
+                    )
         else:
-            # For smaller DataFrames, write all at once
-            df.to_excel(writer, index=False, sheet_name="sheet1")
+            # For smaller DataFrames, use direct export
+            logging.debug("Using direct Excel export (smaller dataset)")
+            with pd.ExcelWriter(temp_path, engine='openpyxl') as writer:
+                df.to_excel(
+                    writer,
+                    sheet_name='sheet1',
+                    index=False
+                )
         
-        # Close the writer to ensure all data is written
-        writer.close()
+        logging.debug("Excel writing completed successfully")
         
-        # Read the file in binary mode
-        with open(tmp.name, 'rb') as f:
+        # Read the file into memory
+        with open(temp_path, 'rb') as f:
             data = f.read()
+            
+        # Clean up temporary file
+        os.unlink(temp_path)
+        logging.debug(f"Temporary file removed. Excel file size: {len(data)/1024/1024:.2f} MB")
         
-        # Clean up the temporary file
-        os.unlink(tmp.name)
-    
-    logging.debug("Finished optimized conversion to xlsx file")
-    
-    # Return directly without caching
-    return dcc.send_bytes(data, filename)
+        # Return file for download
+        logging.debug(f"Returning file for download: {filename}")
+        return dcc.send_bytes(data, filename)
+        
+    except Exception as e:
+        logging.exception(f"Error in export_dataframe_to_excel: {str(e)}")
+        return no_update
+
+# Make sure to include this in your app's layout
+# html.Div([
+#     dcc.Download(id="download"),  # This MUST be in your layout
+#     html.Button("Download Report", id="button_download_wire_report"),
+#     dcc.Dropdown(
+#         id="dropdown_report_timeframe",
+#         options=[
+#             {"label": "6 Months", "value": "6_months"},
+#             {"label": "12 Months", "value": "12_months"},
+#             {"label": "24 Months", "value": "24_months"}
+#         ],
+#         value="12_months"
+#     ),
+# ])
