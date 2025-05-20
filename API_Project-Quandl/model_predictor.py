@@ -170,15 +170,15 @@ def process_business_rules(df: pd.DataFrame, config_path: str) -> Tuple[pd.DataF
     config = load_config(config_path)
     
     # Get all mandatory columns (both always and conditional)
-    always_mandatory = set(config['always_mandatory'])
-    conditional_mandatory = set()
+    always_mandatory = list(config['always_mandatory'])
+    conditional_mandatory = []
     
     # Collect all conditional mandatory columns
     for rule in config.get('conditional_mandatory', []):
-        conditional_mandatory.update(rule['required_columns'])
+        conditional_mandatory.extend(rule['required_columns'])
     
-    # Combine all mandatory columns
-    all_mandatory = always_mandatory.union(conditional_mandatory)
+    # Remove duplicates while preserving order
+    conditional_mandatory = list(dict.fromkeys(conditional_mandatory))
     
     # Initialize missing columns DataFrame with only mandatory columns
     missing_always = pd.DataFrame(False, index=df.index, columns=always_mandatory)
