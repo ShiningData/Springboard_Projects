@@ -157,7 +157,7 @@ def check_conditional_mandatory(df: pd.DataFrame, config: Dict[str, Any]) -> pd.
 
 def process_business_rules(df: pd.DataFrame, config_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Process the input data through business rules
+    Process the input data through business rules while preserving all columns
     
     Args:
         df: Input DataFrame
@@ -165,13 +165,25 @@ def process_business_rules(df: pd.DataFrame, config_path: str) -> Tuple[pd.DataF
         
     Returns:
         Tuple of (DataFrame with missing mandatory columns, DataFrame with complete data)
+        Both DataFrames will contain all original columns, with only mandatory columns checked for missingness
     """
     config = load_config(config_path)
     
-    # Check always mandatory columns
-    always_mandatory = config['always_mandatory']
+    # Get all mandatory columns (both always and conditional)
+    always_mandatory = set(config['always_mandatory'])
+    conditional_mandatory = set()
+    
+    # Collect all conditional mandatory columns
+    for rule in config.get('conditional_mandatory', []):
+        conditional_mandatory.update(rule['required_columns'])
+    
+    # Combine all mandatory columns
+    all_mandatory = always_mandatory.union(conditional_mandatory)
+    
+    # Initialize missing columns DataFrame with only mandatory columns
     missing_always = pd.DataFrame(False, index=df.index, columns=always_mandatory)
     
+    # Check always mandatory columns
     for col in always_mandatory:
         missing_always[col] = check_column_validity(df, col)
     
@@ -185,7 +197,7 @@ def process_business_rules(df: pd.DataFrame, config_path: str) -> Tuple[pd.DataF
     # Find rows with any missing mandatory columns
     has_missing = missing_cols.any(axis=1)
     
-    # Split data
+    # Split data while preserving all columns
     missing_data = df[has_missing].copy()
     complete_data = df[~has_missing].copy()
     
