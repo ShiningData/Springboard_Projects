@@ -1,18 +1,70 @@
-Subject: Thank You for an Engaging PySpark Session & Next Steps
+import pandas as pd
+import yaml
 
-Dear Team,
+def load_yaml_rules(yaml_path):
+    """Load the YAML rules from a file."""
+    with open(yaml_path, 'r') as f:
+        rules = yaml.safe_load(f)
+    return rules
 
-I wanted to take a moment to thank each and every one of you for your enthusiastic participation in yesterday’s “Zero to Hero” PySpark tutorial session. Your energy, curiosity, and engagement throughout the three hours were truly inspiring and made the session a great success.
+def get_always_mandatory_columns(rules):
+    """Extract always mandatory columns from YAML rules."""
+    return rules.get('always_mandatory', [])
 
-It was a pleasure to walk you through the process of loading, preprocessing, and writing big data using PySpark. I hope the demonstrations on using PySpark functions for data transformation and preparation gave you a solid foundation for your future projects. I also appreciated your interest in learning how to monitor Spark jobs in the Application Master—remember, the reference link is included in the email for your convenience.
+def get_conditional_mandatory_columns(rules, row):
+    """
+    Given a row, return a list of conditional mandatory columns that apply.
+    """
+    conditional_columns = []
+    for condition in rules.get('conditional_mandatory', []):
+        cond = condition['condition']
+        col = cond['column']
+        val = cond['value']
+        if row.get(col) == val:
+            conditional_columns.extend(condition['required_columns'])
+    return conditional_columns
 
-As promised, I have attached all the notebooks, Python files, and additional resources we used during the session. Please feel free to revisit them as you work through your hands-on assessment.
+def split_data_by_mandatory_columns(df, yaml_path):
+    """
+    Splits the DataFrame into missing_data and complete_data based on YAML rules.
+    Returns (missing_data, complete_data)
+    """
+    rules = load_yaml_rules(yaml_path)
+    always_mandatory = get_always_mandatory_columns(rules)
+    # Columns that must be positive
+    positive_columns = ['age', 'amount']
 
-Speaking of which, your assignment includes 40 unique cases designed to help you put your new skills into practice. This is a fantastic opportunity to reinforce what you’ve learned and gain confidence in applying PySpark to real-world scenarios. Please submit your completed assessment by next Friday.
+    missing_rows = []
+    complete_rows = []
 
-I am genuinely excited to see how you approach these challenges, and I am here to support you every step of the way. Thank you again for your commitment and enthusiasm. It’s a privilege to be part of your learning journey, and I look forward to seeing your progress!
+    for idx, row in df.iterrows():
+        missing = False
+        # Check always mandatory columns for missing or empty
+        for col in always_mandatory:
+            if pd.isnull(row.get(col)) or row.get(col) == '':
+                missing = True
+                break
+        # Check positivity for specific columns if present
+        if not missing:
+            for pos_col in positive_columns:
+                if pos_col in always_mandatory:
+                    value = row.get(pos_col)
+                    if pd.isnull(value) or value == '' or value <= 0:
+                        missing = True
+                        break
+        # Check conditional mandatory columns
+        if not missing:
+            cond_cols = get_conditional_mandatory_columns(rules, row)
+            for col in cond_cols:
+                if pd.isnull(row.get(col)) or row.get(col) == '':
+                    missing = True
+                    break
 
-Best regards,  
-[Your Name]  
-[Your Position]  
-[Your Contact Information]
+        if missing:
+            missing_rows.append(idx)
+        else:
+            complete_rows.append(idx)
+
+    missing_data = df.loc[missing_rows].copy()
+    complete_data = df.loc[complete_rows].copy()
+    return missing_data, complete_data
