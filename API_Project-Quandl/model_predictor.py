@@ -53,13 +53,11 @@ def get_conditional_mandatory_columns(rules, row):
 
 def find_missing_columns(row, always_mandatory, positive_columns, cond_cols):
     missing_cols = []
-    # Always mandatory columns
     for col in always_mandatory:
         if not is_valid_value(row.get(col)):
             missing_cols.append(col)
         elif col in positive_columns and not is_positive_value(row.get(col)):
             missing_cols.append(col)
-    # Conditional mandatory columns
     for col in cond_cols:
         if not is_valid_value(row.get(col)):
             missing_cols.append(col)
@@ -71,7 +69,6 @@ def split_data_by_mandatory_columns(df, yaml_path):
     positive_columns = ['age', 'amount']
 
     missing_rows = []
-    complete_rows = []
     key_drivers_list = []
 
     for idx, row in df.iterrows():
@@ -79,18 +76,18 @@ def split_data_by_mandatory_columns(df, yaml_path):
         missing_cols = find_missing_columns(row, always_mandatory, positive_columns, cond_cols)
 
         if missing_cols:
-            # Format as requested: [col1 | 1.0| col2 | 1.0]
+            # Format: [col1 | 1.0| col2 | 1.0]
             key_drivers = ' | '.join([f"{col} | 1.0" for col in missing_cols])
             key_drivers_list.append([key_drivers])
             missing_rows.append(idx)
-        else:
-            key_drivers_list.append([])
-            complete_rows.append(idx)
 
-    # Assign KeyDrivers column
-    df = df.copy()
-    df['KeyDrivers'] = key_drivers_list
-
+    # Prepare missing_data with extra columns
     missing_data = df.loc[missing_rows].copy()
-    complete_data = df.loc[complete_rows].copy()
+    missing_data['KeyDrivers'] = key_drivers_list
+    missing_data['Percentile'] = 100
+    missing_data['Prediction'] = 'TRUE'
+
+    # Prepare complete_data without extra columns
+    complete_data = df.drop(index=missing_rows).copy()
+
     return missing_data, complete_data
