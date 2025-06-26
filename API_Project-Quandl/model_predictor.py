@@ -3,10 +3,6 @@ import yaml
 import math
 
 def is_valid_value(value):
-    """
-    Check if a value is valid (not missing, empty, or whitespace).
-    Enhanced: Also treats empty lists, tuples, and dicts as invalid.
-    """
     if value is None:
         return False
     if value == ["nan"]:
@@ -22,24 +18,17 @@ def is_valid_value(value):
     return True
 
 def is_positive_value(value):
-    """
-    Check if a value is positive.
-    If value is a string, try to convert to int or float.
-    """
-    # Try to convert string to number
     if isinstance(value, str):
         value = value.strip()
         if not value:
             return False
         try:
-            # Try integer first, then float
             if '.' in value:
                 value = float(value)
             else:
                 value = int(value)
         except ValueError:
             return False
-    # Now check positivity
     if isinstance(value, (int, float)) and not (math.isinf(value) or math.isnan(value)):
         return value > 0
     return False
@@ -62,6 +51,20 @@ def get_conditional_mandatory_columns(rules, row):
             conditional_columns.extend(condition['required_columns'])
     return conditional_columns
 
+def find_missing_columns(row, always_mandatory, positive_columns, cond_cols):
+    missing_cols = []
+    # Always mandatory columns
+    for col in always_mandatory:
+        if not is_valid_value(row.get(col)):
+            missing_cols.append(col)
+        elif col in positive_columns and not is_positive_value(row.get(col)):
+            missing_cols.append(col)
+    # Conditional mandatory columns
+    for col in cond_cols:
+        if not is_valid_value(row.get(col)):
+            missing_cols.append(col)
+    return missing_cols
+
 def split_data_by_mandatory_columns(df, yaml_path):
     rules = load_yaml_rules(yaml_path)
     always_mandatory = get_always_mandatory_columns(rules)
@@ -69,33 +72,24 @@ def split_data_by_mandatory_columns(df, yaml_path):
 
     missing_rows = []
     complete_rows = []
+    key_drivers_list = []
 
     for idx, row in df.iterrows():
-        missing = False
-        # Check always mandatory columns for validity
-        for col in always_mandatory:
-            if not is_valid_value(row.get(col)):
-                missing = True
-                break
-        # Check positivity for specific columns if present
-        if not missing:
-            for pos_col in positive_columns:
-                if pos_col in always_mandatory:
-                    if not is_positive_value(row.get(pos_col)):
-                        missing = True
-                        break
-        # Check conditional mandatory columns
-        if not missing:
-            cond_cols = get_conditional_mandatory_columns(rules, row)
-            for col in cond_cols:
-                if not is_valid_value(row.get(col)):
-                    missing = True
-                    break
+        cond_cols = get_conditional_mandatory_columns(rules, row)
+        missing_cols = find_missing_columns(row, always_mandatory, positive_columns, cond_cols)
 
-        if missing:
+        if missing_cols:
+            # Format as requested: [col1 | 1.0| col2 | 1.0]
+            key_drivers = ' | '.join([f"{col} | 1.0" for col in missing_cols])
+            key_drivers_list.append([key_drivers])
             missing_rows.append(idx)
         else:
+            key_drivers_list.append([])
             complete_rows.append(idx)
+
+    # Assign KeyDrivers column
+    df = df.copy()
+    df['KeyDrivers'] = key_drivers_list
 
     missing_data = df.loc[missing_rows].copy()
     complete_data = df.loc[complete_rows].copy()
