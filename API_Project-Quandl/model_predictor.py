@@ -1,89 +1,140 @@
- 1. Where does your application/platform sit in the flow of payments (what do you receive from an upstream system, if any)?
+Based on the transcript provided, I'll answer each question from the image using the detailed information shared during the EDI meeting:
 
-EDI sits strategically in the middle of the payment flow rather than at the front as one might initially assume. The system serves as a critical intermediary that processes both origination and receivables transactions from multiple upstream sources. For origination processes, EDI's primary input channel is SFG, which delivers client files containing various payment instructions. However, it's important to note that EDI does not receive PMT files through SFG, as those are exclusively routed to CPI systems. Beyond SFG, EDI also receives files from internal applications through mainframe transmissions, demonstrating that not all payment data flows through the SFG channel.
+1. Where does your application/platform sit in the flow of payments (what do you receive from an upstream system, if any)?
 
-For receivables processing, EDI operates as a central hub receiving data from numerous upstream systems. The system processes files from lockbox operations and ARS (Accounts Receivable System), with ACH representing what the team described as "our huge one" in terms of volume and importance. Wire data flows into EDI specifically for remittance processing, while real-time payments (RTP) represent a growing segment of transaction volume. Additionally, EDI receives merchant services data for card transactions and processes monthly CAA (Customer Account Analysis) data from internal systems. The system also receives wire remittance reporting from the Dell, though notably, it does not process any client files from that source.
+EDI sits in the middle of the payment flow, not at the front as initially suggested. For origination, EDI receives client files from:
+- SFG (primary input channel) - EDI gets client files from SFG, but does NOT get PMT files (those only go to CPI)
+- Internal applications - Some files can come via mainframe transmission to EDI, not everything goes through SFG
+- VAN (Value Added Network) - EDI pulls in files from VAN, which can contain multiple customers in one file, each with different 820 documents from different clients
 
-A particularly interesting aspect of EDI's positioning is its interaction with VANs (Value Added Networks), which function like postal mailbox systems where multiple customers' data can be contained within a single file. EDI pulls files from these VANs, and each file can contain multiple 820 EDI documents from different clients, requiring sophisticated parsing and routing capabilities to ensure proper processing and delivery to downstream systems.
+For receivables, EDI receives files from:
+- Lockbox and ARS 
+- Wire data for remittance processing
+- ACH (described as "our huge one")
+- Real-time payments (RTP)
+- Merchant services for card transactions
+- CAA (Customer Account Analysis) - monthly process, internal data
+- Wire remittance reporting from the Dell (but no client files from Dell)
 
- 2. In what format do receive transactions/files/information?
+2. In what format do receive transactions/files/information?
 
-EDI receives transaction data in a diverse array of formats, reflecting the complex landscape of payment processing systems it must integrate with. The system processes true EDI format files including ARP files, A28s, A21s, and positive pay files, all of which conform to the ANSI X12 standard that governs electronic data interchange protocols. This standard provides a structured framework with specific segments designed for different purposes - for example, 820 files contain segments that identify ACH transactions along with dollar amounts and detailed invoice information.
+EDI receives files in multiple formats:
+- EDI format files: ARP files, A28s and A21s, positive pay files
+- NACHA format from ACH
+- Flat file proprietary format for wire and RTP
+- CAA flat file format
+- ANSI X12 standard format - This is the standard that EDI follows, with different segments for different purposes (e.g., 820 files have segments identifying ACH transactions with dollar amounts and invoice details)
 
-From ACH systems, EDI receives files in NACHA format, which is the standard format for Automated Clearing House transactions in the United States. Wire and RTP (Real-Time Payments) data arrives in proprietary flat file formats that have been specifically designed for EDI's processing requirements. These flat files follow a simple but effective structure using "H for header, D for detail, T for trailer" formatting, with the specific field arrangements being negotiated and established between EDI and each sending system during implementation.
+The transcript clarifies that flat files are "proprietary non-standard files" with structures like "H for header, D for detail, T for trailer" that are worked out between EDI and the sending system.
 
-CAA (Customer Account Analysis) data also arrives in flat file format as part of the monthly processing cycle. The distinction between EDI format and flat file format is significant - while EDI formats follow the ANSI X12 committee standards that all banks must adhere to, flat files are proprietary, non-standard formats that represent custom agreements between EDI and its various system partners. This flexibility allows EDI to accommodate systems that may not support full EDI standards while still maintaining efficient data exchange capabilities.
+3. In what format do send transactions/files/information?
 
- 3. In what format do send transactions/files/information?
+EDI sends out files in multiple formats:
+- Multiple EDI formats: A20s, A23s (lockbox format), A22 (for CAA)
+- ANSI X12 standard EDI documents like 820s, 823s
+- Formatted files sorted by payment type to downstream systems: ACH, Wire, Hard Check, and ARP
+- Files to various destinations:
+  - Pinnacle
+  - Lockbox (ACH and wire data, plus RTP)
+  - SFT (for client delivery)
+  - VAN for dispersing to different customers
+  - High Radius (also a VAN)
+  - Direct transmission to clients
+  - CPI for check processing
 
-EDI demonstrates remarkable versatility in its output capabilities, sending files in multiple formats tailored to the specific requirements of downstream systems and clients. The system produces various EDI format files including A20s, A23s (specifically designed for lockbox format requirements), and A22 files for CAA processing. All of these outputs conform to ANSI X12 standard EDI document structures, including 820s and 823s, which maintain consistency with industry standards for electronic data interchange.
+4. Do you have any unique identifier that you add to the transactions from your system? Do you pass that to the next system in the step? Do you create a new one? If so, do you maintain an index?
 
-The system's primary function involves sorting and formatting transactions by payment type before routing them to appropriate downstream systems. ACH transactions are formatted and sent to ACH processing systems, while wire transfers are routed to wire processing infrastructure. Hard check processing represents an interesting workflow where EDI can accept check payment instructions but must pass them to CPI for actual interaction with check printing vendors, since EDI itself cannot directly interface with these vendors.
+EDI does NOT add unique identifiers to transactions. The transcript reveals:
+- No EDI-specific identifiers are added to files
+- Channel-based identification: Downstream systems know files came from EDI because of the channel/source, not because of any identifier in the file
+- No preserved file IDs between systems - when tracing issues, they use "dollar amount, DDA, and date" to trace transactions
+- File-level information only is passed to COD (not transaction-level detail)
+- Traceability requires digging: For origination, high-value transactions in GPP can trace back to staging as EDI partner setup, then back to EDI input file receipt, but this requires manual correlation work
 
-EDI maintains multiple output channels to serve different operational needs. Files are sent to Pinnacle for certain processing requirements, while lockbox receives both ACH and wire data along with RTP information for further processing. The system sends data to SFT for client delivery and utilizes VANs for dispersing information to different customers through what essentially functions as a sophisticated mailbox system. High Radius serves as another VAN destination, and EDI maintains direct transmission capabilities for clients who prefer this delivery method. This multi-channel approach ensures that each downstream system and client can receive data in their preferred format and through their preferred delivery mechanism.
+5. Do you have any reporting that captures the activity that takes place at your stop in the lifecycle of a transaction? If so, where is that hosted? Are there consumers for said report today?
 
- 4. Do you have any unique identifier that you add to the transactions from your system? Do you pass that to the next system in the step? Do you create a new one? If so, do you maintain an index?
+EDI has limited reporting:
+- LOT (Life of Transaction): EDI sends all incoming file names to LOT
+- Acknowledgement process: EDI has acknowledgement processes for PSG (not all payment types)
+- Alert system: When files from PSG aren't acknowledged back, it generates alerts
+- Commitment monitoring: This is a tool that generates Service Now tickets when expected client files aren't received or are late
+- Error reporting: When customer files have rejections, error reports are created
+- No Tableau reports: The EDI team confirmed they don't have any Tableau reports or similar monitoring dashboards
 
-EDI does not implement a comprehensive unique identifier system for tracking transactions through the payment processing pipeline, which represents a significant limitation in transaction traceability. Instead of adding specific EDI identifiers to transaction files, the system relies on channel-based identification, meaning that downstream systems recognize the source of data based on the transmission channel rather than embedded identifiers within the files themselves. This approach means that when a system like Pinnacle receives a file from EDI, they know it originated from EDI because of the transmission pathway, not because of any specific identifier embedded in the transaction data.
+The reporting appears to be primarily operational/alerting focused rather than comprehensive transaction lifecycle reporting.
 
-The absence of preserved file IDs between systems creates challenges for transaction tracing and auditing. When issues arise downstream and require investigation, the tracing process becomes labor-intensive, requiring personnel to use fundamental transaction details such as dollar amounts, DDA (Demand Deposit Account) numbers, and transaction dates to manually correlate transactions across systems. For origination transactions, there is some capability to trace high-value transactions in GPP (presumably Global Payment Platform) back to staging areas identified as EDI partner setups, and from there back to the original EDI input file receipt, but this process requires significant manual effort and system knowledge.
+6. Is your data being streamed anywhere? For example, a warehouse like COD.
 
-The system does pass file-level information to COD (presumably Chief Operating Data or a similar data warehouse), but this information is limited to file names and generation numbers rather than detailed transaction-level data. This limitation means that while there is some record of file processing, the granular tracking necessary for comprehensive transaction lifecycle management is not maintained through EDI's processing steps.
+Yes, EDI data goes to COD, but it's batch processing, not streaming:
+- File names only are sent to COD - no transaction-level detail
+- File-level information includes file name and "generation of the data set" 
+- Multiple generations per day: EDI produces 5 files a day with different generations (numbered 1, 2, 3, 4, 5)
+- Customer with high volume: One customer sends 300 files a day, each getting a generational number
+- No detailed content: COD receives strictly file names with no details about what's in the files, total amounts, or transaction counts
+- SFG also streams to COD with file names
 
- 5. Do you have any reporting that captures the activity that takes place at your stop in the lifecycle of a transaction? If so, where is that hosted? Are there consumers for said report today?
+7. What happens if a file dies at SFG?
 
-EDI's reporting capabilities are primarily focused on operational monitoring rather than comprehensive transaction lifecycle tracking. The system participates in LOT (Life of Transaction) processes by sending all incoming file names to the LOT system, but this represents file-level reporting rather than detailed transaction analysis. The acknowledgement process provides some visibility into transaction processing, particularly for PSG interactions, though this coverage is not universal across all payment types.
+The transcript doesn't specifically address what happens if a file dies at SFG. However, it does cover what happens when EDI receives problematic files:
+- Operations contact customer: When EDI tries to process a file and it generates an error, operations contacts the client
+- Customer notification: They inform the customer about the issue and request correction and resend
+- Flexible rejection levels: Based on customer preference established at implementation:
+  - Can reject entire file if any transaction is bad
+  - Can reject single bad transaction and process the other good ones
+- Commitment monitoring: Would likely generate alerts if expected files from SFG don't arrive
 
-The commitment monitoring system represents EDI's most robust reporting mechanism, functioning as an automated alerting tool that generates Service Now tickets when expected client files fail to arrive or arrive outside of expected timeframes. This system monitors most inbound client files and creates incidents when files are late or when processing jobs fail to run within their scheduled windows. The system proves particularly valuable for monitoring high-volume clients, including one customer who sends 300 files per day, each requiring individual tracking and processing confirmation.
+8. What do you do if you didn't get a file or transaction that you were expecting to get on a certain day?
 
-Error reporting capabilities focus on operational issues, generating reports when customer files contain rejections or processing errors. These reports trigger manual intervention by operations staff who contact clients to resolve file format issues or data problems. However, the EDI team confirmed that they do not maintain Tableau reports or sophisticated business intelligence dashboards for transaction analysis. The reporting infrastructure appears designed primarily for operational alerting and issue resolution rather than strategic analysis or comprehensive transaction monitoring.
+EDI has commitment monitoring in place:
+- Automated monitoring: Most inbound client files are under commitment monitoring
+- Service Now tickets: System generates alerts/tickets when expected files are late or missing
+- Operations team: Manually monitors consistent clients and reaches out when files are missing
+- Client-driven process: Since origination is "performed at the customer's will," not all clients are monitored
+- Selective monitoring: Only consistent, regular clients are actively monitored for missing files
+- Manual checklist: Some monitoring is still manual, particularly for error checking when customer files have rejections
 
- 6. Is your data being streamed anywhere? For example, a warehouse like COD.
+9. Can a client check on the status of their file?
 
-EDI data flows to COD through batch processing rather than real-time streaming, representing a more traditional approach to data warehouse integration. The system sends file-level information to COD, but this information is deliberately limited in scope, including only file names and generation identifiers rather than detailed transaction content. This approach reflects a conscious design decision to maintain data privacy and system performance while still providing operational visibility into file processing activities.
+Limited client self-service:
+- Acknowledgements only: Clients can check status through acknowledgements, but only if they signed up for this service
+- Three types of acknowledgements:
+  1. "Hey, we got your file"
+  2. "Hey, we got your file and it processed successfully"  
+  3. "Hey, all the way to the Fed, we got the Fed reference number"
+- Optional service: Not all clients opt for acknowledgements (some don't want to pay for transmission)
+- No email or fax: EDI doesn't offer email or fax acknowledgements
+- FMG transmission: Acknowledgements go out via FMG transmission
+- Recommended but not required: EDI strongly recommends acknowledgements but clients can opt out
 
-The generation system represents an interesting aspect of EDI's data organization, with the system producing five distinct file generations per day, each receiving sequential numbering (1, 2, 3, 4, 5) for tracking purposes. High-volume clients require additional generation tracking - the example of one customer sending 300 files daily demonstrates the scale of processing that EDI handles and the importance of maintaining detailed generation tracking for operational purposes.
+10. Do you get a notification if your downstream system doesn't receive a file from you?
 
-The limitation to file names only in COD integration means that the data warehouse does not receive transaction counts, dollar amounts, or other detailed metrics that might be valuable for analysis. This approach prioritizes operational tracking over analytical capabilities, ensuring that COD can monitor file processing without exposing sensitive transaction details. SFG also streams file name information to COD, creating a complementary data flow that provides broader visibility into the payment processing pipeline while maintaining appropriate data security boundaries.
+Very limited downstream notifications:
+- PSG acknowledgements only: EDI only gets acknowledgements from PSG, and only for certain payment types
+- No other downstream acknowledgements: No other downstream systems provide acknowledgements to EDI
+- One-way communication: EDI sends acknowledgements to originating clients but doesn't receive confirmations from most downstream systems
+- No lockbox confirmations: For example, EDI doesn't get acknowledgements from lockbox saying "hey, we got your file"
+- Alert-based detection: EDI gets alerted when they have issues processing, but this seems to be internal error detection rather than downstream confirmation
 
- 7. What happens if a file dies at SFG?
+11. Others
 
-While the transcript does not specifically address file failures at SFG, it provides detailed insight into how EDI handles problematic files once they reach the EDI processing environment. When EDI attempts to process a file and encounters errors, the system generates automatic alerts that trigger manual intervention by the operations team. This process involves operations staff contacting the originating customer to inform them of specific file issues and requesting corrected file resubmission.
+Additional relevant information from the transcript:
 
-EDI offers flexible rejection handling based on customer preferences established during implementation. Some customers prefer an all-or-nothing approach where a single bad transaction causes rejection of the entire file, requiring complete file correction and resubmission. Other customers opt for partial processing, where EDI rejects only the problematic transactions while processing valid transactions normally. This flexibility recognizes that different business models and risk tolerances require different approaches to error handling.
+File Structure and Batching:
+- Complex file structure: One input file can contain multiple customers/clients, each becoming separate batches
+- Payment type sorting: EDI sorts by payment type (ACH, wire, card, check, ARP) and sends grouped files
+- Batch preservation: Files maintain client segregation through batch structure even when combined
 
-The commitment monitoring system would likely detect missing files from SFG through its automated alerting capabilities. Since the system generates Service Now tickets for late or missing files from expected sources, any disruption in SFG file delivery would trigger operational alerts. The combination of automated monitoring and manual operations intervention provides multiple layers of protection against file processing failures, ensuring that issues are identified quickly and resolved efficiently.
+Client Acknowledgement Preferences:
+- Cost consideration: Some clients opt out of acknowledgements due to transmission costs
+- Most clients want acknowledgements: "Nine times out of 10, they want an acknowledgement"
 
- 8. What do you do if you didn't get a file or transaction that you were expecting to get on a certain day?
+Volume and Scale:
+- High-volume clients: One customer sends 300 files per day
+- Multiple daily generations: EDI processes 5 file generations per day
 
-EDI employs a sophisticated commitment monitoring system that automatically tracks expected file deliveries and generates alerts when files fail to arrive within expected timeframes. This system creates Service Now tickets that provide detailed information about missing files, including client identification, expected delivery times, and specific job information that failed to execute. The automated nature of this system ensures that missing files are detected quickly without requiring constant manual monitoring.
+Integration Points:
+- No Pinnacle files: EDI doesn't accept Pinnacle files (that's CPI only)
+- Check processing handoff: EDI can accept check payments but must pass them to CPI for actual check printing vendor interaction
+- Generic processing: Some processes bypass the connection warehouse and go through "generic process" for direct file translation
 
-For clients with consistent delivery patterns, EDI maintains more intensive monitoring through both automated and manual processes. The operations team actively monitors regular clients and proactively reaches out when expected files don't arrive within normal timeframes. However, it's important to note that origination is fundamentally "performed at the customer's will," meaning that not all clients maintain predictable file delivery schedules that would warrant active monitoring.
-
-The system recognizes that different clients have different operational patterns and business needs. High-volume, consistent clients receive more intensive monitoring because their file delivery patterns are predictable and their transaction volumes make monitoring worthwhile. Smaller or more irregular clients may not receive the same level of proactive monitoring, though they would still benefit from automated alerts if they have established expected delivery schedules in the commitment monitoring system. This tiered approach allows EDI to efficiently allocate monitoring resources while ensuring that critical client relationships receive appropriate attention.
-
- 9. Can a client check on the status of their file?
-
-Client self-service capabilities for file status checking are limited primarily to acknowledgement services, which are optional and fee-based. Clients who opt into acknowledgement services can receive status updates through three distinct levels of confirmation. The first level provides basic receipt confirmation - essentially "we got your file." The second level adds processing confirmation - "we got your file and it processed successfully." The third and most comprehensive level provides end-to-end confirmation including Federal Reserve reference numbers - "all the way to the Fed, we got the Fed reference number."
-
-The acknowledgement system represents a premium service that not all clients choose to purchase. Some clients decline acknowledgement services to avoid transmission costs, despite EDI's strong recommendation that clients should utilize these services for operational visibility. The team noted that "nine times out of ten, they want an acknowledgement," suggesting that most clients recognize the value of status visibility even when it involves additional costs.
-
-Acknowledgements are delivered through FMG transmission rather than more modern communication methods like email or fax, which EDI explicitly does not support. This transmission method maintains consistency with EDI's overall approach to secure, structured data exchange while ensuring that acknowledgements integrate properly with clients' existing EDI infrastructure. The limitation to acknowledgement-based status checking means that clients without acknowledgement services have limited visibility into file processing status and must rely on contacting EDI operations staff for status updates.
-
- 10. Do you get a notification if your downstream system doesn't receive a file from you?
-
-EDI receives very limited feedback from downstream systems regarding file delivery confirmation, creating potential blind spots in the transaction processing pipeline. The only downstream system that provides acknowledgements to EDI is PSG, and even those acknowledgements cover only certain payment types rather than providing comprehensive confirmation across all transaction categories. This limited feedback means that EDI cannot automatically detect when files fail to reach most downstream processing systems.
-
-The acknowledgement relationship with PSG represents an exception rather than the rule in EDI's downstream communications. When PSG fails to acknowledge receipt of expected files, EDI's monitoring systems generate alerts that trigger investigation and resolution activities. However, for other critical downstream systems like lockbox, ACH processors, and wire transfer systems, EDI operates without delivery confirmation, relying instead on downstream systems to contact EDI if files fail to arrive or contain problems.
-
-This one-way communication model places responsibility for delivery confirmation on downstream systems while limiting EDI's ability to proactively identify and resolve delivery issues. The system sends acknowledgements to originating clients but doesn't receive similar confirmations from most processing partners. This asymmetric communication model reflects the broader architecture of payment processing systems where each component focuses on its specific processing responsibilities rather than providing comprehensive end-to-end status tracking.
-
- 11. Others
-
-Several additional operational aspects of EDI's functionality provide important context for understanding its role in the payment processing ecosystem. The system handles complex file structures where individual input files can contain multiple customers or clients, with each customer's data becoming a separate batch within output files. This multiplexing capability allows efficient processing of consolidated data while maintaining proper segregation for downstream systems. EDI sorts transactions by payment type (ACH, wire, card, check, ARP) and groups them appropriately for delivery to specialized processing systems.
-
-The volume and scale of EDI operations is significant, with some clients generating substantial daily file volumes. The example of one customer sending 300 files per day illustrates the high-volume processing capabilities that EDI must maintain while ensuring accurate tracking and processing of each individual file. The system processes five file generations per day across its client base, demonstrating the continuous nature of payment processing operations.
-
-Integration complexity is evident in EDI's relationship with other PNC systems. The system explicitly does not accept Pinnacle files, as those are reserved for CPI processing, illustrating the careful division of responsibilities within the broader payment processing infrastructure. For check processing, EDI can accept check payment instructions but must hand them off to CPI for actual interaction with check printing vendors, since EDI lacks direct vendor integration capabilities. Some EDI processes bypass the connection warehouse entirely, utilizing "generic processing" for direct file translation between input and output formats without intermediate data storage.
-
-The cost structure of EDI services influences client behavior, particularly regarding acknowledgement services where transmission costs cause some clients to opt out of status visibility features that EDI strongly recommends. This tension between operational best practices and cost management reflects broader challenges in payment processing where enhanced services come with additional fees that clients must weigh against their operational needs and risk tolerance.
+This detailed breakdown shows EDI serves as a critical middleware component that receives, transforms, and routes payment data while maintaining limited tracking and reporting capabilities focused primarily on operational monitoring rather than comprehensive transaction lifecycle management.
