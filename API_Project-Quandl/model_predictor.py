@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Helper functions
-attime() { date +%Y-%m-%d %H:%M:%S; }
+attime() { date "+%Y-%m-%d %H:%M:%S"; }
 log_info() { echo -e "\033[1;32m$(attime) \033[1;34m[INFO]\033[1;0m\t$@"; }
 log_debug() { echo -e "\033[1;32m$(attime) \033[1;35m[DEBUG]\033[1;0m\t$@"; }
 log_error() { echo -e "\033[1;32m$(attime) \033[1;31m[ERROR]\033[1;0m\t$@"; }
@@ -38,10 +38,9 @@ if [[ $# -eq 0 ]]; then
         --time="6:00:00" \
         --nodes="1" \
         --ntasks="1" \
-        --cpu-per-task="1" \
+        --cpus-per-task=1 \
         --output="/projects/${USER}/logs/dsi/prules_pmt_prt_logs/sbatch_%j.log" \
         --begin="$NEXT_RUN" \
-        --dependency="$(SCHEDULE)" \
         --parsable \
         "$0" "SCHEDULED"
     
@@ -69,7 +68,7 @@ NEXT_JOB_ID=$(sbatch \
     --time="6:00:00" \
     --nodes="1" \
     --ntasks="1" \
-    --cpu-per-task="1" \
+    --cpus-per-task=1 \
     --output="/projects/${USER}/logs/dsi/prules_pmt_prt_logs/sbatch_%j.log" \
     --begin="$NEXT_RUN" \
     --parsable \
@@ -81,13 +80,13 @@ log_info "Next biannual job scheduled with ID: $NEXT_JOB_ID for $NEXT_RUN"
 log_info "Starting biannual data processing..."
 
 # Submit PRT Base job
-PRT_BASE_ID=$(sbatch --dependency="afterok:${PRT_BASE_FILE}")
-log_info "Submitted PRT Base Job: \$job_id = $PRT_BASE_ID; \$begin ${SCHEDULE}"
+PRT_BASE_ID=$(sbatch --parsable "${PRT_BASE_FILE}")
+log_info "Submitted PRT Base Job: job_id = $PRT_BASE_ID"
 
 DEPS="afterok:${PRT_BASE_ID}"
 
 # Submit PRT Complete job  
 PRT_COMPLETE_ID=$(sbatch --dependency="$DEPS" "${PRT_COMPLETE_FILE}")
-log_info "Submitted PRT Complete Job: \$job_id = $PRT_COMPLETE_ID; \$begin ${SCHEDULE}"
+log_info "Submitted PRT Complete Job: job_id = $PRT_COMPLETE_ID"
 
 log_info "Biannual job workflow submitted successfully"
