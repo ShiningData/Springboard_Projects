@@ -1,633 +1,753 @@
-PNC Bill Pay System Analysis
+PNC Mobile Banking Payment System Analysis
 Question 1: Where does your application/platform sit in the flow of
 payments (what do you receive from an upstream system, if any? What
 do you send downstream)?
 Answer:
-The PNC bill pay system operates as an intermediary platform that sits between PNC's online
-banking customers and Fiserv's payment processing infrastructure, serving as a critical bridge that
-enables customers to make payments to merchants through a seamless integrated experience.
-From an upstream perspective, the system receives payment requests directly from PNC
-subscribers through the online banking interface. When customers access bill pay functionality,
-they link over from PNC's main online banking system to the bill pay interface, which triggers
-authentication calls to Fiserv to verify user access and determine whether the customer is
-classified as a business or consumer user. The system does not receive traditional file-based inputs
-from upstream systems, but rather processes real-time API-based payment requests initiated by
-customers through the web interface.
-The application interface displays comprehensive payment management capabilities including
-upcoming invoices, electronic bills (e-bills), pending payments, recurring payment schedules, and
-other payment-related information. All of this customer-specific data is maintained through
-continuous API communications between PNC and Fiserv systems, with detailed logs of all
-payment activities stored locally to populate customer screens when they access the payment
-interface.
-From a downstream perspective, the system sends payment instructions and processes transactions
-through Fiserv as the primary payment processor. Once customers schedule payments or initiate
-real-time payments through API calls, the system determines the appropriate payment method and
-routes transactions accordingly. Payments can be processed through multiple channels including
-ACH electronic payments, electronic check payments, draft check payments, or virtual card
-payments (the latter being a new pilot program).
-The payment flow architecture follows a structured sequence where PNC subscribers interact
-exclusively with PNC's online banking system, which then sends API requests on behalf of
-subscribers to Fiserv. Fiserv independently manages all merchant communications and payment
-settlements. The flow maintains clear boundaries: subscriber to PNC, PNC to Fiserv, and Fiserv to
-merchant, ensuring that direct subscriber-to-Fiserv or subscriber-to-merchant interactions do not
-occur.
-The system also manages comprehensive payment lifecycle tracking to ensure electronic fund
-transfers are completed successfully. This includes receiving trace numbers for all transactions and
-maintaining detailed transaction records in the Partner Care system, which provides both PNC
-customer service representatives and Fiserv support teams with access to payment details for
-customer assistance and issue resolution.
-An important operational characteristic is that the system implements different payment models
-depending on configuration. The current risk model approach pays merchants first and then
-collects funds from subscriber accounts, ensuring merchants receive payments on time without
-delays caused by fund verification or collection timing. The system is transitioning toward a realtime good funds model through Check Free Next, which will verify and collect subscriber funds
-before sending payments to merchants, eliminating collection risks and providing improved
-payment certainty for all parties.
+The PNC mobile banking payment system serves as an intermediary application layer that sits
+between the mobile user interface and PNC's core payment processing operations, functioning as a
+critical bridge that enables customers to initiate various types of payments through their mobile
+devices while leveraging backend processing capabilities.
+Upstream Input Sources: The mobile banking application receives payment requests directly from
+the mobile user interface (UI) when customers initiate transactions through their mobile devices.
+The system processes customer-initiated transactions that include various payment types such as
+ACH payments, credit card payments, wire transfers (both international and domestic), Zelle
+transactions, internal transfers, and external transfers. Unlike web banking systems that may
+accept bulk file uploads, the mobile platform exclusively handles individual transactions initiated
+in real-time by customers through the mobile interface.
+When customers use the mobile application to initiate payments, the system receives
+comprehensive transaction details from the UI including selected accounts (both from and to
+accounts), payment amounts, payment types, timing specifications (whether it's a future
+payment or same-day payment), and customer identification information through the user
+party ID. The system also receives session information that includes the customer's unique party
+ID which serves as a key identifier throughout the payment processing workflow.
+Payment Type Diversity: The mobile system handles a comprehensive range of payment types
+that flow through the same processing architecture. These include ACH transactions (which fall
+under regular external transfers), credit card payments, loan payments, wire transfers for
+both international and domestic purposes, Zelle peer-to-peer payments, internal transfers
+between PNC accounts, and external transfers to accounts at other financial institutions.
+Downstream Processing Architecture: All payment requests received from the mobile UI are sent
+downstream to PPO (Payment Processing Operations), which serves as the central payment
+processing engine for mobile-initiated transactions. The mobile application does not perform
+actual payment processing but rather serves as a collection and validation layer that packages
+customer input and forwards it to specialized payment processing systems.
+PPO Integration and Responsibilities: When the mobile system sends payment requests to PPO,
+it includes all necessary transaction details in a structured format. PPO performs multiple critical
+functions including payment eligibility evaluation, account verification, payment type
+determination, business rule validation (such as wire limits based on customer profiles), and actual
+payment execution. PPO also handles writing payment information to the DSP (Data Streaming
+Platform) which serves as the central database for payment tracking and history management.
+Payment Eligibility and Validation Workflow: The mobile system implements a multi-step
+validation process where it first sends an evaluation call to PPO with the selected accounts to
+determine eligible payment types and account combinations. PPO returns information about
+which payment types are available for the selected accounts, and the mobile system presents these
+options to customers. Once customers make their selections, the mobile system performs a
+payment evaluation through PPO to confirm the transaction details, and only after confirmation
+does it submit the actual payment through PPO.
+Data Flow to DSP Database: After successful payment processing, PPO writes payment details
+to the DSP database, which serves as the central repository for payment information that enables
+payment history retrieval, status tracking, and customer service support. When customers access
+their payment history through the mobile application, the system retrieves information from the
+DSP database that has been populated by PPO's payment processing activities.
+Real-Time Processing Model: Unlike batch processing systems, the mobile banking payment
+architecture operates on a real-time transaction processing model where each customer
+interaction triggers immediate API calls to backend processing systems. This enables immediate
+validation, confirmation, and processing of payment requests without requiring customers to
+wait for batch processing cycles or file transmission windows.
 Question 2: In what format do you receive transactions/files/information?
 Answer:
-The PNC bill pay system primarily operates through real-time API transactions rather than
-traditional file-based processing, reflecting the modern digital banking approach where customers
-interact directly through web interfaces rather than submitting batch files for processing.
-Primary Input Method - API Transactions: The predominant format for receiving transaction
-requests is through direct API calls initiated when customers use the PNC online banking interface
-to access bill pay functionality. When customers navigate to the bill pay section, the system receives
-their requests in real-time API format that includes payment details such as amounts, payment
-dates, merchant information, and specific timing requirements for payment delivery.
-These API transactions are processed immediately as customers interact with the system, enabling
-real-time validation of payment requests including merchant verification, payment date feasibility
-checks, and payment method determination (electronic versus draft check processing). The API
-format allows the system to provide immediate feedback to customers about payment scheduling
-feasibility and automatically adjust payment processing timelines based on payment method
-requirements.
-Optional File-Based Processing: While API transactions represent the primary input method, the
-system does support optional SIS (Subscriber Information System) batch file processing for
-certain client configurations. Some customers can set up payments through batch files that are
-delivered in the evening, but actual payment processing does not occur until these file deliveries
-are received and validated. This batch processing capability represents an alternative setup option
-that accommodates different customer operational preferences, though it is not the standard
-processing method.
-File Delivery Protocols: When file-based processing is utilized, the system employs custom
-encrypted file transfer protocols for secure delivery of payment instructions. These files are
-transmitted through encrypted file interfaces that establish direct system-to-system dialogue
-rather than using portal-based file retrieval methods. The file transfer system uses specific IP
-addresses for secure communication and maintains detailed delivery confirmation tracking.
-System Integration Formats: The bill pay system receives various types of information through
-different format channels depending on the specific function being performed. Electronic bill data
-is received directly from merchants in electronic format and loaded into the banking system,
-enabling customers to view and pay bills directly through the interface. Authentication and
-verification data is exchanged with Fiserv through API calls to confirm customer access rights and
-account status.
-Customer Input Validation: When customers provide payment instructions through the online
-interface, the system receives this information in structured API format that includes all necessary
-payment parameters. The system immediately validates this input by sending verification calls to
-Fiserv to confirm merchant electronic payment capability, determine appropriate payment
-timing requirements, and establish whether payments will be processed electronically or require
-draft check generation.
-The format structure ensures that all customer payment requests include essential elements such as
-payment amounts, merchant identification, requested payment dates, and customer account
-information necessary for successful payment processing and fund collection from subscriber
-accounts.
+The PNC mobile banking payment system operates exclusively through real-time API-based
+transaction processing rather than traditional file-based input methods, reflecting the modern
+mobile banking approach where customers interact directly through application interfaces rather
+than submitting structured data files.
+Primary Input Format - JSON API Transactions: The mobile banking system receives all
+transaction requests in JSON (JavaScript Object Notation) format through API calls initiated
+from the mobile user interface. When customers use their mobile devices to initiate payments,
+their input is immediately converted into structured JSON format that includes all necessary
+payment parameters such as account selections, payment amounts, payment types, timing
+specifications, and customer identification information.
+Real-Time UI Integration: The transaction format originates from direct customer input through
+the mobile application interface where customers select accounts, enter payment amounts,
+choose payment dates, and specify other transaction details. This information is immediately
+structured into JSON format and transmitted through secure API calls to the mobile banking
+backend systems for processing validation and execution.
+Absence of File-Based Processing: Unlike web banking systems that may accept bulk transaction
+files or batch uploads, the mobile banking platform does not support file-based transaction
+submission. Customers cannot upload spreadsheets, CSV files, or other structured data files
+containing multiple transactions. The system is designed exclusively for individual transaction
+initiation through the mobile interface, ensuring that each payment request is handled as a
+discrete, real-time transaction.
+Structured JSON Data Elements: The JSON format received by the mobile system includes
+comprehensive transaction data elements necessary for payment processing. These elements
+include from account identification, to account identification, payment amounts, payment
+type specifications, transaction timing (same-day or future-dated payments), customer party
+ID for identification, session information for security validation, and any additional
+parameters required for specific payment types such as wire transfer details or international
+payment specifications.
+Customer Authentication and Session Data: In addition to transaction-specific information, the
+mobile system receives authentication and session data that validates customer identity and
+authorization to perform payment transactions. This includes user party ID information that
+uniquely identifies customers and links their payment requests to their specific account
+relationships and authorization profiles.
+Payment Type Specific Formatting: Different payment types may require additional data
+elements within the JSON structure. For example, wire transfers include specific routing
+information, international payment details, and regulatory compliance data, while Zelle
+transactions include recipient identification information and peer-to-peer payment
+specifications. The JSON format accommodates these varying data requirements while
+maintaining consistent structure across all payment types.
+Business Rule Validation Input: The mobile system receives business rule parameters that
+enable real-time validation of transaction requests. This includes information about customer
+profile limitations, account balance verification requirements, daily or monthly payment
+limits, and regulatory compliance parameters that must be validated before payment processing
+can proceed.
+Error Handling and Validation Response: When transaction requests are received in JSON format,
+the mobile system immediately validates format compliance, data completeness, and business
+rule adherence. Any formatting errors, missing data elements, or business rule violations result in
+immediate error responses that are communicated back to customers through the mobile
+interface, enabling real-time correction and resubmission.
+Integration with Backend Processing: The JSON format received by the mobile system is
+designed for seamless integration with downstream processing systems, particularly PPO, which
+expects structured data in specific formats for payment evaluation, validation, and execution. The
+mobile system ensures that all necessary data elements are properly formatted and included to
+support comprehensive payment processing workflows.
 Question 3: In what format do you send transactions/files/information?
 Answer:
-The PNC bill pay system transmits information through multiple formats and channels depending
-on the destination system and the type of data being communicated, with different approaches for
-operational reporting, payment processing, and system integration communications.
-Operational Reporting Files to PNC: The system generates and transmits several structured data
-files to PNC on regular schedules to maintain operational oversight and customer service
-capabilities. The subscriber activity file is transmitted monthly and contains comprehensive
-information about all activities that subscribers perform within the bill pay system, including
-payment setups, modifications, cancellations, and account management activities.
-The payment history file is sent weekly (Monday through Friday) and contains detailed
-information about all payment-related activities, transactions, and status changes. This file provides
-PNC with comprehensive visibility into payment processing activities for customer service support,
-operational monitoring, and audit trail maintenance.
-Specialized File Formats: For specific integration requirements, the system generates CAF
-(Customer Account File) or TDF (Transaction Data File) formats that are transmitted daily
-Tuesday through Friday. These files serve particular integration needs and maintain specific data
-structures required by downstream PNC systems for operational processing and customer account
-management.
-API Communications with Fiserv: Payment processing communications with Fiserv occur through
-structured API calls that contain all necessary payment instruction data including customer
-identification, merchant details, payment amounts, processing dates, and payment method
-specifications. These API communications enable real-time payment processing coordination and
-immediate response confirmation for payment scheduling and execution.
-Response and Confirmation Files: The system maintains response files that document all API
-calls and responses exchanged between systems, ensuring complete audit trails and enabling
-verification that all systems remain synchronized across the payment processing workflow. These
-response files confirm successful communication delivery and provide troubleshooting data when
-system integration issues occur.
-Payment Processing Instructions: When payments are ready for execution, the system sends
-payment processing instructions to Fiserv containing all details necessary for merchant payment
-delivery. For electronic payments, these instructions include ACH routing information, merchant
-electronic payment identifiers, and precise payment amounts and timing requirements.
-For draft check payments, the system sends detailed payment information to Fiserv's payment
-processing center, which then generates physical checks, places them in envelopes, and manages
-postal delivery to merchants. These instructions include complete merchant mailing addresses,
-payment amounts, customer account information for fund collection, and specific timing
-requirements to ensure delivery before payment due dates.
-Collection and Settlement Communications: The system sends fund collection instructions to
-facilitate debiting subscriber accounts after merchant payments are completed. Under the current
-risk model, these communications occur after merchant payments are made to ensure timely
-payment delivery while managing collection timing separately from payment processing.
-Customer Service Integration: All payment activity data is formatted and transmitted to the
-Partner Care system that PNC customer service representatives and Fiserv support teams access
-for customer assistance. This system receives comprehensive payment details in structured formats
-that enable rapid customer inquiry resolution and payment status verification.
-Secure Transmission Protocols: All file and data transmissions utilize encrypted communication
-protocols with specific IP address authentication and secure file transfer mechanisms that ensure
-data security and transmission reliability throughout all system integrations and external
-communications.
+The PNC mobile banking system transmits all payment information and transaction requests in
+JSON format through secure API communications to downstream processing systems, maintaining
+consistency with modern web service standards and ensuring reliable data transmission throughout
+the payment processing workflow.
+Primary Output Format - JSON API Communications: All transaction requests and payment
+information are sent from the mobile banking system to PPO (Payment Processing Operations)
+in JSON format through structured API calls. When customers submit payment requests through
+the mobile interface, the system packages all transaction details into comprehensive JSON
+payloads that include account information, payment amounts, timing specifications, customer
+identification, and payment type details necessary for downstream processing.
+Structured API Call Architecture: The mobile system implements multiple types of API calls to
+PPO depending on the stage of payment processing. Initial evaluation calls are sent in JSON
+format to determine account eligibility and available payment types for customer selections.
+Payment evaluation calls are transmitted in JSON format to validate specific transaction details
+and confirm processing feasibility. Final payment submission calls are sent in JSON format to
+execute approved transactions and initiate actual payment processing.
+Comprehensive Transaction Data Transmission: The JSON format used for downstream
+transmission includes all necessary data elements collected from customer input and system
+validation processes. This includes from account identification, to account identification,
+payment amounts, payment type specifications, transaction dates and timing, customer
+party ID for identification, session information for security validation, business rule
+parameters for compliance verification, and any specialized data required for specific
+payment types such as wire transfers or international payments.
+PPO Integration Specifications: All JSON transmissions to PPO follow standardized API contract
+specifications that ensure consistent data formatting and reliable system integration. The mobile
+system formats transaction data according to PPO's expected JSON schema that includes specific
+field names, data types, validation requirements, and structural specifications necessary for
+successful payment processing.
+Payment Type Specific Formatting: Different payment types require specialized JSON
+formatting to accommodate varying processing requirements. Wire transfers include additional
+routing information, international payment specifications, and regulatory compliance data.
+Zelle transactions include peer-to-peer payment identifiers and recipient validation
+information. ACH transactions include standard banking routing and account information.
+The mobile system customizes JSON payloads based on payment type while maintaining
+consistent overall structure.
+Real-Time Response Handling: After sending JSON-formatted payment requests to PPO, the
+mobile system receives JSON-formatted responses that include processing status, confirmation
+numbers, error messages, or additional validation requirements. These responses are immediately
+processed by the mobile system and converted into appropriate user interface messages and
+status updates for customer communication.
+DSP Database Integration: When PPO successfully processes payments, it writes payment
+information to the DSP (Data Streaming Platform) database using data originally transmitted
+from the mobile system in JSON format. This ensures that payment history and status
+information retrieved later by the mobile system maintains consistency with the original
+transaction data submitted through JSON API calls.
+Error Communication and Validation: When payment submissions encounter validation errors or
+processing issues, error information is communicated back to the mobile system in JSON
+format through PPO responses. The mobile system processes these JSON error responses and
+converts them into user-friendly error messages displayed through the mobile interface, enabling
+customers to understand issues and make necessary corrections.
+Security and Encryption: All JSON transmissions between the mobile system and downstream
+processing systems utilize secure API protocols with encryption to protect sensitive customer
+financial information. The JSON format accommodates security headers, authentication tokens,
+and encrypted data elements necessary for compliance with financial industry security standards.
+Audit Trail and Logging: The mobile system maintains comprehensive logging of all JSON API
+communications with downstream systems to support audit trail requirements, troubleshooting
+activities, and regulatory compliance verification. These logs capture complete request and
+response data while maintaining appropriate security controls for sensitive financial information.
 Question 4: Do you have any unique identifier that you add to the
 transactions from your system? Do you pass that to the next system in the
 step? Do you create a new one? If so, do you maintain an index?
 Answer:
-The PNC bill pay system implements comprehensive transaction identification and tracking
-mechanisms that enable complete payment lifecycle monitoring and cross-system coordination,
-though the specific technical details of unique identifier structures were not extensively detailed in
-the operational discussion.
-Payment Lifecycle Tracking: The system maintains detailed tracking of payment lifecycles to
-ensure that electronic fund transfers are completed successfully from initiation through final
-settlement. This tracking capability suggests the presence of unique transaction identifiers that
-enable monitoring of payment status changes and processing milestones throughout the entire
-payment workflow.
-Trace Number Management: When payments are processed, the system receives trace numbers
-that provide unique identification for each transaction. These trace numbers enable tracking and
-verification of payment delivery and facilitate communication with Fiserv regarding specific
-payment status inquiries or issue resolution. The trace numbers appear to be generated by
-downstream processing systems rather than being created by the bill pay system itself.
-Cross-System Integration Identifiers: All payment information and transaction details are
-maintained in the Partner Care system, which provides access to both PNC customer service
-representatives and Fiserv support teams. This system architecture requires consistent unique
-identification mechanisms that enable rapid transaction lookup and customer inquiry resolution
-across multiple support platforms.
-API Transaction Identification: Since the system operates primarily through API call
-communications with Fiserv, each API transaction likely includes unique identifiers that enable
-request and response correlation, ensuring that payment instructions and confirmation responses
-can be properly matched and tracked throughout the processing workflow.
-Payment Method Specific Tracking: The system processes payments through multiple channels
-including ACH, electronic check, draft check, and virtual card payments, each of which likely
-requires specific identification structures appropriate to the payment method. Different payment
-types may utilize different identifier formats or additional tracking elements based on processing
-requirements and industry standards.
-Collections Process Identification: When payments cannot be collected from subscriber accounts
-due to account closures, fraud holds, or other invalid account statuses, the system places
-accounts in collection status and maintains tracking of outstanding payment amounts. This
-collections management requires unique identification of both the original payment transaction
-and the subsequent collection activity.
-Response File Documentation: The system maintains response files that document all API calls
-and responses between systems, indicating that each communication exchange includes
-identification elements that enable verification of successful message delivery and system
-synchronization. These response files suggest comprehensive identifier management for audit trail
-and troubleshooting purposes.
-Customer Service Integration: The availability of complete payment details in the Partner Care
-system for customer service purposes indicates that robust unique identification systems enable
-rapid access to specific transaction information when customers contact support with payment
-inquiries or issues requiring investigation.
-System Migration Considerations: With the ongoing transition from the current risk model to the
-Check Free Next real-time good funds model, the system likely maintains identifier structures
-that support both current operations and migration to new processing capabilities, ensuring
-continuity of tracking and customer service capabilities throughout the system modernization
-process.
-While the operational discussion did not provide extensive technical details about specific unique
-identifier formats, naming conventions, or database indexing structures, the comprehensive
-payment tracking capabilities and cross-system integration requirements clearly indicate
-sophisticated unique identification management that enables reliable payment processing and
-customer service support throughout the bill pay ecosystem.
+The PNC mobile banking system implements a multi-layered unique identification approach
+that combines customer-specific identifiers with transaction-specific identifiers to ensure
+comprehensive tracking throughout the payment processing lifecycle, with different identifier types
+serving different purposes in the payment workflow.
+Primary Customer Identification - User Party ID: The mobile system utilizes the user party ID as
+the primary customer identifier that uniquely identifies each customer within the mobile banking
+system. This identifier is not created by the mobile system itself but rather represents the
+customer's unique identification within PNC's broader customer management systems. The user
+party ID is passed to all downstream systems including PPO to ensure that payment requests are
+properly attributed to the correct customer account relationships.
+Transaction Identification Through Combination Approach: Rather than creating a single
+unique transaction identifier, the mobile system initially relies on a combination of multiple data
+elements to uniquely identify payment requests. This combination includes user party ID, account
+selections (both from and to accounts), payment amounts, payment types, and transaction
+timing information. This multi-element approach ensures that each payment request can be
+uniquely identified even before downstream processing systems assign formal confirmation
+numbers.
+Downstream Confirmation Number Generation: When payment requests are successfully
+processed by PPO (Payment Processing Operations), PPO generates a unique confirmation
+number that serves as the definitive transaction identifier throughout the payment lifecycle. This
+confirmation number is created by PPO rather than the mobile system and represents the
+authoritative unique identifier for each completed payment transaction.
+Confirmation Number Management and Storage: The confirmation numbers generated by
+PPO are stored in the DSP (Data Streaming Platform) database and are passed back to the
+mobile system for customer communication and future reference. These confirmation numbers
+serve as the primary tracking mechanism for payment status inquiries, customer service support,
+and payment history retrieval. The mobile system maintains access to these confirmation
+numbers through its integration with the DSP database but does not create or modify them
+independently.
+Duplicate Transaction Prevention: The system implements sophisticated duplicate prevention
+logic that considers timing elements in addition to basic transaction parameters. Even when
+customers submit payments with identical user party IDs, account selections, and payment
+amounts, the system incorporates transaction timing information to ensure that each payment
+receives a unique confirmation number. For example, if a customer schedules identical weekly
+payments, each payment receives a distinct confirmation number based on its specific processing
+date and time.
+Transaction State Tracking: The mobile system can track payments throughout different
+processing states using the confirmation numbers assigned by PPO. Payments in pending states
+maintain the same confirmation number as they progress through processing, with status
+updates reflected in the DSP database. Whether payments are pending, completed, rejected, or
+canceled, they retain the same unique confirmation number for consistent tracking throughout
+their lifecycle.
+Database Indexing and Retrieval: The DSP database maintains comprehensive indexing of
+confirmation numbers and associated transaction details to support rapid retrieval for customer
+service inquiries and payment history displays. The mobile system accesses this indexed
+information when customers request payment status updates or review their transaction history
+through the mobile interface.
+Customer Service and Support Integration: The confirmation numbers serve as critical
+customer service tools that enable both customers and support representatives to quickly locate
+and discuss specific payment transactions. When customers contact support with payment
+inquiries, confirmation numbers provide immediate access to complete transaction details,
+processing status, and any issues that may require resolution.
+Cross-System Integration: The confirmation numbers generated by PPO are recognized and
+utilized across multiple PNC systems beyond just the mobile banking platform. This ensures that
+payment tracking and customer service capabilities remain consistent whether customers
+access information through mobile banking, web banking, customer service channels, or other PNC
+interfaces.
+Audit Trail and Compliance: The unique identification system supports comprehensive audit
+trail requirements by ensuring that every payment transaction can be definitively tracked from
+initiation through completion. The combination of user party IDs and PPO-generated confirmation
+numbers provides complete accountability for all payment processing activities and supports
+regulatory compliance verification.
+Future Reference and Historical Access: Once assigned, confirmation numbers remain
+permanently associated with their respective payment transactions, enabling long-term historical
+tracking and reference. Customers can retrieve payment information months or years later
+using confirmation numbers, and the mobile system maintains access to this historical data through
+its DSP database integration.
 Question 5: Do you have any reporting that captures the activity that
 takes place at your stop in the lifecycle of a transaction? If so, where is
 that hosted? Are there consumers for said report today?
 Answer:
-The PNC bill pay system maintains extensive reporting capabilities that comprehensively capture all
-transaction activity and customer interactions occurring within the bill pay platform, with multiple
-reporting systems serving different operational and customer service requirements.
-Partner Care System: The primary reporting and customer service platform is the Partner Care
-system, which houses comprehensive information about all payment activities and customer
-interactions. This system provides detailed access to PNC customer service representatives and
-Fiserv customer service representatives, enabling both organizations to assist customers with
-payment inquiries, troubleshooting, and issue resolution. The Partner Care system maintains
-complete visibility into customer payment profiles, transaction histories, and account status
-information necessary for effective customer support operations.
-Subscriber Activity File Reporting: The system generates monthly subscriber activity files that
-capture comprehensive information about all activities that customers perform within the bill pay
-system. These reports document payment setups, payment modifications, payment cancellations,
-recurring payment configurations, account management activities, and all other customer
-interactions with the bill pay platform. This monthly reporting provides PNC with detailed
-operational oversight and enables analysis of customer usage patterns and system utilization
-trends.
-Payment History File Reporting: Weekly payment history files are generated Monday through
-Friday that contain detailed information about all payment-related transactions and activities. These
-reports provide comprehensive documentation of payment processing activities, status changes,
-successful completions, and any issues or exceptions that occur during payment processing. The
-payment history reporting enables operational monitoring, audit trail maintenance, and detailed
-analysis of payment processing performance and reliability.
-Daily Operational Files: The system produces daily CAF (Customer Account File) or TDF
-(Transaction Data File) reports that are transmitted Tuesday through Friday. These specialized
-reports serve specific operational integration needs and provide structured data about customer
-account activities and transaction processing that support downstream PNC systems and
-operational processes.
-Response File Documentation: The system maintains comprehensive response files that
-document all API calls and responses exchanged between the bill pay system and Fiserv processing
-systems. These response files provide detailed audit trails of all system communications, enable
-verification that systems remain properly synchronized, and support troubleshooting activities when
-system integration issues occur. These files capture the complete dialogue between systems and
-ensure accountability for all transaction processing communications.
-Collections Activity Reporting: When accounts are placed in collection status due to inability to
-collect funds from subscriber accounts, the system maintains detailed reporting about collection
-activities, outstanding amounts, and resolution status. This collections reporting enables
-management of accounts that cannot complete the payment collection process and tracks
-resolution of outstanding payment obligations.
-Electronic Bill Integration Reporting: The system captures comprehensive information about
-electronic bill delivery and processing, including bills received from merchants, bills presented to
-customers, and customer payment responses to electronic bill presentations. This reporting
-provides visibility into the complete electronic bill presentment and payment cycle.
-Customer Service Access and Usage: Both PNC customer service representatives and Fiserv
-support teams actively use these reporting systems to provide customer assistance. When
-customers contact support with payment inquiries, representatives can access comprehensive
-payment details, transaction histories, and account status information through the Partner Care
-system. This enables rapid issue resolution and detailed explanation of payment processing status
-to customers.
-System Performance and Operational Monitoring: The various reporting systems provide
-operations teams with detailed visibility into system performance, transaction processing
-volumes, success rates, and exception handling activities. This operational reporting enables
-proactive system management and rapid identification of processing issues that may require
-attention or system adjustments.
-Report Hosting and Accessibility: The reporting systems are hosted within the Fiserv
-infrastructure as part of the bill pay service platform, with appropriate access provided to PNC
-personnel who require visibility into customer activities and payment processing for operational
-and customer service purposes. The hosting arrangement ensures that reporting capabilities are
-maintained and updated as part of the overall bill pay service delivery.
-Regulatory and Compliance Reporting: The comprehensive transaction documentation and
-reporting capabilities support regulatory compliance and audit requirements by maintaining
-detailed records of all customer activities, payment processing, and system interactions throughout
-the payment lifecycle.
+The PNC mobile banking system maintains comprehensive reporting capabilities that capture
+detailed transaction activity and payment status information, with multiple reporting mechanisms
+serving both customer-facing and operational requirements through integrated database systems
+and user interface components.
+Primary Reporting System - Payment History: The mobile banking system provides detailed
+payment history reporting that displays comprehensive information about all customer payment
+transactions processed through the mobile platform. This payment history includes pending
+payments, completed payments, canceled payments, and other transaction status categories
+that enable customers to track their payment activity comprehensively. The payment history
+functionality serves as the primary customer-facing reporting mechanism for transaction
+monitoring and status verification.
+Payment Status Categorization: The reporting system categorizes payments into distinct status
+groups that provide clear visibility into transaction progression. Pending payments are displayed
+separately from completed payments, with completed status encompassing various final states
+including successfully processed payments, canceled transactions, and rejected payments.
+Once payments reach a completed status, customers can no longer modify or interact with
+them, providing clear delineation between active and finalized transactions.
+DSP Database as Reporting Foundation: All payment history and transaction reporting is
+supported by the DSP (Data Streaming Platform) database, which serves as the central
+repository for payment information used by the mobile banking system. The DSP database is
+hosted on Oracle database technology and maintains comprehensive records of all payment
+transactions processed through the mobile platform. This database serves as the authoritative
+source for payment status information and transaction history data.
+Real-Time Reporting Updates: The reporting system provides real-time status updates through
+its integration with PPO and the DSP database. When PPO initially processes payments, it writes
+transaction information to the DSP database with initial status indicators. As payments progress
+through processing stages, PPO updates the DSP database with current status information,
+ensuring that mobile banking reporting reflects the most current payment status available.
+Customer Dashboard Integration: The mobile banking system includes a comprehensive
+customer dashboard that displays recent payment activity and transaction status information. This
+dashboard provides customers with immediate visibility into their payment processing activity
+including wire transfers, ACH transactions, and other payment types. The dashboard serves as a
+centralized reporting interface that eliminates the need for customers to search through multiple
+screens or sections to understand their payment activity.
+Activity Tracking and Transaction Monitoring: Beyond basic payment history, the reporting
+system captures comprehensive activity data about customer interactions with payment
+processing features. This includes transaction initiation attempts, error encounters, successful
+submissions, and status changes throughout the payment lifecycle. This activity tracking supports
+both customer service needs and operational monitoring requirements.
+Kafka Integration for Data Streaming: The DSP database utilizes Kafka topics for data
+integration and real-time information streaming. PPO publishes payment information to Kafka
+topics that are subsequently mapped to the DSP database, ensuring that reporting data is
+updated in near real-time as payment processing activities occur. This Kafka-based architecture
+enables efficient data movement and supports scalable reporting capabilities.
+Cross-System Reporting Consistency: The mobile banking reporting system maintains
+consistency with other PNC banking channels including web banking applications. The same
+DSP database and underlying data structures support reporting across multiple customer access
+channels, ensuring that customers see consistent payment information regardless of how they
+access PNC banking services.
+Customer Service Support Integration: The reporting capabilities extend beyond customerfacing interfaces to support customer service representatives and support teams who need
+access to detailed payment information for inquiry resolution. The DSP database provides
+comprehensive transaction details that enable customer service teams to assist customers with
+payment status questions, processing issues, and transaction history inquiries.
+Operational Monitoring Capabilities: While specific operational reporting metrics were not
+detailed in the discussion, the comprehensive data capture in the DSP database supports
+operational monitoring and performance analysis of mobile banking payment processing. This
+includes the ability to track transaction volumes, processing success rates, error frequencies,
+and other operational metrics necessary for system performance monitoring and improvement.
+Database Management and Hosting: The Oracle-based DSP database hosting provides
+enterprise-grade reliability and performance for reporting operations. The database infrastructure
+supports high-volume transaction logging, rapid data retrieval for customer inquiries, and
+comprehensive data retention for historical reporting and compliance requirements.
+Integration with Payment Processing Workflow: The reporting system is fully integrated with
+the payment processing workflow rather than operating as a separate reporting mechanism. This
+integration ensures that all payment processing activities are automatically captured in
+reporting data without requiring separate data entry or manual reporting processes that could
+introduce errors or omissions.
 Question 6: Is your data being streamed (KAFKA stream, etc) anywhere?
 For example, a warehouse like COD.
 Answer:
-The meeting transcript does not contain any specific information about data streaming
-technologies such as Kafka streams or data warehouse integration such as COD (Corporate Online
-Data warehouse). The discussion focused primarily on the operational aspects of the bill pay
-system, payment processing workflows, and file-based reporting mechanisms rather than modern
-streaming data architectures.
-Current Data Architecture Characteristics: Based on the information provided, the bill pay system
-appears to operate through traditional API-based communications and scheduled file transfers
-rather than real-time streaming technologies. The system generates weekly payment history files,
-monthly subscriber activity files, and daily specialized reports that follow batch processing
-patterns typical of traditional data integration approaches rather than continuous streaming
-models.
-File-Based Data Movement: The system implements structured file delivery schedules for
-operational reporting, with payment history files transmitted weekly Monday through Friday,
-subscriber activity files sent monthly, and specialized CAF/TDF files delivered daily Tuesday through
-Friday. This scheduled file-based approach suggests that data movement follows traditional batch
-processing patterns rather than real-time streaming architectures.
-API Communication Model: The primary system interactions occur through API calls between
-PNC online banking, the bill pay system, and Fiserv processing systems. These API
-communications appear to follow request-response patterns for payment processing and customer
-authentication rather than continuous data streaming for analytics or data warehouse population.
-Response File Documentation: The system maintains response files that document API calls
-and responses between systems, indicating a transaction-based communication model that
-focuses on payment processing completion and system synchronization verification rather than
-continuous data streaming for analytical purposes.
-Integration with Partner Care System: The comprehensive customer service integration through
-the Partner Care system suggests that operational data is maintained within the bill pay service
-platform rather than being streamed to external data warehouses or analytics platforms for
-additional processing.
-Need for Technical Clarification: The operational nature of the discussion means that technical
-architecture details about data streaming, warehouse integration, or modern analytics
-infrastructure were not covered in the meeting. To obtain definitive information about streaming
-technologies, data warehouse integration, or COD connectivity, additional consultation with
-application development teams or technical architecture specialists would be necessary.
-Potential for Modern Data Architecture: While the current discussion suggests traditional filebased and API-based data movement, the ongoing migration to Check Free Next and
-modernization of payment processing capabilities may include implementation of streaming
-technologies or enhanced data integration capabilities that were not detailed in the operational
-overview provided.
-Recommendation for Follow-Up: Given the importance of understanding data streaming and
-warehouse integration capabilities for comprehensive system analysis, follow-up discussions with
-technical teams would be valuable to obtain specific information about Kafka implementation,
-COD integration, real-time data streaming capabilities, or other modern data architecture
-components that may be part of the bill pay system infrastructure.
+The PNC mobile banking system implements comprehensive data streaming capabilities
+through Kafka-based architecture that enables real-time data movement and integration with
+enterprise data platforms, representing a modern approach to payment transaction data
+management and analytics support.
+Kafka Topics Integration: The mobile banking system utilizes Kafka topics as a central
+component of its data streaming architecture. PPO (Payment Processing Operations) publishes
+payment transaction data to Kafka topics that serve as the primary mechanism for real-time data
+distribution throughout PNC's technology infrastructure. This Kafka-based approach enables
+immediate data availability for downstream systems and analytics platforms rather than relying
+on traditional batch processing methods.
+DSP Database Data Flow: The DSP (Data Streaming Platform) database receives payment
+information through Kafka topics that are mapped directly to database storage structures.
+When PPO processes mobile banking payment transactions, it publishes transaction details to
+designated Kafka topics, and these topics are automatically processed and stored in the Oraclebased DSP database. This streaming approach ensures that payment status updates and
+transaction information are available in near real-time for customer reporting and system
+integration purposes.
+Real-Time Data Streaming Architecture: Unlike traditional batch processing systems that update
+data on scheduled intervals, the mobile banking system's Kafka-based streaming architecture
+provides continuous data flow that enables immediate data availability for reporting, customer
+service, and operational monitoring. This real-time streaming capability supports the mobile
+banking requirement for immediate customer feedback and status updates when payment
+transactions are processed.
+Enterprise Data Integration: While specific details about COD (Corporate Online Data
+warehouse) integration were not extensively covered in the operational discussion, the Kafka
+streaming infrastructure provides the foundation for enterprise data warehouse integration. The
+Kafka topics that capture mobile banking payment data can be configured for distribution to
+multiple downstream systems including data warehouses, analytics platforms, and reporting
+systems that require payment transaction information.
+Multi-Channel Data Streaming: The DSP database and Kafka integration serves multiple PNC
+banking channels beyond just mobile banking, suggesting that the data streaming architecture
+supports comprehensive enterprise data requirements. This multi-channel approach ensures that
+payment data from mobile banking transactions is available for cross-channel analytics,
+customer service support, and enterprise reporting that spans multiple customer interaction
+platforms.
+Data Streaming Contacts and Expertise: The mobile banking team acknowledged that they are
+not experts on the detailed technical aspects of the Kafka streaming implementation and
+provided contact information for DSP specialists who can provide comprehensive technical
+details about streaming architecture, data warehouse integration, and enterprise data flow
+management. This suggests that sophisticated data streaming capabilities exist beyond what is
+visible to application development teams.
+Operational Versus Technical Architecture: The discussion revealed that while application teams
+utilize Kafka streaming capabilities through their integration with PPO and DSP systems, the
+detailed technical architecture and data warehouse integration are managed by specialized
+data platform teams who have comprehensive expertise in enterprise data streaming and
+warehouse management.
+Scalable Data Architecture: The Kafka-based streaming approach provides scalable data
+architecture that can accommodate high-volume transaction processing typical of mobile banking
+operations. This scalability ensures that data streaming capabilities can support growing
+transaction volumes and additional data integration requirements as mobile banking usage
+continues to expand.
+Near Real-Time Data Availability: The Kafka streaming implementation enables near real-time
+data availability for customer service, operational monitoring, and analytics purposes. This
+immediate data availability supports responsive customer service, real-time operational
+monitoring, and current analytics reporting that provides value for both customer service and
+business operations.
+Enterprise Data Platform Integration: The Kafka topics and DSP database integration
+represent components of a broader enterprise data platform that likely includes data warehouse
+capabilities, analytics platforms, and business intelligence systems. While specific integration
+details require consultation with specialized technical teams, the infrastructure foundation exists
+to support comprehensive enterprise data requirements.
+Future Data Streaming Capabilities: The modern Kafka-based architecture provides flexibility
+for future data streaming enhancements and additional integration requirements. This
+foundation enables expansion of data streaming capabilities as business requirements evolve
+and additional systems require access to mobile banking payment transaction data.
+Technical Expertise and Support: For detailed information about specific data warehouse
+integration, COD connectivity, advanced streaming configurations, and enterprise data
+platform capabilities, the mobile banking team recommended consultation with DSP technical
+specialists who maintain comprehensive expertise in data streaming architecture and enterprise
+data management.
 Question 7: What happens if a file dies at your step in the process?
 Answer:
-The PNC bill pay system implements comprehensive error handling and recovery mechanisms that
-address various types of processing failures, with different approaches depending on the payment
-method and the specific point of failure in the payment lifecycle.
-Payment Collection Failures: The most significant failure scenario occurs when the system cannot
-collect funds from subscriber accounts after merchant payments have already been made under
-the current risk model approach. When subscriber accounts are closed, frozen for fraud, or have
-other invalid statuses, the system cannot complete the fund collection process, which triggers
-automatic placement of accounts into collection status.
-This collections process is managed entirely within Fiserv's internal collection system and is not
-reported externally to credit agencies or other financial reporting systems. The collection status
-prevents customers from using bill pay services through PNC until outstanding payment amounts
-are resolved. Fiserv maintains dedicated collection representatives and systems to contact
-customers and facilitate settlement of outstanding payment obligations.
-Cross-Institution Collection Enforcement: When customers attempt to access bill pay services
-through any other financial institution while having unresolved collection amounts with Fiserv,
-the system will automatically block access across all participating institutions. This comprehensive
-blocking mechanism ensures that collection issues are resolved before customers can resume bill
-pay services regardless of which bank they attempt to use for access.
-Account Reactivation Process: Once customers contact Fiserv collections and settle outstanding
-payment amounts, their bill pay profile is immediately reactivated and they regain full access to
-bill pay services through PNC. If customers never resolve the outstanding amounts, they remain
-permanently blocked from bill pay services through PNC and other participating financial
-institutions.
-Draft Check Payment Failure Handling: For draft check payments, failure scenarios are
-managed differently because funds are withdrawn directly from subscriber accounts rather than
-following the pay-first-collect-later model used for electronic payments. When draft check
-payments fail due to insufficient funds or account issues, customers experience immediate
-account debiting consequences without the intermediary collection process, since there is no risk
-exposure for Fiserv in the draft check payment model.
-Electronic Payment Processing Failures: When API calls or electronic payment processing
-encounters technical failures, the system maintains comprehensive response file documentation
-that tracks all communication exchanges between systems. This documentation enables rapid
-identification of communication failures and supports troubleshooting activities to resolve
-processing interruptions.
-Customer Service Integration for Failure Resolution: When payments fail or encounter
-processing issues, customers can contact PNC customer service representatives who have access
-to comprehensive payment details through the Partner Care system. Customer service
-representatives can contact Fiserv partner assist lines to collaborate on issue resolution, but
-Fiserv representatives cannot work directly with customers independently - all customer-facing
-interactions must be coordinated through PNC customer service.
-Multi-Tier Support Structure: The system implements multiple tiers of customer support for
-failure resolution. Tier two support (PNC's operational model) handles all customer-facing
-interactions, while tier one and tier 1.5 support (phone and email direct customer interaction) are
-not active for PNC customers. This ensures that failure resolution maintains proper channel
-management while providing comprehensive support capabilities.
-Automated System Communications: When processing failures occur, the system continues to
-provide automated confirmation messages to customers, such as enrollment confirmations or
-payment processing notifications, but does not engage in direct customer service communications
-from Fiserv representatives unless customers are working through collections processes for
-unresolved payment obligations.
-Migration to Good Funds Model Benefits: The planned transition to Check Free Next real-time
-good funds model will significantly reduce failure scenarios by verifying and collecting funds
-before sending payments to merchants. This approach eliminates collection risks and provides
-greater payment certainty by ensuring funds are available before payment processing begins,
-reducing the complexity of failure handling and recovery processes.
-Stop Payment Considerations: Customers must understand the implications of stop payment
-requests on different payment types. For electronic payments processed under the risk model, stop
-payments trigger collection status because merchants have already been paid. For draft check
-payments, stop payments can be processed normally since funds come directly from customer
-accounts without intermediate risk exposure.
+The PNC mobile banking system handles transaction failures and processing errors through
+comprehensive real-time error detection and customer communication mechanisms rather
+than traditional file-based failure scenarios, since the system processes individual transactions
+initiated directly by customers through the mobile interface rather than batch files.
+Individual Transaction Error Handling: Since the mobile banking system processes individual
+customer-initiated transactions in real-time rather than batch files, the concept of "file death" is
+replaced by individual transaction failure scenarios that can occur at various stages of the
+payment processing workflow. When individual transactions encounter processing issues, the
+system implements immediate error detection and customer notification to enable rapid issue
+resolution and transaction correction.
+PPO-Level Rejection and Error Processing: The majority of transaction failures occur at the PPO
+(Payment Processing Operations) level when payment requests are submitted for processing
+validation and execution. PPO performs comprehensive validation including account verification,
+payment limit checking, business rule compliance, and regulatory requirement verification. When
+PPO rejects transactions for any reason, it immediately returns error information to the
+mobile banking system in structured format that enables appropriate customer communication.
+Real-Time Error Communication to Customers: When transaction failures occur, the mobile
+banking system immediately communicates error information to customers through the mobile
+interface without requiring customers to wait for batch processing results or separate error
+notification processes. Error messages are displayed directly in the mobile application with
+specific information about the nature of the failure and guidance for correcting issues that prevent
+successful payment processing.
+Pre-Submission Validation and Inline Error Prevention: The mobile banking system implements
+comprehensive pre-submission validation that prevents many potential failures before
+transactions are sent to PPO for processing. Inline error checking occurs as customers enter
+payment information, including real-time validation of payment amounts against account
+limits, verification of account selections, and business rule compliance checking. This proactive
+validation prevents customers from submitting transactions that would inevitably fail during
+downstream processing.
+Service Availability Error Handling: When backend processing systems experience service
+outages or availability issues, the mobile banking system immediately notifies customers with
+service unavailable messages rather than allowing transactions to fail silently or remain in
+uncertain status. This immediate service status communication enables customers to understand
+when system issues prevent payment processing and allows them to retry transactions when
+services are restored.
+Duplicate Payment Detection and Prevention: The system implements sophisticated duplicate
+payment detection that identifies when customers attempt to submit identical payment requests
+within short timeframes. When duplicate payment scenarios are detected, the system provides
+immediate error messages that prevent unintended duplicate transactions while allowing
+customers to confirm intentional duplicate payments when appropriate.
+Customer Retry and Correction Mechanisms: When transaction failures occur, customers have
+immediate ability to retry transactions after addressing the issues that caused initial failures. The
+mobile interface maintains customer input data when errors occur, enabling customers to
+modify payment details and resubmit transactions without requiring complete re-entry of
+payment information. This streamlined retry process minimizes customer frustration and enables
+rapid transaction completion once issues are resolved.
+Error Status Tracking and History: When transactions fail during processing, the failure
+information is captured in the DSP database along with specific error details and timing
+information. This error history enables customer service representatives to provide detailed
+assistance when customers contact support about failed transactions, and it supports operational
+monitoring of error patterns that may indicate systematic issues requiring attention.
+Business Rule Validation Error Handling: The system provides specific error messaging for
+business rule violations such as exceeding wire transfer limits, attempting payments outside
+of allowed timeframes, or violating account-specific restrictions. These detailed error
+messages enable customers to understand the specific nature of business rule violations and
+make appropriate adjustments to ensure successful payment processing.
+Technical Error Recovery and Logging: When technical errors occur during API communications
+between the mobile system and PPO, the system implements comprehensive error logging and
+recovery mechanisms. These technical errors are logged for operational monitoring while
+appropriate user-friendly error messages are displayed to customers to explain service issues
+without exposing technical system details.
+Account Status Error Handling: When payment failures occur due to account status issues such
+as insufficient funds, account closures, or account restrictions, the system provides specific
+error messaging that enables customers to understand account-related issues that prevent
+successful payment processing. This account-specific error communication enables customers to
+take appropriate corrective action through account management or customer service channels.
+Integration with Customer Service Support: All transaction failure information is available to
+customer service representatives through the DSP database and Partner Care systems, enabling
+comprehensive customer support when customers need assistance resolving payment processing
+issues. Customer service representatives can access detailed error information and provide
+specific guidance for resolving issues that prevent successful payment completion.
 Question 8: What do you do if you didn't get a file or transaction that you
 were expecting to get on a certain day?
 Answer:
-The meeting transcript does not provide specific information about proactive monitoring or
-negative tracking capabilities for expected files or transactions that fail to arrive as scheduled. The
-discussion focused primarily on payment processing workflows and customer-initiated transaction
-handling rather than systematic monitoring of expected transaction volumes or file deliveries.
-File Delivery Dependencies: The system does implement file delivery requirements for certain
-processing scenarios, particularly for customers who utilize SIS batch file processing as an
-optional setup. In these cases, the system does not process any payments until file deliveries are
-received in the evening, indicating that there are dependencies on expected file arrivals for certain
-customer configurations.
-Optional File Processing Model: Since SIS batch file processing represents an optional setup
-rather than the standard processing method, the system appears to accommodate multiple
-processing approaches for different customer needs. When customers are configured for filebased processing, the system presumably has mechanisms to handle scenarios where expected files
-do not arrive as scheduled, though specific procedures were not detailed in the discussion.
-Lack of Comprehensive Volume Monitoring: Unlike systems that maintain detailed calendars of
-expected transaction volumes or implement sophisticated negative tracking capabilities, the bill pay
-system discussion suggests a primarily reactive approach to processing issues. The system
-appears to focus on processing transactions that are actually received rather than proactively
-monitoring for transactions or files that should have been received but are missing.
-Customer Service Response Model: When processing issues occur, the Partner Care system
-provides customer service representatives with access to comprehensive payment details and
-transaction histories. This suggests that missing transaction detection may rely primarily on
-customer inquiries rather than proactive system monitoring that would identify missing files or
-transactions before customers become aware of issues.
-Multi-Configuration Complexity: With the acknowledgment that "if we have a thousand
-different clients, we'll probably have about six different setups," the system accommodates
-significant variation in customer processing requirements. This complexity suggests that expected
-transaction patterns may vary significantly between customers, making systematic negative
-tracking challenging without detailed customer-specific configuration management.
-Technical Team Oversight Requirements: The discussion emphasized that detailed technical
-aspects of file processing, system interfaces, and specific setup configurations require consultation
-with application development teams for comprehensive understanding. This suggests that
-missing file monitoring procedures, if they exist, would be managed at the technical system level
-rather than the operational oversight level.
-API-Based Transaction Model: Since the primary transaction processing method utilizes real-time
-API calls rather than scheduled file deliveries, the concept of "missing transactions" may be less
-applicable to the standard customer experience. Customers initiate payments through the online
-interface on demand rather than following predictable batch submission schedules that could be
-monitored for missing activity.
-Response File Synchronization: The system maintains response files that verify API calls and
-responses between systems to ensure proper synchronization. This capability suggests that the
-system can identify communication failures or incomplete transaction exchanges, though this
-appears to focus on technical communication verification rather than business-level transaction
-volume monitoring.
-Collections Process Monitoring: The system does implement comprehensive monitoring of
-collection activities when payments cannot be completed due to account issues or fund collection
-failures. This suggests that the system has capabilities to track expected activities and outcomes,
-though this monitoring appears to focus on exception handling rather than routine transaction
-volume verification.
-Need for Technical Specification: To obtain detailed information about missing file handling
-procedures, expected transaction monitoring, or negative tracking capabilities, additional
-consultation with technical teams would be necessary. The operational overview provided indicates
-that such capabilities, if they exist, would be managed through technical system configurations
-rather than operational oversight processes.
-Future System Capabilities: The planned migration to Check Free Next may include enhanced
-monitoring and tracking capabilities that address missing transaction scenarios, though specific
-details about these capabilities were not discussed in the operational overview.
+The PNC mobile banking system operates on a customer-initiated transaction model rather than
+scheduled file delivery or expected transaction volume monitoring, which fundamentally changes
+the approach to handling missing or expected transactions compared to batch processing systems.
+Customer-Initiated Transaction Model: The mobile banking system does not implement
+proactive monitoring for expected transactions or files because all payment processing is
+triggered directly by customer interactions through the mobile interface. Unlike systems that
+expect scheduled file deliveries or predetermined transaction volumes, the mobile platform
+processes transactions only when customers actively initiate them through the mobile
+application interface.
+Absence of Negative Tracking Capabilities: The mobile banking team explicitly confirmed that
+they do not perform negative tracking where the system would monitor for expected transaction
+volumes from specific customers or alert when anticipated transactions fail to materialize. The
+system does not maintain calendars of expected transaction patterns or implement monitoring
+capabilities that would identify when regular customers fail to submit their typical payment
+transactions.
+No Proactive Customer Outreach: Since the mobile banking system does not track expected
+transaction patterns, there are no automated processes for reaching out to customers when
+they fail to submit transactions that might have been expected based on historical patterns. The
+system operates purely in reactive mode where it processes transactions that customers choose
+to submit rather than monitoring for transactions that customers might be expected to submit.
+PPO Communication Model: The relationship between the mobile banking system and PPO
+(Payment Processing Operations) follows a strict request-response model where mobile
+banking always initiates communication and PPO responds to specific requests. PPO does not
+send proactive notifications to the mobile banking system about missing files, expected
+transactions, or processing issues unless the mobile system specifically requests information.
+Customer-Driven Transaction Timing: Since customers have complete control over when they
+initiate transactions through the mobile interface, the concept of "missing" transactions is largely
+irrelevant to the mobile banking operational model. Customers may choose to delay payments,
+cancel planned transactions, or modify payment timing based on their individual financial
+management preferences, and the system accommodates this customer-controlled approach.
+No Scheduled File Dependencies: Unlike some payment processing systems that depend on
+scheduled file deliveries from customers or other systems, the mobile banking platform does
+not rely on external file deliveries for transaction processing. All transaction data originates from
+direct customer input through the mobile interface, eliminating dependencies on file delivery
+schedules that could create scenarios where expected files fail to arrive.
+Reactive Customer Service Model: When customers experience issues with payment processing
+or have questions about transaction status, they contact customer service directly rather than
+being contacted proactively by the bank when expected transactions don't occur. The customer
+service model assumes that customers will reach out when they need assistance rather than
+implementing proactive monitoring that might identify customers who haven't submitted expected
+transactions.
+Individual Transaction Focus: The mobile banking system's focus on individual transaction
+processing means that each payment request is handled independently without consideration of
+patterns or expectations based on previous customer behavior. This transaction-by-transaction
+approach eliminates the complexity of managing expected transaction volumes while providing
+maximum flexibility for customers to manage their payment timing according to their preferences.
+Operational Simplicity Benefits: The absence of negative tracking and expected transaction
+monitoring provides operational simplicity for the mobile banking system by eliminating the need
+for complex pattern recognition, customer communication protocols, and exception handling
+processes that would be required if the system attempted to monitor and respond to missing
+expected transactions.
+Customer Self-Service Philosophy: The mobile banking platform emphasizes customer selfservice capabilities where customers have comprehensive control over their payment processing
+timing and frequency. This philosophy assumes that customers are responsible for managing
+their own payment schedules and will utilize the mobile banking system according to their
+individual needs rather than predetermined patterns that the bank might monitor.
+System Architecture Implications: The request-response architecture between mobile banking
+and PPO reflects this customer-initiated approach where all system communications are
+triggered by customer actions rather than scheduled processes or expected transaction
+monitoring. This architecture provides scalability and simplicity but does not accommodate
+proactive monitoring of customer transaction patterns.
+Future Monitoring Considerations: While the current mobile banking system does not
+implement negative tracking capabilities, the comprehensive data capture in the DSP
+database could potentially support future development of customer pattern analysis and
+proactive customer engagement if business requirements evolve to include such capabilities.
+However, implementing such features would require significant changes to the current customerinitiated transaction model.
 Question 9: Can a client check on the status of their file?
 Answer:
-Customers have comprehensive visibility into their payment status and transaction activities
-through multiple access channels and integrated customer service systems that provide real-time
-information and detailed transaction histories.
-Primary Customer Interface Access: Customers can check payment status directly through the
-PNC online banking interface when they access the bill pay functionality. The system displays
-comprehensive payment information including upcoming invoices, electronic bills (e-bills),
-pending payments, and recurring payment schedules all within the bill pay profile that
-customers see when they log into the system.
-Real-Time Payment Status Visibility: When customers access the bill pay interface, they can view
-detailed status information for all their payment activities, including payments that have been
-scheduled, payments that are currently being processed, and payments that have been completed
-successfully. The system provides real-time updates about payment progress and delivery
-confirmation when merchants receive payments.
-Payment Tracking and Confirmation: The system maintains comprehensive tracking of
-payment lifecycles and provides customers with trace numbers and delivery confirmation when
-electronic fund transfers are completed successfully. Customers can see confirmation that
-"payments were successfully delivered to merchants" through the online interface, providing
-assurance that their payment obligations have been fulfilled.
-Electronic Bill Integration: For customers who utilize electronic bill presentment services, the
-system provides integrated visibility into both bill receipt and payment status. Customers can view
-electronic bills that have been received from merchants, track payments made in response to those
-bills, and see complete payment histories for all their electronic bill relationships.
-Customer Service Support Access: When customers need assistance with payment status
-inquiries or have questions about transaction details, they can contact PNC customer service
-representatives who have comprehensive access to payment information through the Partner
-Care system. Customer service representatives can view detailed payment histories, transaction
-status, and account information necessary to provide complete assistance with customer inquiries.
-Multi-Tier Customer Service Integration: The system implements tier two customer service
-support through PNC, meaning that all customer-facing interactions are handled by PNC
-representatives rather than direct communication with Fiserv. When complex issues require
-additional technical assistance, PNC customer service representatives can contact Fiserv
-partner assist lines to collaborate on issue resolution while maintaining proper channel
-management for customer communications.
-Collections Status Transparency: When accounts are placed in collection status due to payment
-collection issues, customers receive clear notification of their account status and the steps required
-to resolve outstanding payment obligations. The Fiserv collection system provides dedicated
-representatives who can work with customers to settle outstanding amounts and reactivate their
-bill pay access.
-Payment Method Specific Status Information: The system provides different types of status
-information depending on payment method. For electronic payments, customers can see
-immediate processing confirmation and merchant delivery verification. For draft check payments,
-customers can track payment processing through check generation, mailing, and delivery phases to
-ensure payments reach merchants before due dates.
-Automatic Communication Systems: While customers cannot receive direct email
-communications from Fiserv representatives for routine inquiries, they do receive automated
-system notifications such as enrollment confirmations and payment processing confirmations that
-provide status updates without requiring customer service intervention.
-Stop Payment Visibility: Customers can see the status of stop payment requests and
-understand the implications for different payment types. The system clearly indicates when stop
-payments on electronic payments may result in collection status, helping customers make informed
-decisions about payment modifications.
-Recurring Payment Management: For customers who utilize recurring payment setups, the
-system provides comprehensive visibility into recurring payment schedules, upcoming payment
-dates, and the ability to modify or cancel recurring arrangements as needed. This recurring
-payment transparency helps customers manage their ongoing payment obligations effectively.
-Issue Resolution Tracking: When customers contact support for payment issues or transaction
-problems, the Partner Care system enables customer service representatives to provide detailed
-explanations of payment status, processing timelines, and any actions required for successful
-payment completion. This comprehensive customer service access ensures that customers receive
-complete information about their payment activities and can resolve issues efficiently.
+PNC mobile banking customers have comprehensive access to payment status information
+through multiple integrated interfaces and real-time status tracking capabilities that provide
+detailed visibility into all aspects of their payment processing activities and transaction histories.
+Primary Status Access Through Mobile Dashboard: Customers can check payment status directly
+through the mobile banking application dashboard that displays comprehensive information
+about all their payment transactions. The dashboard provides real-time status updates for wire
+transfers, ACH transactions, credit card payments, loan payments, and other payment types
+processed through the mobile platform. This centralized dashboard approach enables customers
+to access complete payment information through a single interface without navigating multiple
+screens or applications.
+Payment Status Categories and Visibility: The mobile banking system provides detailed status
+categorization that enables customers to understand exactly where their payments stand in the
+processing workflow. Confirmation messages are displayed immediately when payments are
+successfully submitted, providing customers with confirmation numbers that serve as unique
+identifiers for tracking purposes. Pending status is displayed for payments that have been
+submitted but are still being processed in the background, and completed status is shown for
+payments that have finished processing, whether successfully or with issues.
+Real-Time Status Updates: The system provides immediate status updates as payments progress
+through different processing stages. When customers submit payment requests, they receive
+immediate confirmation of successful submission along with unique confirmation numbers for
+future reference. As payments are processed by PPO (Payment Processing Operations) and
+updated in the DSP database, status changes are reflected in real-time in the customer's mobile
+banking interface.
+Payment History Access: Customers have access to comprehensive payment history that shows
+both current and historical transaction information. This payment history includes pending
+payments that are still being processed, completed payments with final status information,
+and canceled payments that were submitted but subsequently canceled before processing. The
+payment history provides complete transaction details including amounts, recipients, processing
+dates, and current status for all payment types.
+Wire Transfer Activity Monitoring: For customers who utilize wire transfer capabilities, the
+mobile banking system provides specialized wire activity dashboards that show recent wire
+transfer activity with detailed status information. This includes domestic and international
+wire transfers with specific status indicators that help customers understand whether transfers
+have been successfully transmitted, are pending processing, or have encountered issues that
+require attention.
+Error and Issue Notification: When payments encounter processing issues or validation errors,
+customers receive immediate notification through the mobile interface with specific error
+messages that explain the nature of the problems encountered. These error messages provide
+actionable information that enables customers to understand what changes are needed to ensure
+successful payment processing, whether the issues relate to account limits, business rule
+violations, or technical processing problems.
+Confirmation Number Tracking: The unique confirmation numbers generated by PPO for each
+payment transaction serve as permanent tracking identifiers that customers can use for future
+reference and customer service inquiries. These confirmation numbers are displayed
+immediately when payments are successfully submitted and remain permanently associated with
+each transaction for long-term tracking and historical reference purposes.
+Service Availability Status: When backend processing systems experience service outages or
+availability issues, customers receive immediate notification through service unavailable
+messages that explain when payment processing capabilities are temporarily interrupted. This
+transparent service status communication enables customers to understand when system issues
+may affect payment processing and plan accordingly.
+Duplicate Payment Alerts: The system provides immediate alerts when duplicate payment
+scenarios are detected, enabling customers to confirm intentional duplicate payments or
+cancel unintended duplicate submissions. This duplicate detection and notification capability
+helps customers avoid accidental duplicate payments while providing flexibility for legitimate
+scenarios where duplicate payments may be intended.
+Customer Service Integration: When customers need additional assistance with payment
+status inquiries, they can contact PNC customer service representatives who have
+comprehensive access to payment details through integrated systems. Customer service
+representatives can provide detailed explanations of payment status, processing timelines, and
+resolution steps for any issues that may require customer action or system intervention.
+Cross-Platform Status Consistency: The payment status information displayed through mobile
+banking is consistent with other PNC banking channels including web banking and customer
+service systems. This consistency ensures that customers receive the same status information
+regardless of how they access their account information, providing reliability and confidence in the
+payment tracking capabilities.
+Historical Transaction Access: Customers can access historical payment information for
+extended periods, enabling them to review past payment activity, confirm completion of
+previous transactions, and access confirmation numbers for payments that were processed
+weeks or months earlier. This long-term access capability supports customer record-keeping and
+financial management requirements.
 Question 10: Do you get a notification if your downstream system doesn't
 receive a file from you?
 Answer:
-The meeting transcript does not provide specific information about automated notification systems
-that would alert the bill pay system when downstream systems fail to receive expected files or
-communications. The discussion focused primarily on payment processing workflows and customer
-service procedures rather than technical monitoring of downstream system communication failures.
-Response File Documentation: The system maintains comprehensive response files that
-document all API calls and responses exchanged between systems, which suggests some level of
-communication verification capability. These response files are designed to verify that systems
-remain synchronized and provide troubleshooting support when system integration issues occur,
-indicating that there may be mechanisms to detect communication failures.
-Downstream Communication Architecture: The payment processing workflow follows a clear
-structure where API calls are sent to Fiserv for payment processing, merchant verification, and
-transaction completion. The system appears to track successful payment delivery and maintains
-trace numbers for all transactions, suggesting that successful downstream communications are
-monitored and confirmed.
-Customer Service Integration for Issue Detection: When downstream communication issues
-occur, they are likely identified through customer service channels rather than automated system
-notifications. The Partner Care system provides comprehensive access to payment details for both
-PNC customer service representatives and Fiserv support teams, enabling collaborative
-troubleshooting when downstream processing issues affect customer transactions.
-Manual Issue Resolution Process: The discussion indicates that when problems arise with
-payment processing or downstream system communications, resolution typically involves manual
-coordination between PNC customer service and Fiserv partner assist lines. This suggests that
-downstream communication failures may be detected through customer inquiries or routine
-system monitoring rather than automatic notification systems.
-API Communication Verification: Since the system operates primarily through API-based
-communications with Fiserv, each API transaction likely includes confirmation responses that
-verify successful receipt and processing of payment instructions. The maintenance of response files
-documenting API calls and responses suggests that failed communications can be identified
-through analysis of communication logs and response verification.
-Collections Process Exception Handling: When payments cannot be collected from subscriber
-accounts due to account issues, the system automatically places accounts in collection status
-and manages exception handling through established procedures. This automatic exception
-detection suggests that the system has mechanisms to identify when expected downstream
-processes (fund collection) do not complete successfully.
-Technical Team Oversight Requirements: The discussion emphasized that detailed technical
-aspects of system communications and integration monitoring require consultation with
-application development teams for comprehensive understanding. This suggests that automated
-notification systems for downstream communication failures, if they exist, would be managed at the
-technical system level rather than operational oversight.
-System Synchronization Monitoring: The response file documentation system that tracks all
-API communications appears designed to ensure that systems remain properly synchronized
-throughout the payment processing workflow. This synchronization monitoring may include
-capabilities to detect when downstream systems do not respond appropriately to communication
-attempts.
-Customer Impact Detection: Rather than proactive downstream monitoring, the system appears
-to rely on customer impact detection where downstream communication failures become
-apparent when customers contact support about payment issues or when routine payment
-processing does not complete as expected.
-Integration with Multiple Payment Methods: The system processes payments through multiple
-downstream channels including ACH, electronic check, draft check, and virtual card
-processing, each of which may have different communication verification and failure detection
-requirements. The complexity of managing multiple downstream processing paths suggests that
-comprehensive notification systems would be necessary to effectively monitor all potential
-communication failure points.
-Need for Technical Specification: To obtain specific information about automated downstream
-notification systems, communication failure detection, or system monitoring capabilities,
-additional consultation with technical teams and application developers would be necessary. The
-operational overview indicates that such technical monitoring capabilities, if they exist, operate at
-system levels not covered in the operational discussion.
-Potential Migration Benefits: The ongoing transition to Check Free Next may include enhanced
-downstream monitoring and notification capabilities, though specific technical improvements in
-communication monitoring were not detailed in the operational overview provided.
+The PNC mobile banking system operates on a strict request-response communication model
+with downstream systems that fundamentally eliminates the scenario of downstream systems not
+receiving expected files or transactions, since all communications are initiated by the mobile system
+and require immediate responses for successful operation.
+Request-Response Architecture Eliminates Missing File Scenarios: The mobile banking system
+maintains a synchronous request-response communication pattern with PPO (Payment
+Processing Operations) where every payment request sent to PPO requires an immediate
+response before the mobile system can continue processing. This architecture means that
+communication failures are immediately apparent rather than being discovered later through
+missing file notifications, since transactions cannot complete without successful PPO responses.
+No Proactive Notifications from PPO: PPO does not send proactive notifications to the mobile
+banking system about missing files, expected transactions, or processing issues. The
+communication relationship is unidirectional from mobile banking to PPO, where mobile
+banking always initiates requests and PPO responds to specific requests. PPO will not send
+anything to mobile banking unless the mobile system specifically requests information through
+API calls.
+Immediate Detection of Communication Failures: When the mobile banking system sends
+payment requests to PPO, it immediately receives responses that indicate successful receipt and
+processing status. If PPO fails to receive requests or cannot process them successfully, this
+failure is immediately communicated back to the mobile system through error responses rather
+than being discovered later through missing file monitoring or notification systems.
+Real-Time Error Handling Replaces Missing File Notifications: Instead of relying on
+downstream notification systems for missing files, the mobile banking architecture implements
+real-time error detection and handling where communication failures, processing errors, or
+system availability issues are immediately identified and communicated to customers through
+the mobile interface. This real-time error handling approach provides immediate problem
+identification rather than delayed notification of missing transactions.
+Customer Impact Drives Issue Detection: When downstream communication or processing issues
+occur, they are immediately apparent through customer impact rather than through automated
+monitoring systems. If PPO cannot receive or process mobile banking requests, customers
+receive immediate error messages through the mobile interface, and customer service
+representatives can identify system issues through customer inquiries rather than relying on
+automated notification systems.
+Synchronous Processing Eliminates File Dependencies: The mobile banking system does not
+rely on asynchronous file delivery or batch processing that could create scenarios where
+downstream systems expect files that fail to arrive. All payment processing occurs through
+synchronous API calls where successful communication and processing are confirmed
+immediately during the transaction processing workflow.
+Service Availability Monitoring Instead of File Monitoring: Rather than monitoring for missing
+files or transactions, the mobile banking system monitors service availability and immediate
+response capability from downstream systems. When PPO or other downstream systems
+experience availability issues, this is immediately detected through failed API responses rather
+than through missing file notifications or delayed processing detection.
+Customer Service Integration for Issue Resolution: When communication or processing issues
+occur between mobile banking and downstream systems, issue resolution occurs through
+customer service channels rather than automated notification systems. Customer service
+representatives can identify system issues through customer inquiries and coordinate with
+technical teams to resolve communication problems that affect payment processing.
+Error Logging for Operational Monitoring: While the mobile banking system does not receive
+proactive notifications from downstream systems, it maintains comprehensive error logging of
+all API communication attempts and responses. This error logging enables operational teams to
+identify patterns of communication failures or processing issues that may indicate systematic
+problems requiring technical attention.
+DSP Database Integration for Status Tracking: The DSP (Data Streaming Platform) database
+integration provides comprehensive status tracking for all payment transactions without relying
+on downstream notification systems. When PPO successfully processes payments and updates
+the DSP database, this information is immediately available to the mobile banking system for
+customer status inquiries and operational monitoring.
+Future Monitoring Capabilities: While the current mobile banking system does not implement
+automated downstream notification monitoring, the comprehensive API communication
+logging and DSP database integration could potentially support future development of
+enhanced monitoring capabilities if business requirements evolve to include proactive detection
+of systematic communication or processing issues.
+Operational Simplicity Benefits: The absence of complex downstream notification systems
+provides operational simplicity for the mobile banking platform by eliminating dependencies on
+external monitoring systems and focusing on immediate error detection and customer
+communication that enables rapid issue resolution and customer service support.
 Question 11: Additional Technical Architecture and Processing Details
 Answer:
 The meeting transcript reveals several important technical and operational characteristics of the
-PNC bill pay system that provide insight into the platform's architecture, business model transitions,
-and service delivery approach.
-Risk Model vs. Good Funds Model Architecture: The system currently operates under a risk
-model approach where Fiserv pays merchants first and then collects funds from subscriber
-accounts afterward. This approach ensures that merchants receive payments on time without
-delays caused by fund verification or collection timing complications, but creates potential
-collection risks when subscriber accounts cannot be debited successfully.
-The system is transitioning to a real-time good funds model through Check Free Next that will
-verify and collect subscriber funds before sending payments to merchants. This new model
-eliminates collection risks by ensuring funds are confirmed and collected before payment
-processing begins, providing greater payment certainty for all parties and removing the need for
-complex collections processes.
-Multiple Payment Processing Channels: The system supports diverse payment methods
-including ACH electronic payments, electronic check payments, draft check payments, and
-virtual card payments (the latter being a new pilot program). Each payment method requires
-different processing timelines and customer notification requirements, with draft checks requiring
-at least five days advance notice to ensure adequate postal delivery time before payment due
-dates.
-Authentication and User Classification System: The system implements comprehensive user
-authentication through API calls to Fiserv that verify customer access rights and determine
-business or consumer classification. This classification affects available features and processing
-procedures, with different requirements for business and consumer users throughout the payment
-processing workflow.
-Electronic Bill Presentment Integration: The system provides comprehensive electronic bill
-integration where electronic bills are received directly from merchants and loaded into the
-banking system. Customers can view these electronic bills through the online interface and make
-payments directly, creating a seamless bill presentment and payment experience that eliminates the
-need for separate bill management processes.
-Customer Service Tier Structure: The system implements a specific tier two customer service
-model where PNC handles all customer-facing interactions while Fiserv provides backend
-support through partner assist lines when needed. Tier one and tier 1.5 support (direct phone
-and email customer interaction) are not active for PNC customers, ensuring that customer service
-maintains proper channel management and relationship boundaries.
-Collections Management System: The Fiserv collections system operates independently from
-external credit reporting and maintains internal collection status management for accounts that
-cannot complete payment collection processes. This internal collections approach provides
-dedicated collection representatives and systems for issue resolution while maintaining
-customer privacy and avoiding external credit impact for payment processing issues.
-Cross-Institution Access Control: The system implements comprehensive access blocking
-across all participating financial institutions when customers have unresolved collection
-amounts with Fiserv. This cross-institution blocking ensures that collection issues must be resolved
-before customers can access bill pay services through any participating bank, providing strong
-incentive for issue resolution.
-File Processing Flexibility: The system accommodates multiple customer configuration
-approaches with acknowledgment that "if we have a thousand different clients, we'll probably
-have about six different setups." This flexibility includes optional SIS batch file processing for
-customers who prefer file-based payment submission rather than real-time API transactions.
-Secure Communication Infrastructure: File deliveries utilize custom encrypted file transfer
-protocols with specific IP address authentication and direct system-to-system communication
-rather than portal-based file access. This security approach ensures comprehensive data
-protection for all file-based communications and maintains high security standards for customer
-payment information.
-Payment Timing and Validation Logic: The system implements sophisticated payment timing
-validation that considers payment method requirements, merchant electronic payment
-capabilities, postal delivery timing for draft checks, and holiday/weekend complications. This
-validation logic ensures that payments are scheduled appropriately to meet due date requirements
-regardless of payment method or external timing factors.
-Real-Time Payment Processing Capabilities: The transition to Check Free Next includes realtime payment processing through the Now gateway (the same gateway used by EWS - Early
-Warning Services), enabling immediate fund verification, collection, and merchant payment
-delivery. This real-time capability provides significant advantages over current processing
-approaches and aligns with modern payment system expectations.
-Stop Payment Complexity Management: The system addresses complex stop payment
-scenarios where customer actions have different implications depending on payment method.
-Electronic payment stop requests trigger collection status because merchants have already
-been paid, while draft check stop payments can be processed normally since funds come
-directly from customer accounts without risk exposure.
-System Migration and Modernization: The ongoing transition from current systems to Check
-Free Next represents significant platform modernization that will eliminate collection risks,
-provide real-time payment processing, and offer competitive advantages against merchantdirect payment incentives. This migration demonstrates commitment to modern payment
-processing capabilities while maintaining comprehensive customer service and operational
-oversight.
-Partner Care System Integration: The comprehensive Partner Care system provides integrated
-access for both PNC and Fiserv customer service teams with complete visibility into customer
-payment activities, transaction histories, and account status information. This integration enables
-collaborative customer service delivery while maintaining proper channel management and
-relationship boundaries throughout the support process.
+PNC mobile banking payment system that provide comprehensive understanding of the platform's
+architecture, integration approach, and service delivery capabilities within PNC's broader payment
+processing ecosystem.
+Comprehensive Payment Type Support: The mobile banking system handles a diverse range of
+payment types that demonstrate its role as a universal payment platform for mobile customers.
+These payment types include ACH transactions (categorized as regular external transfers),
+credit card payments, loan payments, wire transfers for both international and domestic
+purposes, Zelle peer-to-peer payments, internal transfers between PNC accounts, and
+external transfers to accounts at other financial institutions. This comprehensive payment type
+support positions the mobile platform as a complete payment solution for customer financial
+management needs.
+PPO as Central Processing Engine: PPO (Payment Processing Operations) serves as the
+central payment processing engine for all mobile banking payment transactions, regardless of
+payment type. This centralized processing approach ensures consistent business rule
+application, uniform security protocols, and standardized processing workflows across all
+payment types. PPO performs critical functions including account eligibility evaluation,
+payment limit validation, business rule compliance checking, actual payment execution, and
+database updates for payment tracking and history management.
+Multi-Step Validation and Processing Workflow: The mobile banking system implements a
+sophisticated multi-step processing workflow that ensures comprehensive validation before
+payment execution. This workflow includes initial account eligibility evaluation through PPO API
+calls, payment type determination based on account selections, business rule validation
+including wire limits and customer profile restrictions, payment confirmation and final
+submission, and real-time status updates throughout the processing lifecycle.
+DSP Database as Enterprise Data Platform: The DSP (Data Streaming Platform) database
+serves as more than just a payment repository - it functions as an enterprise data platform that
+supports multiple PNC banking channels and systems. The DSP database is built on Oracle
+technology and maintains comprehensive payment transaction data that supports customer
+service, operational monitoring, compliance reporting, and cross-channel customer
+experience consistency. This enterprise-level data platform ensures that payment information is
+available across multiple customer access points and service channels.
+Kafka-Based Real-Time Data Architecture: The implementation of Kafka streaming technology
+demonstrates PNC's commitment to modern data architecture that supports real-time data
+processing and enterprise integration. PPO publishes payment transaction data to Kafka
+topics that enable immediate data distribution to multiple downstream systems including the
+DSP database and potentially other enterprise systems requiring payment transaction information.
+Customer Profile and Business Rule Integration: The mobile banking system integrates with
+comprehensive customer profile systems that enable dynamic business rule application based
+on individual customer characteristics. This includes wire transfer limits based on customer
+profiles, payment type eligibility based on account relationships, and regulatory compliance
+requirements that vary based on customer classification and transaction characteristics.
+Cross-Channel Consistency with Web Banking: The mobile banking payment processing
+architecture maintains consistency with PNC's web banking application (WBA) with the primary
+difference being mobile-specific features like Zelle integration. This consistency ensures that
+customers receive similar payment processing capabilities regardless of their chosen access
+channel while maintaining operational efficiency through shared backend processing systems.
+Real-Time Customer Communication Integration: The mobile banking system implements
+sophisticated real-time customer communication that provides immediate feedback for all
+customer interactions. This includes instant confirmation messages for successful payment
+submissions, real-time error messaging for validation failures, immediate duplicate payment
+detection and notification, and service availability status communication when system issues
+occur.
+Security and Compliance Architecture: While specific security details were not extensively
+discussed, the mobile banking system operates within enterprise-grade security frameworks that
+support financial industry compliance requirements. The API-based communication with PPO,
+encrypted data transmission protocols, comprehensive audit trail maintenance, and
+customer authentication integration demonstrate sophisticated security architecture appropriate
+for mobile financial services.
+Scalable Transaction Processing: The individual transaction processing model combined with
+real-time API communications provides highly scalable transaction processing capabilities
+that can accommodate high-volume mobile banking usage without the complexity of batch
+processing coordination or file delivery scheduling that could create bottlenecks during peak usage
+periods.
+Customer Service Integration Architecture: The mobile banking system maintains
+comprehensive integration with customer service systems that enables seamless customer
+support when issues require human intervention. This integration includes access to complete
+transaction histories, real-time payment status information, detailed error logging for
+troubleshooting, and confirmation number tracking that enables efficient customer service
+delivery.
+Technical Expertise and Support Structure: The discussion revealed specialized technical
+expertise within different areas of the payment processing ecosystem, with mobile banking
+teams focused on customer interface and API integration while PPO specialists manage
+payment processing logic and DSP experts handle enterprise data platform capabilities. This
+specialized expertise structure enables focused technical excellence in each area while
+maintaining effective system integration across the complete payment processing workflow.
+Future Technology Platform Flexibility: The modern API-based architecture, Kafka streaming
+integration, and enterprise database platform provide flexibility for future technology
+enhancements and additional payment processing capabilities. This forward-looking
+architecture enables expansion of payment types, integration with new financial services, and
+enhancement of customer experience features without requiring fundamental changes to the
+core processing infrastructure.
