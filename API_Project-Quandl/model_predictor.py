@@ -1,45 +1,57 @@
-Current State: A System Built on Fragmented Foundations
+The Payment Gateway Architecture
+PNC's commercial payment ecosystem centers around Pinnacle, which serves as the primary gateway for all payment transactions entering the bank through various channels. Think of Pinnacle as the central command center that initiates and orchestrates payments within PNC's broader payment infrastructure.
+Two Main Processing Channels
+The system operates through two distinct but interconnected channels, each designed to serve different customer segments and payment types:
+Channel 1: Pinnacle Funds Transfer (PFT)
+This channel primarily serves retail and business customers who need to handle wire payments, real-time payments (RTP), and ACH transactions. Customers interact with this system through user-friendly web interfaces where they can:
 
-The organization's online banking infrastructure faces significant operational blind spots that stem from legacy architectural decisions and system evolution over time. The current environment operates without fundamental tracking mechanisms that modern payment systems require, creating a cascade of visibility and operational challenges.
+Manually enter payment details
+Set up scheduled and recurring payments
+Upload payment files using template-based import functionality that supports multiple input formats
 
-The Core Problem: Transaction Opacity
+Channel 2: Pinnacle Commercial Experience (Comex)
+This specialized channel focuses exclusively on commercial clients and their complex business payment requirements. It operates through a separate but integrated platform that processes commercial payments alongside the PFT system.
+The Payment Processing Journey
+Once payments enter through either channel, they follow a sophisticated routing system:
+Step 1: Initial Processing
+Payment files can be sent directly to SFG (Stored File Gateway), which acts as the critical intermediary infrastructure connecting external partners with PNC's internal payment processing systems.
+Step 2: Message Queue Distribution
+From Pinnacle, payments flow to PSG (Payments Staging Group) via a Message Queue system using a Request-Response Model. PSG then intelligently distributes these payment files to various downstream processing locations, including:
 
-At the heart of these challenges lies the absence of unique transaction identifiers that can trace a payment's journey from initiation to completion. Currently, transaction tracking relies solely on customer ALK (Account Lookup Key) linkage, which provides insufficient granularity for operational teams to monitor, troubleshoot, or analyze individual payment flows. This limitation becomes particularly problematic when customers inquire about specific transactions or when operational teams need to investigate payment anomalies.
+CPY (Payables Advantage)
+EDI (Electronic Data Interchange)
+PSG and PMT (Payment Services Data)
 
-Data Architecture Challenges
+All processed data ultimately gets stored in SFG's dedicated Oracle database for record-keeping and audit purposes.
+Specialized Processing Systems
+CPY: The Translation Engine
+CPY functions as a sophisticated middleware translation service that PNC charges clients to use. Its primary role is converting client payment data into the specific formats required for different payment types:
 
-The system's logging architecture treats all banking activities uniformly, mixing payment-specific events with general account activities in consolidated logs. This approach creates significant challenges for the payment operations teams, who must parse through generic activity streams to extract payment-relevant information. The Adapt team currently handles this data processing, creating an additional layer of dependency and potential bottleneck for payment-specific analysis and reporting.
+ACH payments
+Card transactions
+Check payments
+Wire transfers
 
-Operational Blind Spots
+Once the translation is complete, payments are automatically routed to the appropriate processing system based on their payment type.
+EDI: The Dual-Purpose Platform
+EDI operates as both a customer-facing interface and a critical middleware system:
+Customer-Facing Functions:
 
-Once API calls are made to external payment systems, the organization loses visibility into downstream processing. There's no systematic approach to monitor whether external systems successfully process transactions, encounter errors, or experience delays. This gap in downstream visibility means that potential issues may only surface when customers report problems or when external partners provide delayed notifications.
+Direct customer interaction portal
+File reception from SFG and ARS systems
+Critical intermediary processing for both payment origination and receivables transactions
 
-The absence of proactive monitoring compounds these challenges. Without volume-based or pattern-based alerting systems, unusual transaction behaviors, potential fraud patterns, or system performance degradation may go undetected until they reach critical thresholds or customer complaints emerge.
+Backend Processing:
 
- Recommended Path Forward: Building Comprehensive Payment Intelligence
+Processes files from SFG containing various payment instructions
+Handles files from internal applications through mainframe transactions
+Manages both origination processes (outgoing payments) and receivables transactions (incoming payments)
 
-Foundation: End-to-End Transaction Traceability
-
-The primary recommendation centers on implementing unique transaction IDs that can track payments throughout their entire lifecycle. This foundational change would enable comprehensive audit trails, simplified customer service interactions, and robust operational monitoring capabilities.
-
-Specialized Payment Infrastructure
-
-Creating dedicated payment-specific logging and reporting systems separate from general banking activities would provide payment operations teams with the focused data streams they need. This separation would improve both performance and analytical capabilities while reducing the processing burden on the Adapt team.
-
-Enhanced Operational Awareness
-
-Establishing downstream status monitoring beyond initial API responses would close the current visibility gap. This capability should include real-time status updates, exception handling, and comprehensive reporting on external system interactions.
-
-Proactive Risk Management
-
-Implementing volume and pattern-based monitoring systems would enable the organization to identify potential issues before they impact customers. This proactive approach should include automated alerting for unusual transaction patterns, volume spikes, or processing delays.
-
-Unified Command Center
-
-A centralized payment status dashboard combining real-time operational data with historical analytics would provide comprehensive oversight of the payment ecosystem. This tool would serve both operational teams managing day-to-day activities and strategic stakeholders analyzing long-term trends and performance metrics.
-
- Additional Complexity: Legacy Integration
-
-The coexistence of WBB (legacy) and WBA (modern) systems introduces additional architectural complexity that any comprehensive payment monitoring solution must address. This dual-system environment requires careful consideration of data integration patterns, reporting consistency, and operational workflow alignment to ensure seamless payment processing and monitoring across both platforms.
-
-The recommended initiatives represent a systematic approach to transforming payment operations from a reactive, fragmented model to a proactive, integrated system that provides complete visibility and control over the online banking payment ecosystem.
+Specialized Payment Flows
+Lockbox Operations
+EDI processes files from lockbox operations, while ARS (Accounts Receivable System) handles ACH transactions. Wire data flows into EDI specifically for remittance processing, representing a growing segment of transaction volume.
+Merchant Services Integration
+EDI also receives merchant services data for card transactions and processes monthly CAA (Customer Account Analysis) data from various internal systems, providing comprehensive transaction analysis and reporting capabilities.
+System Integration and Data Flow
+The entire system demonstrates sophisticated integration between multiple platforms, ensuring that payment data flows seamlessly from initial customer input through final processing and settlement. Each component serves a specific function while maintaining connectivity with the broader payment ecosystem, creating a robust and scalable commercial payment processing infrastructure.
+This architecture allows PNC to handle diverse payment types efficiently while providing customers with multiple access points and processing options based on their specific business needs and transaction volumes.
