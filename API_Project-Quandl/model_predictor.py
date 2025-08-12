@@ -1,11 +1,25 @@
-Thank you for reaching out to us. I have coordinated with James Ogle regarding your request.
-For PAE JupyterHub access, there are no availability constraints—all participants on the list may be granted access. However, we currently have a maximum of 10 PAE Posit Workbench licenses available. Given that there are 21 colleagues on the attached list, you will need to prioritize which participants require access to this platform.
-To proceed with the license provisioning, James will need user attestations from all participants before requesting the OIMs. Additionally, these colleagues will require application mnemonic entitlements. Please refer to the provided link for detailed requirements and procedures.
-Please note the following action items for your team:
-
-Determine and specify the end date for platform access in the participant list
-Coordinate the application mnemonic assignments to user accounts
-
-While James can facilitate the onboarding of PAE entitlements, the application mnemonic provisioning falls outside his purview and will need to be handled by your team.
-Please let me know if you need any clarification on these requirements.
-Best regards,
+def create_dataframe_from_dict(data_dict):
+    """
+    Creates a pandas DataFrame from dictionary containing 'features' and 'abs_values' arrays.
+    
+    Parameters:
+    data_dict (dict): Dictionary containing 'features' and 'abs_values' keys
+    
+    Returns:
+    pd.DataFrame: DataFrame with features as columns and abs_values as data
+    """
+    
+    # Extract features and abs_values
+    features_arrays = data_dict['features']
+    abs_values_arrays = data_dict['abs_values']
+    
+    # Flatten the features arrays to get unique column names
+    all_features = []
+    for feature_array in features_arrays:
+        all_features.extend(feature_array)
+    
+    # Get unique features while preserving order
+    unique_features = list(dict.fromkeys(all_features))
+    
+    # Convert abs_values arrays to a 2D numpy array
+    abs_values_data = np.array(abs_values_arrays)
