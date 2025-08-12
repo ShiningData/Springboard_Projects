@@ -1,44 +1,48 @@
-def create_dataframe_from_dict(data_dict):
+
+import numpy as np
+
+def normalize_nested_arrays(nested_array):
     """
-    Creates a pandas DataFrame from dictionary containing 'features' and 'abs_values' arrays.
+    Normalize each sub-array in a nested array to range [0, 1] using min-max scaling.
     
-    Parameters:
-    data_dict (dict): Dictionary containing 'features' and 'abs_values' keys
+    Args:
+        nested_array: List of lists or 2D numpy array where each sub-array has 5 elements
     
     Returns:
-    pd.DataFrame: DataFrame with features as columns and abs_values as data
+        Normalized nested array with same structure as input
     """
+    # Convert to numpy array for efficient computation
+    arr = np.array(nested_array)
     
-    # Extract features and abs_values
-    features_arrays = data_dict['features']
-    abs_values_arrays = data_dict['abs_values']
+    # Calculate min and max for each row (axis=1)
+    min_vals = arr.min(axis=1, keepdims=True)
+    max_vals = arr.max(axis=1, keepdims=True)
     
-    # Flatten the features arrays to get unique column names
-    all_features = []
-    for feature_array in features_arrays:
-        all_features.extend(feature_array)
+    # Handle edge case where min == max (constant arrays)
+    range_vals = max_vals - min_vals
+    range_vals[range_vals == 0] = 1  # Avoid division by zero
     
-    # Get unique features while preserving order
-    unique_features = list(dict.fromkeys(all_features))
-    # Convert abs_values arrays to a 2D numpy array
-    abs_values_data = np.array(abs_values_arrays)
+    # Apply min-max normalization
+    normalized = (arr - min_vals) / range_vals
     
-    # Create DataFrame
-    # Method 1: If abs_values rows correspond directly to feature arrays
-    if len(abs_values_data) == len(features_arrays):
-        # Create a list to store each row's data
-        rows_data = []
-        
-        for i, (feature_row, values_row) in enumerate(zip(features_arrays, abs_values_arrays)):
-            # Create a dictionary for this row with all features initialized to NaN
-            row_dict = {feature: np.nan for feature in unique_features}
-            
-            # Fill in the values for features present in this row
-            for feature, value in zip(feature_row, values_row):
-                row_dict[feature] = value
-            
-            rows_data.append(row_dict)
-        
-        df = pd.DataFrame(rows_data)
-    
+    return normalized.tolist()  # Return as list of lists
 
+def normalize_nested_arrays_pure_python(nested_array):
+    """
+    Pure Python implementation without NumPy dependencies.
+    """
+    normalized = []
+    
+    for sub_array in nested_array:
+        min_val = min(sub_array)
+        max_val = max(sub_array)
+        
+        # Handle constant arrays
+        if max_val == min_val:
+            normalized.append([0.0] * len(sub_array))
+        else:
+            range_val = max_val - min_val
+            normalized_sub = [(x - min_val) / range_val for x in sub_array]
+            normalized.append(normalized_sub)
+    
+    return normalized
