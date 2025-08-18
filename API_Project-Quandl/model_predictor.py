@@ -1,191 +1,73 @@
-Payment System Monitoring Meeting Summary
- Executive Summary
- This meeting provided a comprehensive overview of the company's payment system monitoring
- infrastructure, discussing the evolution from the failed Axway project to the current LOT (Lifecycle of
- Transaction) system, and outlining future development plans for enhanced monitoring and
- dashboard capabilities.
- Background: The Axway Project Failure (7 years ago)
- Initial Vision
- Objective: Track every single transaction through the entire ecosystem
- Primary Focus: Wire transfers (customers call when wire problems occur)
- Proposed Solution: Axway tool with dashboard, alerts, email capabilities, and transaction
- deep-dive functionality
- Why Axway Failed
- 1. No Universal Transaction ID: Applications lacked a single ID to track items across systems
- 2. Technical Limitations:
- Axway attempted in-memory processing for distributed applications
- Only viable for small transaction volumes with single IDs
- Backend data association was "horrible" - represented 80-90% of project complexity
- 3. Vendor Capabilities: Axway developers couldn't handle the data complexity
- 4. Result: Axway was terminated, payments team attempted to build internally
- Post-Axway Developments
- COVID Impact: Internal development stalled
- Infrastructure Progress: Streaming processes were built during this period
- PPP Program: Built in COD during COVID period
- Current LOT System Architecture
- Core Philosophy
- Scope: Track steps from system to system (not full transaction lifecycle)
-Method: Stream data from each system into database, run queries to identify mismatches
- Alert Strategy: Accept false positives rather than miss real issues
- Timing: Operations prefer 30 minutes of false alerts over 2-hour undetected issues
- System Components and Data Flow
- Sterling File Gateway (SFG) Layer
- Function: Entry point for files containing wires and ACH transactions
- Challenge: Files aren't unpacked at this level - contents unknown until downstream processing
- Tracking: File-level monitoring to various downstream systems
- Payment Staging Gateway (PSG) - Central Hub
- Role: Primary hub for payment processing
- Data Delivery: Pushes data via MQ topics (not pulled like other systems)
- Systems: Uses both DB2 and Oracle databases
- Limitations: Missing one transaction type causing daily false positives
- Current Monitored Flows
- 1. SFG to PSG: Primary black hole that was eliminated - highest priority
- 2. CPY to PSG: Automated monitoring replacing manual operations tracking
- 3. EDI to PSG: Automated monitoring replacing manual operations tracking
- 4. PSG to PME: Critical for payment execution
- 5. PWW and PWA: Individual transaction level (Pinnacle Web Wire/ACH)
- Data Processing Methodology
- Raw Data: Stream into COD database tables (not creating model tables)
- Query Approach: Run simple queries against paired tables to find mismatches
- Alert Generation: Create email alerts with attachments for operations review
- Timing: Hourly query execution with 1-2.5 minute data delays
- Complex Data Association Challenges
- Multi-System Tracking Requirements
- SFG → EDI: Requires three-table lookup (SFG, OPS database for NDM data, EDI)
- Connect Direct: Captures file IDs during transfer process
-EDI to Payments: No direct file association - uses three matching data attributes as
- workaround
- Current Gaps and Limitations
- ACH Tracking: Stops at EDI, resumes at COD transaction level
- DSP Integration: Attempted but PSG team didn't cooperate - project abandoned
- Swift Database: Previously proprietary/unreadable - potential future opportunity
- CAP System: Not currently integrated
- PRT Integration: Minimal current involvement
- Technical Infrastructure Details
- Database and Streaming Architecture
- Platform: Built on BDL (Big Data Lake)
- Data Sources: Multiple systems with varying collection methods
- PSG Integration: MQ-based push model every 10 minutes
- Other Systems: Pull-based with 1-minute batch queries
- Storage: Raw data tables, no intermediate modeling
- Current Data Assets
- PME Data: Already streaming for PSUI tool consumption
- PRT Data: Available in Minth tables
- IPF Data: Recently added (July) for archival - no alerts yet
- ACH Processing: 30 files daily from 3 ACH systems (10 files each)
- Executive Requirements and Management Expectations
- Senior Leadership Vision (Bobby/Chuka/Raj Saini)
- Dashboard Requirement: Executive-level payment visibility
- Real-time Monitoring: Streaming front-end interface
- Transaction-level Tracking: Monitor individual transactions across all systems
- Budget: Approximately $1 million allocated
- Operations Reality (Mary Sammy and Team)
- Practical Needs: Email alerts more valuable than dashboards
-Response Preference: 1-hour detection acceptable vs. constant false alerts
- Usage Pattern: Rarely access dashboards without email alerts prompting investigation
- Collaboration: Strong partners but need guidance on technical requirements
- Requirements Development Challenge
- Executive Level: High-level vision without detailed specifications
- Operations Level: Practical needs but limited technical specification capability
- Solution Approach: LOT team historically created solutions based on assumed needs, then
- gained approval
- Future Development Strategy
- Elastic Search Integration Plan
- Current Progress
- ACH to Elastic: Daily batch process implemented
- Real-time Goal: Working toward 30 files/day streaming via Confluent Kafka
- Aaron's Team: Developing automation for real-time data flow
- Migration Strategy
- 1. Phase 1: Move existing LOT alerts to Elastic Search front-end
- 2. Phase 2: Enhance with real-time ACH streaming
- 3. Phase 3: Migrate money movement dashboard functionality
- 4. Phase 4: Add remaining payment systems
- Advantages of Elastic Search Approach
- Quick Implementation: Leverage existing streaming infrastructure
- Rich Front-end: Cool dashboards, graphs, and visualization capabilities
- Alert Capabilities: Built-in email and alert functionality
- Cost Effective: Avoid building new web applications from scratch
- Iterative Development: Can transition to custom application later if needed
- Data Enhancement Requirements
- Customer Information Enrichment
-CDM Integration: Pull customer table data to enrich ACH information
- Bank Name Mapping: Routing number to clean bank name associations
- Multiple Source Integration: Combine various production sources for comprehensive
- coverage
- System Expansion Opportunities
- 1. DSP Integration: Retail-side payment data
- 2. CAP System: Additional payment rail coverage
- 3. Swift Modernization: If database becomes accessible
- 4. ACH Tracking: Fill gaps between EDI and COD transaction level
- 5. Transaction-level Monitoring: Expand beyond current file-level tracking
- Technical Implementation Recommendations
- Short-term Quick Wins
- Elastic Search Migration: Move existing LOT functionality to visual interface
- Money Movement Integration: Combine with existing dashboard capabilities
- Real-time ACH: Complete streaming implementation
- Alert Enhancement: Improve current email-based alerting
- Medium-term Enhancements
- Transaction-level Tracking: Implement for PWW/PWA and PSG systems
- Data Enrichment: Add customer and bank information
- Additional Systems: Integrate DSP, CAP, and other payment rails
- Dashboard Development: Executive-level real-time visibility
- Long-term Considerations
- Custom Application: Potentially migrate from Elastic Search to purpose-built solution
- Complete Transaction Lifecycle: Full end-to-end tracking capabilities
- Customer-facing Features: Provide transaction status to external customers
- Transaction Lifecycle Limitations
- Current Reality
-Backward Association: Can only provide lifecycle information after transaction reaches
- destination system
- File Processing: Cannot track individual transactions within files until unpacked
- Timing Dependencies: Must wait for batch processing completion before associating
- transactions to source files
- Customer Information: Limited ability to provide real-time status during processing
- Technical Constraints
- File Unpacking: Major project required to unpack files at SFG level
- Batch Processing: EDI and CPY systems have complex timing dependencies
- Alert Complexity: Individual transaction alerts would be extremely difficult due to variable
- processing times (24-48 hours possible)
- Team Structure and Responsibilities
- Proposed Division of Labor
- Data Analytics Team: Provide leadership for outcomes and requirements definition
- COD Team: Handle data processing and streaming infrastructure
- Collaborative Approach: Joint ownership with complementary expertise
- Key Personnel
- Mike Humans: Former LOT architect (no longer available) - documented significant system
- knowledge
- Aaron: Leading current streaming implementation efforts
- Mary Sammy: Operations lead with extensive payment system experience
- Narayan: Current data analytics team member
- Knowledge Transfer Needs
- System Documentation: Mike Humans' documentation available for reference
- Query Analysis: Existing queries contain data association logic
- Architecture Understanding: Current team will need to understand complex system
- interdependencies
- Risk Assessment and Mitigation
- Technical Risks
-Data Complexity: Payment system integration complexity historically underestimated
- System Dependencies: Multiple vendor systems with varying cooperation levels
- Performance Concerns: Real-time processing requirements vs. system capabilities
- Business Risks
- Scope Creep: Executive vision may exceed practical implementation possibilities
- Resource Allocation: $1 million budget may be insufficient for complete vision
- Timeline Pressure: September 2024 target for initial COD to RLO implementation
- Mitigation Strategies
- Phased Approach: Start with Elastic Search quick wins
- Expectation Management: Educate leadership on technical constraints
- Incremental Value: Deliver functional improvements while building toward larger vision
- Success Metrics and Outcomes
- Immediate Success Indicators
- Alert Reduction: Decrease false positive rates while maintaining detection capability
- Response Time: Maintain or improve current 1-hour issue detection
- Operations Satisfaction: Positive feedback from Mary Sammy's team
- Long-term Success Measures
- Executive Dashboard Adoption: Regular use of real-time payment visibility tools
- System Coverage: Comprehensive monitoring across all payment rails
- Issue Prevention: Proactive identification and resolution of payment system problems
- Organizational Impact
- Subject Matter Expertise: Team becomes company's payment system architecture experts
- Operational Efficiency: Reduced manual monitoring and faster issue resolution
- Strategic Positioning: Foundation for future payment system enhancements and customer
-facing features
+Based on the meeting transcript provided, here are the detailed answers to each question:
+
+1. Where does your application/platform sit in the flow of payments? (Beginning, middle, end)
+
+The application sits in the middle of the payments flow. According to the transcript, it operates "after the deposits have been collected for the providers or for the customer bank customers" and they do "reporting on all the collections activities that we have in the bank for various healthcare providers." The team clarified that they are "not in the payments flow in terms of what gets debited or credited, but we do report on the resulting collections."
+
+2. What are your downstream applications for originations?
+
+The application does not handle originations. As stated in the transcript, "we only work receivables work. Only receivables work."
+
+3. What are your downstream applications for receivables?
+
+For receivables, they have feeds to Pinnacle. Additionally, everything else is "either presented through a user interface to the client or transmitted in a file to the client."
+
+4. What are your upstream applications for originations?
+
+The application does not handle originations, only receivables work.
+
+5. What are your upstream applications for receivables?
+
+The upstream applications include lockbox, ACH from the bank, and they receive direct transmissions from payers for X12 835s. They also get a feed from PNC e-payments to create two types of refund files for healthcare clients so they can post for patient refunds.
+
+6. Of those downstream applications, which do you receive acknowledgments or notifications from?
+
+They do not receive acknowledgments or notifications from downstream applications like Pinnacle.
+
+7. Of those upstream applications, which do you receive acknowledgments or notifications from?
+
+They do not receive acknowledgments or notifications from upstream applications. File completeness is dictated by successful completion of jobs on the mainframe side that interact with lockbox and ACH.
+
+8. In what format do you receive transactions/files/data?
+
+They receive data in multiple formats: Nacha format, X12 format, and a variety of BAI formats from lockbox (basically CSV files).
+
+9. In what format do you send transactions/files/data?
+
+For Pinnacle, they interact directly with the database through web servers that present content using Pinnacle's security models. For other outputs, they typically send files in X12 835 format.
+
+10. Do you have any unique identifier that you add to the transactions from your system? Do you pass that to the next system in the flow? If not are you receiving a unique ID from a downstream application that you continue to pass upstream?
+
+They do not add unique identifiers or do tokenization. The significant identifier used to tie transactions together with payments and remits is the trace number included in either the ACH trace number or the X12 trace number. This is used in their "reassociation" process to match payments with remittance advice.
+
+11. Do you have any reporting that captures the activity that takes place at your stop in the lifecycle of a transaction? If so, where is that hosted? Who are the consumers for said reporting?
+
+Yes, they provide various reports available through the UI that summarize daily activity, areas of particular interest, and situations where clients receive adjustments to their bill amounts. They provide reporting on rejection codes and reasons for payers to providers. The reports flow through the UI and are usually spreadsheet representations of actual pages that are printed. The consumers are their healthcare provider clients.
+
+12. Can a client check on the status of their payment?
+
+Based on the transcript, clients can access information through the user interface and can ask about missing files when they receive deposits but don't get corresponding remittance advice. Clients can see when they receive deposits and anticipate receiving remittance advice that describes those deposits.
+
+13. What sort of data management are you doing? What type of database do you use?
+
+They use an Oracle database for their data management.
+
+14. Is your database split between operational and reporting databases?
+
+No, it is not split between operational and reporting databases. It's "different schema, but it's one server."
+
+15. Is your data being streamed anywhere? For ex. a warehouse like COD?
+
+They are consumers from COD, but they are not streaming data anywhere. The information they manage is "essentially for information that we do not share."
+
+16. Is it possible for there to be a failure at your stage in the payments flow? If so, what happens if there is one?
+
+They do not interact with the payments flow from origination to deposit, so failures at their stage don't affect the actual flow of dollars. However, they do communicate to customers when payments have been received and can affect their client's posting of data. Since payment and remittance are separate, they can receive remittance characteristics days or weeks in advance of actual settlement, and this time lag can impact client posting but not dollar flow.
+
+17. Do you do any negative tracking or volume tracking to account for expected transactions on a certain day?
+
+They have operations groups that monitor general throughput and payer relations teams that monitor payer connection health. However, they don't systematically monitor each payer's relationship for timely delivery because payer frequency varies (some daily, some weekly, some twice monthly). They do volume tracking from a claims-based perspective and monitor if they haven't seen data from certain payers for a couple of days, but it's "best efforts monitoring" based on SME knowledge within their operations group.
+
+18. Do you get any notifications from downstream systems if they don't receive a file or transaction from you?
+
+Yes, when providers receive deposits, they anticipate receiving remittance advice describing those deposits. If they don't receive the remittance advice, they contact the team asking "Hey, where's our file?" This typically happens within a few days tolerance, as there can be a window between when payment is received and when remittance detail is provided.
