@@ -188,21 +188,231 @@ Streamlab Publishing
 ==========================================
 
 
-I'll create detailed notes for each payment system mentioned in the transcript, organized by system with key technical details and operational characteristics.I've created comprehensive notes for each payment system based on the meeting transcript. The document covers all major systems discussed including PSG, PME/PRT, ACH platforms, input systems, and specialty payment types like RTP and Zelle.
+Payment Systems Detailed Notes
+PSG (Payment Staging Area)
+Purpose: Central collection and standardization hub for payments from multiple input sources
+Key Functions:
 
-Key highlights from the notes:
+Collects payments from various input sources
+Standardizes payment formats into XML
+Performs debulking (opens files, extracts individual transactions) and bulking (reassembles transactions)
+Routes payments to appropriate processing platforms
 
-Critical Issues Identified:
-- PSG had significant problems in March-May with payment duplication and dropping
-- ACH systems have a late detection problem for duplicates 
-- Performance issues with certain database views due to full history scans
+Critical Issue (March-May):
 
-System Architecture:
-- Multiple redundant systems (3 ACH platforms, PME/PRT for wires)
-- Complex routing logic with intelligent fallback mechanisms
-- Various data streaming patterns to COD for analytics
+Payments were duplicated or dropped between debulking and bulking processes
+Duplicated payments resulted in double processing and double payments to recipients
+Dropped payments resulted in missed payments, requiring PNC to pay out of pocket
+Root cause: Processing errors in the debulking/bulking workflow
 
-Data Access Recommendations:
-- Use base tables rather than views for better performance when possible
-- COD tables are preferred over CDI versions where available
-- Multiple data sources may be needed for complete transaction analysis
+Intelligent Routing Features:
+
+Customer-configurable payment preference ordering (e.g., RTP → Same Day ACH → Wire)
+Automatic fallback processing if preferred method fails
+CHIPS Splitter functionality for wire routing decisions
+
+CHIPS Splitter Rules:
+
+Transactions under $500M before 4PM ET can be sent via CHIPS instead of FedWire
+If CHIPS processing extends past 4PM cutoff, automatically routes to FedWire
+CHIPS cutoff: 4:00-4:30 PM ET, FedWire cutoff: 5:00-6:00 PM ET
+
+Data Streaming:
+
+Streams to COD (limited data set)
+Started streaming file-based payment data to COD after March incident
+MQ (Message Queue) data gets streamed to COD
+Does not stream all transaction details to COD
+
+PME (Payments Engine) / GPP (Global Payments Platform)
+Technical Details:
+
+PME is the bank's internal name; GPP is the vendor product name
+Vendor tool (possibly IBM, vendor not confirmed)
+Handles three wire types: FedWire, SWIFT, SWIFT pass-throughs
+
+Database Tables:
+
+PMEMINF: Contains all PME messages/transactions (including incomplete)
+PMEMINFView: Deduplicated view (slower performance due to full history scan)
+PME_CUSTOMERS: Account and routing number information
+Message_External_Interaction_PME: Fraud and sanctions screening data
+
+Processing Features:
+
+Real-time screening for fraud detection
+Sanctions compliance screening
+Streams transaction changes to COD in real-time
+
+Performance Notes:
+
+PMEMINF table has duplicates (original + updated transactions)
+PMEMINFView removes duplicates but scans entire payment history (slow)
+For quick queries: use PMEMINF directly and handle deduplication manually
+
+PRT (Payment Real Time)
+Technical Relationship:
+
+Second instance of GPP vendor tool (different version than PME)
+Managed by the same PME team
+Slightly different version number than PME
+
+Payment Types Handled:
+
+CHIPS wires
+ILV (International Low Volume payments)
+Canada wires
+Canada ACH
+RTP (Real Time Payments)
+
+Database Structure:
+
+PRTMINF: All PRT messages/transactions
+PRTMINFView: Deduplicated view
+PRT_CUSTOMERS: Account information
+Message_External_Interaction_PRT: Screening data
+
+Future Integration:
+
+May integrate with IPF for FedNow processing
+FedNow implementation timeline: later 2025 or 2026
+
+ACH Processing Systems
+Three Separate Platforms:
+
+PEP (or PEP Plus)
+ACH
+AUTYP (or AUT)
+
+Processing Characteristics:
+
+Each platform handles different subsets of ACH transactions
+All three send processed transactions to TCH (The Clearing House)
+Subset also sends to Fed ACH Network
+Updates COD five times daily (not real-time like wire systems)
+
+File vs. API Processing:
+
+Batch ACH files: No debulking/bulking in PSG (different from wires)
+API ACH: May undergo debulking/bulking process
+Bulk of PNC ACH volume is batch file processing
+
+Transaction Visibility Issue:
+
+PSG and input systems don't examine individual transactions in ACH files
+First transaction-level validation occurs at ACH processing platforms
+Duplicate detection happens too late in the process
+Should ideally catch duplicates at file receipt stage
+
+Database Access:
+
+COD.ACH_TRANSACTION_MASTER: Primary table for ACH data analysis
+CDI version exists but is being decommissioned
+COD version has additional fields not in CDI
+Raw ACH data available in AAD platform (limited access)
+
+Input Systems
+Multiple Customer Initiation Methods:
+
+File Transfer: Batch files containing multiple transactions
+Pinnacle: Corporate online banking platform
+API: Direct automated connections
+Payer Express: Alternative payment method
+Pinnacle Connect: Additional Pinnacle integration
+Integrated Payables: Recurring bill payment system
+ePayments: Mobile banking payments
+Electronic Data Interchange (EDI): Structured business transactions
+
+Processing Flow:
+
+Customer initiates payment via any input method
+File-level validation (not transaction-level)
+Format standardization
+Routing to PSG for further processing
+
+RTP (Real Time Payments)
+Processing Characteristics:
+
+Target processing time: Under 1 minute
+Processed through PRT platform
+Routed to TCH (The Clearing House) for settlement
+Can be initiated via API and MQ (Message Queue)
+
+FedNow Competition:
+
+FedNow is competing RTP system
+PNC initially didn't want to support but now required to
+Will route to Fed instead of TCH
+Processing through PRT → IPF → Fed (architecture not finalized)
+Not yet live (expected 2025-2026)
+
+Zelle Integration
+Processing Methods:
+
+Most Zelle transactions processed as ACH
+Some processed as RTP
+ACH-based Zelle creates settlement risk (money shown as available before actual settlement)
+RTP-based Zelle settles immediately
+
+Risk Considerations:
+
+Bank provides immediate availability for ACH-based Zelle
+Actual settlement takes 1-2 days
+Creates exposure risk if volume exceeds regulatory limits
+
+International and Specialty Systems
+SWIFT
+
+International wire payment processing
+Similar processing flow to FedWire
+Handled through PME platform
+
+Canada Payments
+
+Canada wires and Canada ACH processed through PRT
+Routed to Royal Bank of Canada (RBC) for final settlement
+
+ILV (International Low Volume)
+
+Small international payments
+Processed through PRT
+Routed to Visa for settlement
+
+Data Architecture and Monitoring
+COD (Operational Big Data)
+
+Real-time and near-real-time data warehouse
+Updates more frequently than daily (vs. BDP/BDA daily updates)
+PME/PRT: Real-time streaming
+ACH platforms: 5x daily updates
+PSG: Limited streaming (files and MQ data)
+
+Historical Context
+
+"Lifecycle of a Transaction" project attempted 4-5 years ago
+Never fully completed due to resource constraints
+Some infrastructure remains and may be leveraged for new initiatives
+
+Table Performance Considerations
+
+Non-view tables with manual deduplication often faster than automated views
+Views scan entire transaction history for deduplication
+For quick analysis, use base tables and handle duplicates programmatically
+
+Screening and Compliance
+Two Primary Screening Types:
+
+Fraud Detection: Transaction pattern analysis
+Sanctions Compliance: Government regulation adherence
+
+Impact on Processing:
+
+Screening can significantly slow transaction processing
+Customer complaints increase with processing delays
+Can affect customer retention and business relationships
+
+Data Availability:
+
+Screening results stored in Message_External_Interaction tables
+Available for both PME and PRT platforms
+Useful for analyzing transaction processing delays
