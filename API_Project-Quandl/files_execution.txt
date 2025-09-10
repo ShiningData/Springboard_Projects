@@ -1,78 +1,208 @@
- Order of Files to Run and Their Functions
 
-Based on the codebase, here's the order of files to run and what each file does:
+Background on Payment Systems
+- The speaker's team helped other payments teams by running code to move data around.
+- The root cause of issues was the bank's numerous payment systems.
 
- 1. batch_rulex_script.py (Root Directory)
 
-This is the core file that defines the EnsembleModel and ModelConfig classes. It contains:
+PSG and Payment Processing
+- PSG (Payment Staging Area) collects payments from different input sources and standardizes the format.
+- Debulking involves opening a file, examining individual payments, adding metadata, and reformatting.
+- Bulking involves reassembling the payments into another version of the same file before sending it to PME.
+- An issue occurred between debulking and bulking where payments were either duplicated or dropped.
+  - Duplicated payments resulted in customers being paid twice.
+  - Dropped payments resulted in missed payments, with PNC covering the loss.
 
-- The EnsembleModel class that combines CatBoost and AutoGluon models
-- The ModelConfig Pydantic model for validation
-- Methods for training, saving, loading, and making predictions with the ensemble model
 
-This file doesn't need to be run directly, but it's imported by other scripts.
+PME and Related Systems
+- Other systems like ACH and PME also experienced issues.
+- PME was originally GPP (Global Payments Platform).
+- Due to the Fed ISO change, another application called IPF was created.
+- PME (Payments Engine) uses GPP, a vendor tool.
+- There are two versions of the GPP tool managed by the PME team: PME and PRT.
+  - PME and PRT are at slightly different versions of the GPP tool.
+  - PME handles Fedwire, Swift, and Swift pass-through payments.
+  - PRT handles CHIPS, ILV (International Low Volume payments), Canada wires, Canada ACH, and RTP.
+- Cross signs on a diagram represent potential breaking points in the system.
 
- 2. train_and_predict.py
 
-This script:
-- Trains the ensemble model using the EnsembleModel class
-- Saves the trained model to disk
-- Makes predictions on test data
-- Demonstrates the complete workflow from training to prediction
+ACH Payment Platforms
+- There are three payment processing platforms for ACH.
+- The speaker is trying to find the names of the ACH platforms.
 
-Run this first to create the model files needed by other scripts.
 
- 3. display_predictions.py
+- There are three different processing platforms for ACH: AUTP, ACH, and AUTYP.
+- The speaker does not know what these acronyms stand for.
+- The ACH flow involves files from PSG going to one of the three ACH platforms, which then send data to TCH.
+- A subset of these platforms may also send data to the Fed ACH Network.
 
-This script:
-- Loads the trained ensemble model and explainer
-- Generates test data
-- Makes predictions using the ensemble model
-- Displays a table with:
-  - Instance ID
-  - Ensemble class label
-  - CatBoost probability
-  - AutoGluon probability
-  - Ensemble probability (average of both models)
-  - Top 5 important features with their importance scores
 
-This script requires the model files created by train_and_predict.py.
+Wires vs ACH
+- For US wires, the Fed Wire Network and Swift Network are handled by the Fed.
+- CHIPS goes to the TCH network (The Clearing House).
+- ACH stands for Automated Clearinghouse.
 
- 4. simple_prediction_table.py
 
-This is a simplified version of display_predictions.py that:
-- Doesn't rely on the actual EnsembleModel class
-- Generates random predictions and feature importance scores
-- Creates the same formatted table as display_predictions.py
-- Can be run independently without needing trained model files
+International Payments
+- International low volume payments go through Visa.
+- Canada wires and ACH payments go to the Royal Bank of Canada (RBC).
 
-This script is useful for demonstration purposes or when you don't have trained models available.
 
- 5. model_predictor.py
+Payment Staging Area (PSG)
+- PSG collects files for ACH in addition to wires.
+- PSG handles ACH differently; it doesn't do debulking and bulking for batch ACH like it does for wires.
+- For API ACHs, PSG may do debulking and bulking.
+- Batch ACH refers to a file containing information on what ACH payments need to be made.
+- PNC only knows what transactions are in the ACH file inside the ACH processing platforms (AUTP, ACH, or AUTYP).
+- If there are duplicate transactions, they are caught at the processing platform stage, but ideally, they should be caught earlier.
 
-This script:
-- Loads a trained model
-- Makes predictions on new data
-- Provides a simple interface for using the model in production
 
-This script requires the model files created by train_and_predict.py.
+ACH Initiation Methods
+- Customers can initiate ACH payments in various ways:
+  - File transfer
+  - Pinnacle (online banking for corporations)
+  - API
+  - Payer Express
+  - Pinnacle Connect
+  - Integrated payables
+  - E-payments (via mobile banking)
+  - Electronic Data Interchange (EDI)
 
- 6. local_interpretability.py
 
-This script:
-- Focuses on the RulexAI local instance interpretability
-- Explains how individual predictions are made
-- Shows which features are most important for each prediction
+ACH Full Flow
+- Client initiates ACH (e.g., via file to PNC).
+- PNC performs file-level checks (SFG).
+- PSG converts it into a proper ACH payment file.
+- It goes to one of the three ACH systems for transaction-level checks.
+- If everything is okay, it's sent to either the TCH or the Fed ACH network.
+- Money goes to a bank, and an acknowledgment or return is sent back.
+- Information is sent back to the customer regarding the status of their ACH payment.
 
-This script requires the model and explainer files created by train_and_predict.py.
 
- Summary of Execution Order
 
-1. Run train_and_predict.py first to create the model files
-2. Then run any of the following scripts depending on what you want to do:
-   - display_predictions.py for a complete view of predictions and feature importance
-   - model_predictor.py for making predictions on new data
-   - local_interpretability.py for detailed explanations of predictions
-   - simple_prediction_table.py for a demonstration without trained models
+ACH
+- ACHs allow initiating both credit and debit transactions.
+- ACHs allow receiving both credit and debit transactions.
 
-The simple_prediction_table.py script is the most self-contained and can be run independently without any dependencies on other scripts or trained models.
+
+RTPs (Real Time Payments)
+- RTPs are processed in PRT and are ideally processed within a minute.
+- FedNow is a competitor to RTP; instead of sending payments to the clearinghouse (TCH), payments are sent to the Fed.
+  - FedNow is not yet live but is expected to go live later this year or next year.
+
+
+Intelligent Routing in PSG
+- Intelligent routing is a feature in PSG that customers must opt into.
+- Customers can set preferences for how their transactions are routed (e.g., RTP, Same Day ACH, Wire).
+  - PSG checks if a payment is eligible for RTP first. If it fails, it checks the next preference (e.g., Same Day ACH), and so on.
+- Chip Splitter: PSG uses a "chip splitter" to decide whether to send a wire via CHIPS or FedWire.
+  - If a transaction is less than $500 million and before 4 PM Eastern time, it can be sent via CHIPS. If it fails, it's sent via FedWire.
+  - CHIPS stops transactions at 4 PM or 4:30 PM, while FedWire stops later (5 or 6 PM).
+- PSG's intelligent routing is essentially applying business rules to decide where to send transactions.
+
+
+Monitoring and Data Streaming
+- PSG teams monitor the automated intelligent routing process.
+- PSG, PME, and ACH platforms stream data to COD (Big Data Operations).
+  - PME and PRT stream changes in their database to COD in real-time.
+  - ACH sends information to COD about their transactions five times a day.
+- PSG streams some data to COD, including information about payments sent via files (after the March incident) and data sent via MQ (message queue).
+
+
+
+Lifecycle of a Transaction
+- There were work efforts 4 or 5 years ago in COD to track transactions.
+  - It was called lifecycle of a transaction.
+  - The project was never finished, momentum ran out.
+  - The current work will be similar and will probably reuse existing components.
+
+
+Inputs
+- Inputs were not discussed in detail.
+- Recommendation: Look them up in seismic.
+
+
+PMT
+- PMT is not fully understood.
+
+
+Zell
+- Zell sometimes gets processed as RTPs and sometimes as ACHs.
+  - Mostly ACHs, but some have happened as RTPs.
+- ACHs create risk because the payment hasn't settled when people are told the money is available.
+  - "If you are telling the people that the money is there in their account, the payment hasn't settled, so the bank doesn't have that money."
+
+
+Payment Types
+- RTPs, Zell over RTP, FedNow, ACHs, wires, Canada (small), Ilv (small), Swift (international wire payments).
+- Swift is processed similarly to Fedwire.
+
+
+Tables Involved
+- ACH Transaction Master:
+  - Use the COD one, not the CDI one.
+  - "COD HD01PTM. Ach Transaction Master."
+  - Similar to the one in CDI but has extra fields.
+  - The CDI one is supposed to be decommissioned.
+- Wire Master:
+  - In CDI, but not used.
+  - Use PME MinF instead, because Wiremaster only has completed transactions.
+  - PME MinF and PRT MinF:
+    - Used to make the wire view.
+    - The wire view is slow because the PME MINF view and PRTMINFview is very slow.
+    - PRTMinf has duplicates, PRTMinfview does not.
+    - For quick queries, use PRT MinF and remove duplicates manually.
+
+
+Screening
+- During processing, PNC screens transactions for fraud rules and sanctions regulations.
+- In COD, screenings can be viewed in these tables:
+  - Message External interaction (PME and PRT).
+  - There is a view and a non-view.
+  - The view removes duplicates, but for quick queries, use the non-view and remove duplicates manually.
+
+
+
+COD Tables
+- PME and PRT tables contain info about accounts involved in PME and PRT transactions.
+  - Routing numbers mapped to bank names can be found here.
+- PSG tables are in COD as well.
+  - There are two PSG transaction tables, but the speaker doesn't know the difference between them.
+  - "It's payment staging digital payments transaction. That's what that's supposed to be."
+- ACH transaction master table has enriched data.
+  - Raw ACH data can be found in AAD.
+  - If the field from ACH isn't in COD, check AAD, then the mainframe.
+
+
+Databases
+- Data is stored across Oracle, MongoDB, and COD.
+- Platforms should send data to COD for archival.
+  - It's better to use COD than to connect directly to other databases.
+
+
+Streamlab Publishing
+- There's an issue publishing Streamlab in RS connect.
+  - The error is a sub process error related to BitBucket credentials.
+- In Steamzep, the account manager in terminal options shows up as "instructor" instead of the user's name, essay, PA, SAA ID, and RID link order.
+- Sunita may not be helpful with Python-related issues.
+
+==========================================
+
+
+I'll create detailed notes for each payment system mentioned in the transcript, organized by system with key technical details and operational characteristics.I've created comprehensive notes for each payment system based on the meeting transcript. The document covers all major systems discussed including PSG, PME/PRT, ACH platforms, input systems, and specialty payment types like RTP and Zelle.
+
+Key highlights from the notes:
+
+Critical Issues Identified:
+- PSG had significant problems in March-May with payment duplication and dropping
+- ACH systems have a late detection problem for duplicates 
+- Performance issues with certain database views due to full history scans
+
+System Architecture:
+- Multiple redundant systems (3 ACH platforms, PME/PRT for wires)
+- Complex routing logic with intelligent fallback mechanisms
+- Various data streaming patterns to COD for analytics
+
+Data Access Recommendations:
+- Use base tables rather than views for better performance when possible
+- COD tables are preferred over CDI versions where available
+- Multiple data sources may be needed for complete transaction analysis
