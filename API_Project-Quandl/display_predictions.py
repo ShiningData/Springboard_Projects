@@ -1,50 +1,51 @@
- PMT: Dashboard Requirements Analysis
+ PST: Dashboard Requirements Analysis
 
  1. Current Challenges and Gaps
 
- Limited Upstream Acknowledgment Visibility
-- GPP acknowledgment gaps: Historically poor request-response models from GPP require compensating mechanisms like pending queue monitoring and 5-minute timeout alerts
-- Manual intervention dependency: Operational teams rely on workarounds and alert systems rather than systematic acknowledgment tracking from payment engines
-- Processing delay detection: Cannot proactively identify when upstream requests remain unacknowledged, creating potential payment processing bottlenecks
+ Limited End-to-End Visibility
+- Downstream processing blind spots: Cannot see failures after successful handoff to MLP, PTD, or other downstream systems - if MLP accepts but PRT fails, PST remains unaware
+- No missing file notifications: Downstream systems don't alert PST when expected files/transactions aren't received, requiring indirect detection through reconciliation discrepancies
+- Payment completion dependency: Final payment success depends on recipient actions (payment method selection) outside PST's visibility or control
 
- Fragmented Downstream Notification Coverage
-- Fire-and-forget intraday services: No acknowledgment requirements from downstream applications receiving notifications, creating blind spots for delivery failures
-- Selective failure notifications: Only mainframe applications (CFE, GL) provide systematic missing file alerts; other applications lack monitoring capabilities
-- Manual coordination dependency: Missing transaction detection relies on downstream teams contacting PMT rather than automated notification systems
+ Fragmented Status Tracking
+- Timer-based failure detection only: 1-hour SLA monitoring catches stuck transactions but doesn't provide predictive insights or root cause analysis
+- Basic internal reporting: Rudimentary daily reports lack modern BI capabilities and comprehensive payment lifecycle metrics
+- Client autonomy challenges: Variable payment patterns make volume tracking impossible, but this creates gaps in operational oversight
 
- Inconsistent Service Level Monitoring
-- Service type variations: Real-time, intraday, end-of-day, and support services have different failure handling and monitoring approaches
-- Limited volume tracking: Only manual end-of-day volume monitoring by operations team; no automated baseline tracking across service types
-- Incident-driven visibility: Operational issues only surface through automated incidents or manual escalation rather than proactive monitoring
+ Integration Monitoring Limitations
+- Mixed acknowledgment coverage: While MLP API and PTD provide "ACTC" responses, not all downstream integrations offer systematic confirmations
+- Dual database complexity: Oracle-to-MongoDB transition creates data management challenges and potential inconsistencies during migration
+- Multi-format processing risks: Supporting CSV, JSON, and API formats without unified validation monitoring
 
- Integration Complexity Without Unified Tracking
-- Multiple protocol management: CICS, MQ, API, and RPC integrations lack unified monitoring across communication methods
-- Direct database access risks: Authorized direct access to PRT and PME databases creates potential blind spots for integration health
-- MID dependency: Reliance on upstream-generated Message Identifiers without PMT-specific tracking for middleware processing steps
+ Process Handoff Gaps
+- Trace ID fragmentation: While PST generates unique trace IDs, tracking becomes inconsistent as payments flow through different downstream systems with varying identifier conventions
+- No cross-system correlation: Cannot correlate PST trace IDs with downstream processing events to identify where failures occur in the payment chain
 
  2. Recommendations
 
- Enhanced Upstream Integration Monitoring
-- Systematic acknowledgment tracking: Implement comprehensive request-response monitoring for all GPP interactions with automated alerting for unacknowledged requests
-- Pending queue automation: Replace manual pending queue monitoring with automated tracking and escalation for processing delays
-- Multi-engine integration: Expand monitoring beyond GPP to cover all upstream payment engines with standardized acknowledgment requirements
+ Enhanced End-to-End Monitoring
+- Downstream system integration: Establish systematic status feedback from MLP, PTD, ACH, and CPY systems beyond initial acceptance confirmations
+- Payment completion tracking: Monitor recipient interactions and payment method selections to identify stalled payments requiring intervention
+- Cross-system correlation: Implement trace ID tracking through downstream systems to maintain visibility after PST handoff
 
- Comprehensive Downstream Notification Framework
-- Universal acknowledgment collection: Implement systematic confirmation requirements from all downstream applications, not just mainframe systems
-- Proactive missing file detection: Deploy automated monitoring for all end-of-day batch processes with immediate alerting when files aren't received
-- Intraday service confirmation: Add acknowledgment capabilities to fire-and-forget notification services for complete delivery visibility
+ Proactive Issue Detection
+- Predictive alerting: Enhance timer-based monitoring with trend analysis to identify patterns before 1-hour SLA breaches occur
+- Missing transaction detection: Implement automated reconciliation with downstream systems to identify unreceived files or processing gaps
+- Integration health monitoring: Track API response patterns and file transmission success rates across all downstream connections
 
- Unified Service Level Dashboard
-- Cross-service monitoring: Create single dashboard covering real-time, intraday, end-of-day, and support services with consistent SLA tracking
-- Automated volume baselining: Implement systematic volume tracking across all service types with deviation alerting
-- Protocol-agnostic visibility: Provide unified monitoring regardless of communication method (CICS, MQ, API, RPC)
+ Comprehensive Status Dashboard
+- Real-time payment lifecycle view: Create unified dashboard showing payment progression from PST through all downstream systems until final completion
+- Client-specific monitoring: Track payment patterns by client to identify unusual volume deviations or processing anomalies
+- Multi-format processing metrics: Monitor success rates and error patterns across CSV, JSON, and API submission methods
 
- Middleware-Specific Value Tracking
-- Integration performance metrics: Track transformation times, protocol conversion success rates, and downstream delivery confirmation
-- Service dependency mapping: Monitor critical dependencies like RTS, EFG, and ACBS with impact assessment for payment engine operations
-- End-to-end correlation: Enhance MID tracking with PMT-specific processing milestones for complete middleware visibility
+ Dashboard Data Requirements
+- Systematic downstream acknowledgments: Collect confirmation data from all payment rails (RTP via MLP, Visa Direct via PTD, ACH via Dell)
+- Recipient interaction tracking: Monitor payee actions and payment method selections that impact final payment completion
+- Database migration monitoring: Track Oracle-to-MongoDB transition impacts on processing performance and data consistency
+- Format transformation metrics: Monitor conversion success rates between inbound formats and downstream system requirements
 
- Proactive Issue Prevention
-- Compensating control automation: Convert manual workarounds and timeout alerts into systematic automated monitoring
-- Service health prediction: Implement trend analysis to identify degrading performance before service failures occur
-- Cross-system integration health: Monitor direct database access patterns and integration points for early warning of potential issues
+ Alert Framework for Dashboard
+- Payment stall detection: Identify payments stuck in non-permanent statuses beyond normal processing windows
+- Downstream system health: Alert when acceptance rates from MLP, PTD, or other systems decline below baseline
+- Volume anomaly detection: Flag unusual client payment submission patterns that might indicate processing issues
+- Integration failure escalation: Route different failure types (data quality vs. system connectivity) to appropriate resolution teams
