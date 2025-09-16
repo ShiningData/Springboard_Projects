@@ -1,39 +1,41 @@
- GPP PRT/PME: Dashboard Requirements Analysis
+ PSG: Dashboard Requirements Analysis
 
  1. Current Challenges and Gaps
 
- Monitoring and Alerting Deficiencies
-- No automated volume tracking: Only selective manual monitoring for specific clients, creating blind spots for anomaly detection
-- Missing file detection gaps: No systematic notifications when downstream systems don't receive expected files/transactions
-- Manual failure identification: Run-the-bank teams rely on reactive problem-solving rather than proactive issue detection
+ Limited Transaction Tracking
+- Inconsistent identifier generation: Real-time payments bypass FTM and don't generate PSG Transaction IDs, creating tracking gaps for time-sensitive payments
+- Dual processing paths: FTM vs. direct-to-PRT routing creates visibility inconsistencies across payment types
+- No comprehensive internal reporting: PSG relies entirely on COD event streaming without internal transaction lifecycle visibility
 
- Limited End-to-End Visibility
-- No acknowledgment tracking: Fire-and-forget model with most downstream systems provides no confirmation of successful processing
-- Fragmented status information: Multiple status checking mechanisms (Pinnacle, CAP API, files) without unified visibility
-- Processing bottleneck identification: Cannot pinpoint where delays or failures occur in the payment lifecycle
+ Reconciliation Deficiencies
+- Immature downstream reconciliation: Automated reconciliation runs every 3-4 hours but lacks comprehensive coverage across all payment types
+- Manual reconciliation dependency: End-of-day processes rely heavily on manual checks rather than automated missing transaction detection
+- Limited notification mechanisms: Downstream systems provide minimal automated alerts for missing files or transactions
 
- Data Integration Gaps
-- COD streaming only: Real-time data flows to enterprise warehouse but limited operational monitoring data availability
-- MID tracking limitations: While transactions have unique identifiers, cross-system correlation for dashboard purposes needs enhancement
+ Processing Visibility Gaps
+- Format transformation blind spots: Multiple inbound formats (ISO XML, legacy BSI, JSON) with limited visibility into conversion failures or processing bottlenecks
+- Routing decision opacity: Intelligent routing to PME, PRT, or ACH systems lacks transparent decision tracking for troubleshooting
+- Dual database complexity: DB2 and Oracle systems create data fragmentation without unified monitoring
 
  2. Recommendations
 
- Dashboard Data Requirements
-- Implement real-time transaction tracking: Capture MID-based transaction flow through all processing stages
-- Create volume baseline monitoring: Establish automated tracking for all major clients with deviation alerting
-- Build acknowledgment collection: Implement systematic confirmation tracking from critical downstream systems (STX, GL, RCF, CFE)
+ Enhanced Transaction Tracking
+- Standardize identifier management: Generate consistent PSG Transaction IDs for all payments, including real-time payments that bypass FTM
+- Unified processing visibility: Create single dashboard view covering both FTM and direct-to-PRT processing paths
+- Real-time status tracking: Implement comprehensive status updates from payment receipt through downstream delivery
 
- Proactive Monitoring Capabilities
-- Payment lifecycle visibility: Track transactions from upstream submission through downstream delivery with stage-specific timing metrics
-- Automated anomaly detection: Flag unusual volume patterns, processing delays, and missing acknowledgments before client notification
-- Interface health monitoring: Monitor MDM, RTS, and other critical system integrations with automated failure alerting
+ Proactive Reconciliation Framework
+- Automated missing transaction detection: Implement real-time alerts when downstream systems don't acknowledge expected transactions within defined timeframes
+- Enhanced downstream communication: Establish systematic acknowledgment requirements from PME, PRT, and ACH systems
+- Volume baseline monitoring: Create automated tracking for expected transaction volumes with deviation alerting
 
- Dashboard Integration Points
-- Upstream integration: Capture submission data from CAP, Pinnacle, PSI, and file channels
-- Internal processing metrics: Monitor validation, sanctions screening, and processing workflow performance
-- Downstream confirmation tracking: Implement systematic acknowledgment collection from key systems
+ Dashboard Integration Requirements
+- Multi-format processing metrics: Monitor transformation success rates and processing times across ISO XML, BSI, JSON, and other formats
+- Intelligent routing transparency: Track routing decisions and downstream system performance to identify optimal payment paths
+- Cross-database correlation: Unify DB2 and Oracle transaction data for comprehensive payment lifecycle visibility
+- COD event enhancement: Leverage existing COD streaming while adding real-time operational dashboards for immediate issue detection
 
- Alert Framework
-- Pre-emptive client communication: Automatically notify clients of processing delays or issues before they inquire
-- Escalation workflows: Route different failure types to appropriate resolution teams (run-the-bank, compliance, technical)
-- SLA monitoring: Track processing times against client expectations with automated breach notifications
+ Failure Prevention Capabilities
+- Format validation alerting: Proactive alerts for transformation failures or format compatibility issues before downstream processing
+- Processing bottleneck identification: Monitor FTM performance issues and automated recovery events to prevent client impact
+- Peak period monitoring: Enhanced automated monitoring during month-end, quarter-end, and year-end processing periods
