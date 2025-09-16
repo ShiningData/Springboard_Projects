@@ -1,41 +1,50 @@
- PSG: Dashboard Requirements Analysis
+ PMT: Dashboard Requirements Analysis
 
  1. Current Challenges and Gaps
 
- Limited Transaction Tracking
-- Inconsistent identifier generation: Real-time payments bypass FTM and don't generate PSG Transaction IDs, creating tracking gaps for time-sensitive payments
-- Dual processing paths: FTM vs. direct-to-PRT routing creates visibility inconsistencies across payment types
-- No comprehensive internal reporting: PSG relies entirely on COD event streaming without internal transaction lifecycle visibility
+ Limited Upstream Acknowledgment Visibility
+- GPP acknowledgment gaps: Historically poor request-response models from GPP require compensating mechanisms like pending queue monitoring and 5-minute timeout alerts
+- Manual intervention dependency: Operational teams rely on workarounds and alert systems rather than systematic acknowledgment tracking from payment engines
+- Processing delay detection: Cannot proactively identify when upstream requests remain unacknowledged, creating potential payment processing bottlenecks
 
- Reconciliation Deficiencies
-- Immature downstream reconciliation: Automated reconciliation runs every 3-4 hours but lacks comprehensive coverage across all payment types
-- Manual reconciliation dependency: End-of-day processes rely heavily on manual checks rather than automated missing transaction detection
-- Limited notification mechanisms: Downstream systems provide minimal automated alerts for missing files or transactions
+ Fragmented Downstream Notification Coverage
+- Fire-and-forget intraday services: No acknowledgment requirements from downstream applications receiving notifications, creating blind spots for delivery failures
+- Selective failure notifications: Only mainframe applications (CFE, GL) provide systematic missing file alerts; other applications lack monitoring capabilities
+- Manual coordination dependency: Missing transaction detection relies on downstream teams contacting PMT rather than automated notification systems
 
- Processing Visibility Gaps
-- Format transformation blind spots: Multiple inbound formats (ISO XML, legacy BSI, JSON) with limited visibility into conversion failures or processing bottlenecks
-- Routing decision opacity: Intelligent routing to PME, PRT, or ACH systems lacks transparent decision tracking for troubleshooting
-- Dual database complexity: DB2 and Oracle systems create data fragmentation without unified monitoring
+ Inconsistent Service Level Monitoring
+- Service type variations: Real-time, intraday, end-of-day, and support services have different failure handling and monitoring approaches
+- Limited volume tracking: Only manual end-of-day volume monitoring by operations team; no automated baseline tracking across service types
+- Incident-driven visibility: Operational issues only surface through automated incidents or manual escalation rather than proactive monitoring
+
+ Integration Complexity Without Unified Tracking
+- Multiple protocol management: CICS, MQ, API, and RPC integrations lack unified monitoring across communication methods
+- Direct database access risks: Authorized direct access to PRT and PME databases creates potential blind spots for integration health
+- MID dependency: Reliance on upstream-generated Message Identifiers without PMT-specific tracking for middleware processing steps
 
  2. Recommendations
 
- Enhanced Transaction Tracking
-- Standardize identifier management: Generate consistent PSG Transaction IDs for all payments, including real-time payments that bypass FTM
-- Unified processing visibility: Create single dashboard view covering both FTM and direct-to-PRT processing paths
-- Real-time status tracking: Implement comprehensive status updates from payment receipt through downstream delivery
+ Enhanced Upstream Integration Monitoring
+- Systematic acknowledgment tracking: Implement comprehensive request-response monitoring for all GPP interactions with automated alerting for unacknowledged requests
+- Pending queue automation: Replace manual pending queue monitoring with automated tracking and escalation for processing delays
+- Multi-engine integration: Expand monitoring beyond GPP to cover all upstream payment engines with standardized acknowledgment requirements
 
- Proactive Reconciliation Framework
-- Automated missing transaction detection: Implement real-time alerts when downstream systems don't acknowledge expected transactions within defined timeframes
-- Enhanced downstream communication: Establish systematic acknowledgment requirements from PME, PRT, and ACH systems
-- Volume baseline monitoring: Create automated tracking for expected transaction volumes with deviation alerting
+ Comprehensive Downstream Notification Framework
+- Universal acknowledgment collection: Implement systematic confirmation requirements from all downstream applications, not just mainframe systems
+- Proactive missing file detection: Deploy automated monitoring for all end-of-day batch processes with immediate alerting when files aren't received
+- Intraday service confirmation: Add acknowledgment capabilities to fire-and-forget notification services for complete delivery visibility
 
- Dashboard Integration Requirements
-- Multi-format processing metrics: Monitor transformation success rates and processing times across ISO XML, BSI, JSON, and other formats
-- Intelligent routing transparency: Track routing decisions and downstream system performance to identify optimal payment paths
-- Cross-database correlation: Unify DB2 and Oracle transaction data for comprehensive payment lifecycle visibility
-- COD event enhancement: Leverage existing COD streaming while adding real-time operational dashboards for immediate issue detection
+ Unified Service Level Dashboard
+- Cross-service monitoring: Create single dashboard covering real-time, intraday, end-of-day, and support services with consistent SLA tracking
+- Automated volume baselining: Implement systematic volume tracking across all service types with deviation alerting
+- Protocol-agnostic visibility: Provide unified monitoring regardless of communication method (CICS, MQ, API, RPC)
 
- Failure Prevention Capabilities
-- Format validation alerting: Proactive alerts for transformation failures or format compatibility issues before downstream processing
-- Processing bottleneck identification: Monitor FTM performance issues and automated recovery events to prevent client impact
-- Peak period monitoring: Enhanced automated monitoring during month-end, quarter-end, and year-end processing periods
+ Middleware-Specific Value Tracking
+- Integration performance metrics: Track transformation times, protocol conversion success rates, and downstream delivery confirmation
+- Service dependency mapping: Monitor critical dependencies like RTS, EFG, and ACBS with impact assessment for payment engine operations
+- End-to-end correlation: Enhance MID tracking with PMT-specific processing milestones for complete middleware visibility
+
+ Proactive Issue Prevention
+- Compensating control automation: Convert manual workarounds and timeout alerts into systematic automated monitoring
+- Service health prediction: Implement trend analysis to identify degrading performance before service failures occur
+- Cross-system integration health: Monitor direct database access patterns and integration points for early warning of potential issues
