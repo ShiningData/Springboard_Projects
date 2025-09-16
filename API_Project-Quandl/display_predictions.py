@@ -1,51 +1,52 @@
- PST: Dashboard Requirements Analysis
+ Embedded Finance (CAP): Dashboard Requirements Analysis
 
  1. Current Challenges and Gaps
 
- Limited End-to-End Visibility
-- Downstream processing blind spots: Cannot see failures after successful handoff to MLP, PTD, or other downstream systems - if MLP accepts but PRT fails, PST remains unaware
-- No missing file notifications: Downstream systems don't alert PST when expected files/transactions aren't received, requiring indirect detection through reconciliation discrepancies
-- Payment completion dependency: Final payment success depends on recipient actions (payment method selection) outside PST's visibility or control
+ Limited Transaction Lifecycle Visibility
+- No status change tracking: CAP doesn't capture the complete transaction lifecycle or status changes over time within their system
+- 90-day audit limitation: Only maintains audit information for when customers made calls and data exchange, not actual payment progression
+- Pass-through status model: Simply relays status from downstream systems without internal tracking of transaction progression
 
- Fragmented Status Tracking
-- Timer-based failure detection only: 1-hour SLA monitoring catches stuck transactions but doesn't provide predictive insights or root cause analysis
-- Basic internal reporting: Rudimentary daily reports lack modern BI capabilities and comprehensive payment lifecycle metrics
-- Client autonomy challenges: Variable payment patterns make volume tracking impossible, but this creates gaps in operational oversight
+ Incomplete Downstream Monitoring
+- Unknown missing transaction detection: Team unaware of systems monitoring whether downstream applications receive files/transactions from CAP
+- Run-the-bank disconnect: Limited visibility into operational monitoring functions that would detect processing gaps
+- Basic acknowledgment tracking: Only receives initial acknowledgments that downstream systems received requests, no ongoing status confirmation
 
- Integration Monitoring Limitations
-- Mixed acknowledgment coverage: While MLP API and PTD provide "ACTC" responses, not all downstream integrations offer systematic confirmations
-- Dual database complexity: Oracle-to-MongoDB transition creates data management challenges and potential inconsistencies during migration
-- Multi-format processing risks: Supporting CSV, JSON, and API formats without unified validation monitoring
+ Client-Facing Visibility Gaps
+- Reactive status checking: Clients must actively query for status updates using GET calls rather than receiving proactive failure notifications
+- Webhook dependency: Status change notifications rely on downstream systems triggering webhooks, creating potential gaps if downstream systems fail silently
+- Limited failure attribution: 400-level HTTP errors indicate failures but may not provide sufficient detail for clients to understand root causes
 
- Process Handoff Gaps
-- Trace ID fragmentation: While PST generates unique trace IDs, tracking becomes inconsistent as payments flow through different downstream systems with varying identifier conventions
-- No cross-system correlation: Cannot correlate PST trace IDs with downstream processing events to identify where failures occur in the payment chain
+ Operational Monitoring Limitations
+- Volume tracking without correlation: Monitor payment volumes for leadership reporting but lack correlation with processing success rates or failure patterns
+- Single database architecture: Oracle Exadata serves both operational and audit functions without separation for performance optimization
+- TAP data consumption opacity: Unclear how TAP leverages CAP data for broader payment ecosystem monitoring
 
  2. Recommendations
 
- Enhanced End-to-End Monitoring
-- Downstream system integration: Establish systematic status feedback from MLP, PTD, ACH, and CPY systems beyond initial acceptance confirmations
-- Payment completion tracking: Monitor recipient interactions and payment method selections to identify stalled payments requiring intervention
-- Cross-system correlation: Implement trace ID tracking through downstream systems to maintain visibility after PST handoff
+ Enhanced Transaction Lifecycle Tracking
+- Internal status progression monitoring: Implement comprehensive tracking of payment status changes as they flow through CAP, not just audit logs of API calls
+- Transaction correlation mapping: Create linkage between trace IDs, customer references, and downstream system responses for complete payment tracking
+- Extended data retention: Consider longer retention periods for critical transaction lifecycle data beyond current 90-day audit window
 
- Proactive Issue Detection
-- Predictive alerting: Enhance timer-based monitoring with trend analysis to identify patterns before 1-hour SLA breaches occur
-- Missing transaction detection: Implement automated reconciliation with downstream systems to identify unreceived files or processing gaps
-- Integration health monitoring: Track API response patterns and file transmission success rates across all downstream connections
+ Proactive Downstream Integration Monitoring
+- Systematic downstream health checks: Implement regular confirmation that PSG, PPS, PTT, and REC are receiving and acknowledging CAP transmissions
+- Missing transaction alerting: Deploy automated detection when expected downstream acknowledgments aren't received within defined timeframes
+- Run-the-bank integration: Establish systematic communication with operational monitoring teams to identify downstream processing gaps
 
- Comprehensive Status Dashboard
-- Real-time payment lifecycle view: Create unified dashboard showing payment progression from PST through all downstream systems until final completion
-- Client-specific monitoring: Track payment patterns by client to identify unusual volume deviations or processing anomalies
-- Multi-format processing metrics: Monitor success rates and error patterns across CSV, JSON, and API submission methods
+ Dashboard Integration Requirements
+- API performance metrics: Track response times, success rates, and failure patterns across all CAP API endpoints
+- Client-specific monitoring: Monitor API usage patterns by client to identify anomalies or processing issues affecting specific customers
+- Dual identifier correlation: Provide unified tracking using both PNC trace IDs and customer reference numbers for comprehensive payment monitoring
+- Authentication and validation failure tracking: Monitor field-level validation failures and entitlement rejections to identify systematic issues
 
- Dashboard Data Requirements
-- Systematic downstream acknowledgments: Collect confirmation data from all payment rails (RTP via MLP, Visa Direct via PTD, ACH via Dell)
-- Recipient interaction tracking: Monitor payee actions and payment method selections that impact final payment completion
-- Database migration monitoring: Track Oracle-to-MongoDB transition impacts on processing performance and data consistency
-- Format transformation metrics: Monitor conversion success rates between inbound formats and downstream system requirements
+ Enhanced Client Experience Monitoring
+- Proactive failure notification: Implement real-time alerts when payments fail at CAP level or downstream processing, not just reactive status checking
+- Status change attribution: Provide detailed failure reasons and processing stage information to help clients understand payment issues
+- Webhook reliability monitoring: Track webhook delivery success to ensure clients receive timely status notifications
 
- Alert Framework for Dashboard
-- Payment stall detection: Identify payments stuck in non-permanent statuses beyond normal processing windows
-- Downstream system health: Alert when acceptance rates from MLP, PTD, or other systems decline below baseline
-- Volume anomaly detection: Flag unusual client payment submission patterns that might indicate processing issues
-- Integration failure escalation: Route different failure types (data quality vs. system connectivity) to appropriate resolution teams
+ Operational Dashboard Components
+- Real-time throughput monitoring: Track payment volumes and processing rates across different payment types (direct API, Pinnacle Connected)
+- Format processing metrics: Monitor JSON processing efficiency and any legacy file-based integration performance
+- Network and infrastructure health: Track F5, APG, and other network layer performance impacting API availability
+- End-to-end processing correlation: Link CAP processing with downstream system performance for complete payment flow visibility
