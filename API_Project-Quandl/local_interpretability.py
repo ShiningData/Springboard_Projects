@@ -1,6 +1,4 @@
-Based on the bank meeting transcript for Lockbox operations, here are comprehensive and detailed answers to your 18 questions:
-
- 1. Where does your application/platform sit in the flow of payments? (Beginning, middle, end)
+1. Where does your application/platform sit in the flow of payments? (Beginning, middle, end)
 
 Lockbox operates at the very beginning of the payment flow, serving as the initial entry point for physical payments into PNC's payment processing ecosystem. Lockbox functions as the first digital capture point for paper-based payments that arrive through traditional mail services.
 
