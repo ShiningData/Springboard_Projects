@@ -1,133 +1,75 @@
-Here’s the updated script with styled pandas table:
+# Create download button and table side by side
+col1, col2 = st.columns([4, 1])
 
-```python
-# Grouping for Distribution Plot
-freq_map = {"Daily": "D", "Weekly": "W", "Monthly": "M"}
+with col1:
+    st.subheader(f"{interval} Distribution Table")
 
-# Create a copy and ensure createTime is datetime
-current_df_copy = current_df.copy()
-current_df_copy["createTime"] = pd.to_datetime(current_df_copy["createTime"])
-
-grouped = (
-    current_df_copy.groupby([
-        pd.Grouper(key="createTime", freq=freq_map[interval]),
-        "rule_status"
-    ]).size().reset_index(name="count")
-)
-
-# Format x-axis labels based on interval
-if interval == "Daily":
-    grouped["x_label"] = grouped["createTime"].dt.strftime("%Y-%m-%d")
-elif interval == "Weekly":
-    # For weekly, show start (Monday) to end (Sunday) of the week
-    grouped["x_label"] = (
-        grouped["createTime"].dt.strftime("%b %d") + " - " +
-        (grouped["createTime"] + pd.Timedelta(days=6)).dt.strftime("%b %d")
+with col2:
+    # Create Excel file in memory
+    output = io.BytesIO()
+    
+    # Reset index to include Month column in the data
+    table_download = table_data.reset_index()
+    
+    # Write to Excel
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        table_download.to_excel(writer, index=False, sheet_name='Distribution')
+        
+        # Get workbook and worksheet
+        workbook = writer.book
+        worksheet = writer.sheets['Distribution']
+        
+        # Style the header row
+        header_fill = PatternFill(start_color='FF9800', end_color='FF9800', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF', size=14)
+        
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Style data cells
+        data_fill = PatternFill(start_color='FFE5CC', end_color='FFE5CC', fill_type='solid')
+        data_font = Font(bold=True, size=12)
+        
+        for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
+            for cell in row:
+                cell.fill = data_fill
+                cell.font = data_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Auto-adjust column widths
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2) * 1.2
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+    output.seek(0)
+    
+    st.download_button(
+        label="📥 Download",
+        data=output,
+        file_name=f"{interval}_distribution_table.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-elif interval == "Monthly":
-    grouped["x_label"] = grouped["createTime"].dt.strftime("%B %Y")
 
-grouped["total"] = grouped.groupby("createTime")["count"].transform("sum")
-grouped["percentage"] = (grouped["count"] / grouped["total"]*100).round(1)
-grouped["hover"] = grouped["rule_status"] + ": " + grouped["count"].astype(str) + " (" + grouped["percentage"].astype(str) + "%)"
-
-# Bar Chart
-st.subheader(f"Request Distribution by {interval}")
-
-fig = px.bar(
-    grouped,
-    x="x_label",
-    y="count",
-    color="rule_status",
-    text="hover",
-    color_discrete_map={"Success": "#4CAF50", "Failed": "#f44336"},
-    labels={"x_label": "Date", "count": "Request Count", "rule_status": "Request Status"}
-)
-
-fig.update_traces(textposition='auto', hovertemplate='%{text}')
-fig.update_layout(
-    showlegend=True,
-    xaxis_title="Date",
-    yaxis_title="Request Count",
-    xaxis_tickangle=-45
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-# Table below the chart
-st.subheader(f"{interval} Distribution Table")
-
-# Create pivot table
-table_data = (
-    current_df_copy.groupby([
-        pd.Grouper(key="createTime", freq=freq_map[interval]),
-        "rule_status"
+# Apply styles using Pandas Styler
+styled_df = (
+    table_data.style
+    .set_table_styles([
+        {'selector': 'th.col_heading', 'props': [('background-color', '#FF9800'), ('color', 'white'), ('font-size', '22px'), ('font-weight', 'bold'), ('text-align', 'center')]},
+        {'selector': 'th.row_heading', 'props': [('background-color', '#FF9800'), ('color', 'white'), ('font-size', '22px'), ('font-weight', 'bold'), ('text-align', 'center')]},
+        {'selector': 'td', 'props': [('background-color', '#FFE5CC'), ('color', '#000'), ('font-size', '20px'), ('font-weight', 'bold'), ('text-align', 'center')]}
     ])
-    .size()
-    .reset_index(name='count')
-    .pivot(index='createTime', columns='rule_status', values='count')
-    .fillna(0)
-    .astype(int)
+    .set_table_attributes('style="width:100%; font-size:20px;"')
 )
 
-# Add Total column
-table_data['Total'] = table_data.sum(axis=1)
-
-# Format index based on interval
-if interval == "Daily":
-    table_data.index = pd.to_datetime(table_data.index).strftime('%Y-%m-%d')
-    table_data.index.name = 'Date'
-elif interval == "Weekly":
-    table_data.index = [
-        f"{pd.to_datetime(dt).strftime('%b %d')} - {(pd.to_datetime(dt) + pd.Timedelta(days=6)).strftime('%b %d')}"
-        for dt in table_data.index
-    ]
-    table_data.index.name = 'Week'
-elif interval == "Monthly":
-    table_data.index = pd.to_datetime(table_data.index).strftime('%B %Y')
-    table_data.index.name = 'Month'
-
-# Style the table
-styled_table = table_data.style.set_properties(**{
-    'background-color': '#FFE5CC',  # Light orange background
-    'color': 'black',
-    'font-weight': 'bold',
-    'font-size': '16px',
-    'text-align': 'center',
-    'border': '1px solid #FF8C00'
-}).set_table_styles([
-    {'selector': 'thead th', 'props': [
-        ('background-color', '#FF8C00'),  # Dark orange for column headers
-        ('color', 'white'),
-        ('font-weight', 'bold'),
-        ('font-size', '18px'),
-        ('text-align', 'center'),
-        ('border', '1px solid #FF8C00')
-    ]},
-    {'selector': 'th', 'props': [
-        ('background-color', '#FF8C00'),  # Dark orange for index
-        ('color', 'white'),
-        ('font-weight', 'bold'),
-        ('font-size', '16px'),
-        ('text-align', 'center'),
-        ('border', '1px solid #FF8C00')
-    ]},
-    {'selector': '', 'props': [
-        ('border-collapse', 'collapse'),
-        ('width', '100%')
-    ]}
-])
-
-st.dataframe(styled_table, use_container_width=True, height=600)
-```
-
-This styled table features:
-
-- **Light orange background** (#FFE5CC) for all table cells
-- **Dark orange background** (#FF8C00) for column headers and index
-- **Bold text** throughout the table
-- **Larger font sizes** (16px for cells, 18px for headers)
-- **White text** on dark orange headers for better contrast
-- **Increased height** (600px) to make the table bigger
-- **Centered text alignment** for better readability
-- **Borders** for clear cell separation​​​​​​​​​​​​​​​​
+# Render styled table
+st.markdown(styled_df.to_html(), unsafe_allow_html=True)
