@@ -1,75 +1,67 @@
-# Create download button and table side by side
-col1, col2 = st.columns([4, 1])
+Week 1: Introduction to Artificial Intelligence + Environment Setup and GPU Usage
 
-with col1:
-    st.subheader(f"{interval} Distribution Table")
+Introduction to Artificial Intelligence (AI), Machine Learning (ML), and Deep Learning (DL) concepts
+AI application areas: Image processing, natural language processing (NLP), recommendation systems, etc.
+Architectural structure in modern AI systems: Data → Preprocessing → Model → Evaluation → Deployment
+General framework of this course: Overview of LLM, embedding, semantic search, LangChain, RAG, and production deployment processes
+Google Colab / Jupyter Lab setup
+Python environment, conda and venv usage
+Working principles with CUDA / GPU
+Introduction to Hugging Face, transformers, and datasets libraries
+Mini project: Setting up a text classification model running on GPU
 
-with col2:
-    # Create Excel file in memory
-    output = io.BytesIO()
-    
-    # Reset index to include Month column in the data
-    table_download = table_data.reset_index()
-    
-    # Write to Excel
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        table_download.to_excel(writer, index=False, sheet_name='Distribution')
-        
-        # Get workbook and worksheet
-        workbook = writer.book
-        worksheet = writer.sheets['Distribution']
-        
-        # Style the header row
-        header_fill = PatternFill(start_color='FF9800', end_color='FF9800', fill_type='solid')
-        header_font = Font(bold=True, color='FFFFFF', size=14)
-        
-        for cell in worksheet[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-        
-        # Style data cells
-        data_fill = PatternFill(start_color='FFE5CC', end_color='FFE5CC', fill_type='solid')
-        data_font = Font(bold=True, size=12)
-        
-        for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
-            for cell in row:
-                cell.fill = data_fill
-                cell.font = data_font
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-        
-        # Auto-adjust column widths
-        for column in worksheet.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = (max_length + 2) * 1.2
-            worksheet.column_dimensions[column_letter].width = adjusted_width
-    
-    output.seek(0)
-    
-    st.download_button(
-        label="📥 Download",
-        data=output,
-        file_name=f"{interval}_distribution_table.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+Week 2: Introduction to NLP and Fundamental Concepts
 
-# Apply styles using Pandas Styler
-styled_df = (
-    table_data.style
-    .set_table_styles([
-        {'selector': 'th.col_heading', 'props': [('background-color', '#FF9800'), ('color', 'white'), ('font-size', '22px'), ('font-weight', 'bold'), ('text-align', 'center')]},
-        {'selector': 'th.row_heading', 'props': [('background-color', '#FF9800'), ('color', 'white'), ('font-size', '22px'), ('font-weight', 'bold'), ('text-align', 'center')]},
-        {'selector': 'td', 'props': [('background-color', '#FFE5CC'), ('color', '#000'), ('font-size', '20px'), ('font-weight', 'bold'), ('text-align', 'center')]}
-    ])
-    .set_table_attributes('style="width:100%; font-size:20px;"')
-)
+Text preprocessing: cleaning, tokenization, stopwords
+Numerical representations: One-hot encoding, TF-IDF
+Word embeddings: Word2Vec, GloVe
+Mini project: Sentiment analysis from text data
 
-# Render styled table
-st.markdown(styled_df.to_html(), unsafe_allow_html=True)
+Week 3: LLM Fundamentals
+
+LLM architecture (Transformer, Encoder-Decoder)
+Using pre-trained LLMs with Hugging Face
+Introduction to prompt engineering
+Mini application: Question-answering system with pre-trained LLM
+
+Week 4: Vectorization & Semantic Search
+
+Embedding concept (sentence, document embeddings)
+Vector databases like Qdrant and Chroma
+Similarity metrics (cosine similarity, etc.)
+Application: Semantic search engine within documents
+
+Week 5: Introduction to LangChain and Basic Concepts
+
+LangChain Introduction and Basic Concepts
+A Simple LLM Application with LangChain
+A Simple Chat Application with LangChain
+A Simple Agent with LangChain
+LangChain Integrations
+
+Week 6: Retrieval-Augmented Generation (RAG)
+
+What is RAG and how does it work?
+Distinction between Retriever and Generator
+Vector store + LLM integration
+Model Context Protocol (MCP) Concept
+Application: Developing a RAG-based chatbot
+
+Week 7: Introduction to Agentic AI — From Reactive Prompts to Agents
+
+Agentic AI
+ReAct Pattern
+Applied Introduction to LangChain Agent Architecture
+Stateful, Multi-Step Agent Workflow with LangGraph
+
+Week 8: End-to-End Project
+
+Develop an AI question-answering assistant with a user interface
+Tools to be used:
+
+Streamlit
+FastAPI
+LangChain
+LangGraph
+PostgreSQL
+Qdrant Vector DB
