@@ -1,73 +1,105 @@
-Based on the meeting transcript provided, here are the detailed answers to each question:
+Treasury Management Pricing Process Overview
+PNC pricing team meeting with external consultants to review current deal approval workflow
 
-1. Where does your application/platform sit in the flow of payments? (Beginning, middle, end)
+Key participants: Ben (discussion leader), Patrick, Mike, McKenzie, Joe, Megan, Colin, Engin (lead data scientist)
 
-The application sits at the beginning of the payments flow. The team operates as the customer client-facing application where clients call the API, which comes to them first. They perform initial validations and then send requests to backend applications for processing. Their CAP APIs allow clients to directly send payments through two methods: API directly to payments infrastructure or API to Pinnacle Connected payments.
+Goal: identify automation opportunities and improve efficiency in pricing review process
 
-2. What are your downstream applications for originations?
+Current process involves multiple disconnected tools requiring manual data integration
 
-For originations, they have three downstream systems: Payment Staging (PSG) for regular payments, PPS for Pinnacle Connected payments (Itic), and PTT for direct to debit payments.
+Current Pricing Workflow Process
+Treasury Management Officers (TMOs) initiate deal quotes in CPQ system
 
-3. What are your downstream applications for receivables?
+Process varies by client type (existing vs new) and service type (existing vs new products)
 
-For receivables, the downstream application is REC (receivables platform), and they pull information from Pinnacle. The team clarified that they are just returning information, as the receivables platform receives all the payments information and they pull the data back to the client.
+New clients require bank statement analysis using statement translator tool
 
-4. What are your upstream applications for originations?
+Volume estimation critical first step - uses existing client statements from current providers
 
-For originations, they have direct clients calling the APIs, and also have three-legged clients who come through their platforms PIF and PIK (Pinnacle Connect platforms) which then call CAP. There are also some network layers at the top of CAP including F5 and APG.
+Express approval process auto-approves deals meeting specific criteria:
 
-5. What are your upstream applications for receivables?
+Customer-level discount ≤30%
 
-For receivables, PIF calls PIF as the upstream application.
+Monthly discount <$2,500
 
-6. Of those downstream applications, which do you receive acknowledgments or notifications from?
+Bypasses pricing team review for qualifying deals
 
-When the initial request goes through, they receive an acknowledgement that the downstream applications have received the request.
+Volume Accuracy Challenges
+Most critical bottleneck in pricing process
 
-7. Of those upstream applications, which do you receive acknowledgments or notifications from?
+Common issues: fat-finger errors, misinterpreted data fields
 
-They send acknowledgments to upstream systems. When payments come in through Pinnacle Connect, the platforms call CAP and they provide a status of that payment. They operate as a pass-through where whatever they receive back from the backend downstream applications gets sent up to their clients and the platforms.
+Example: confusion between total items vs OCR reads (1M items could be 200K items × 5 fields)
 
-8. In what format do you receive transactions/files/data?
+Statement translator tool covers limited bank formats
 
-They receive data in JSON format through JSON-based data structures and JSON-based REST APIs. They do have some limited integration with integrated payables file spec for Pinnacle Connect, and some file-based payments for legacy systems.
+Pricing Assistant Tool (PATH) only covers 30% of products
 
-9. In what format do you send transactions/files/data?
+Volume dependencies between transaction codes not systematically managed
 
-They send data in JSON format. All their downstream systems support JSON-based REST integration, so the JSON data remains the same throughout the flow from user to CAP to downstream with some internal configurations or mapping.
+Multi-Tool Data Analysis Requirements
+CPQ: contract dashboards, cost reports, historical quote approvals
 
-10. Do you have any unique identifier that you add to the transactions from your system? Do you pass that to the next system in the flow? If not are you receiving a unique ID from a downstream application that you continue to pass upstream?
+TAP: profitability reports, transaction code pricing benchmarks, 24-month client trends
 
-They utilize two unique identifiers: a trace ID which is a PNC-generated end-to-end ID, and a customer reference which is client-supplied. The trace ID is generated within the CAP application for payments API, and for Pinnacle Connected payments, the PPS or Pinnacle system generates the trace ID.
+Tableau: client summaries, historical analysis via Time Machine
 
-11. Do you have any reporting that captures the activity that takes place at your stop in the lifecycle of a transaction? If so, where is that hosted? Who are the consumers for said reporting?
+Edge: profitability data, relationship-level margin analysis
 
-They store data in CAP databases and it is consumed by TAP. However, they do not capture the complete lifecycle of a transaction in terms of status changes over time within CAP. They do capture audit information for approximately 90 days showing when customers made calls and what data went in and out, but not the actual lifecycle of status changes.
+Seismic: product reference guides and documentation
 
-12. Can a client check on the status of their payment?
+McKinsey Portfolio Navigator: industry benchmarking across 18 banks
 
-Clients can check payment status through two methods: they can use unique identifiers (trace ID and customer reference) to make a GET call to see the latest status of transactions, and there is a webhook capability where they send notifications to clients when status changes occur, allowing clients to then make a GET call to see what changed.
+Manual spreadsheet consolidation required for comprehensive analysis
 
-13. What sort of data management are you doing? What type of database do you use?
+Decision-Making Methodology Inconsistencies
+No standardized rules-based system for pricing decisions
 
-They use an Oracle database, specifically Oracle Exadata for their data management.
+Different analysts may use different data sources for same deal type
 
-14. Is your database split between operational and reporting databases?
+Evaluation methods vary by situation:
 
-They maintain just one database that primarily performs auditing functions for a period of approximately 90 days to track when payments were made and when status check requests were made.
+Existing client behavior analysis (primary method)
 
-15. Is your data being streamed anywhere? For ex. a warehouse like COD?
+Margin analysis using finance cost spreadsheets
 
-The data currently resides in Oracle Exadata. TAP consumes data from CAP databases, but specific details about streaming to other warehouses were not provided.
+Competitive benchmarking via McKinsey data
 
-16. Is it possible for there to be a failure at your stage in the payments flow? If so, what happens if there is one?
+Internal portfolio positioning via TAP reports
 
-Failures can occur at their stage through several mechanisms. They perform field-level validations when receiving initial requests, and there can be service network-level issues at the API level, and authentication checks. If someone lacks access to certain entitlements, they can reject those calls, and they perform account and operator-level checks. When failures occur, clients receive a 400-level HTTP status code with an error response indicating the failure, and they are asked to resend the payment after correcting the errors.
+Lack of systematic approach to applying decision criteria
 
-17. Do you do any negative tracking or volume tracking to account for expected transactions on a certain day?
+Technology Integration Gaps
+All analysis happens outside CPQ in separate systems
 
-They have reporting mechanisms in place that they share with leadership regarding volume for their products. They capture volume data so that if there is a negative impact resulting in less volume in a certain week or month, they can investigate what is occurring.
+Requires multiple monitors for effective workflow
 
-18. Do you get any notifications from downstream systems if they don't receive a file or transaction from you?
+Manual data export/import between systems
 
-The team was not aware of any systems currently in place for this type of monitoring and suggested it would require follow-up with the run-the-bank team, as they are not closely aligned with that monitoring function.
+No centralized dashboard combining all data sources
+
+Final pricing decisions manually entered back into CPQ
+
+Communication tracking through Chatter system for documentation
+
+Process Improvement Opportunities
+Single integrated interface combining all data sources
+
+Automated volume validation and dependency checking
+
+Standardized decision support without full automation
+
+Enhanced express approval criteria using historical accuracy data
+
+Model-based pricing suggestions requiring human review
+
+Streamlined data flow reducing 4-hour process to 30 minutes
+
+Next Steps
+Evaluate feasibility of integrated dashboard solution
+
+Identify highest-value data source integrations for Phase 1
+
+Consider expanding Pricing Assistant Tool coverage beyond current 30%
+
+Assess McKinsey benchmarking data integration possibilities
